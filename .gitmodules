@@ -1,0 +1,3 @@
+[submodule "kitty"]
+	path = kitty
+	url = https://github.com/msoeken/kitty/
