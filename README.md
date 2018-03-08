@@ -19,7 +19,7 @@ The following software is required to build the tests:
 Once those requirements are met, run the following commands (or your operating
 system's equivalent) to build the tests:
 
-    git clone --recursive https://github.com/whaaswijk/percy.git
+    git clone --recurse-submodules https://github.com/whaaswijk/percy.git
     cd percy
     mkdir build
     cd build
