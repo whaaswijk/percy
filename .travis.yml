@@ -23,3 +23,6 @@ before_install:
     - sudo apt-get install -qq mercurial libnauty-dev
     - eval "${MATRIX_EVAL}"
 
+before_script:
+    - sudo mkdir /usr/include/nauty
+    - sudo ln -s /usr/include/nauty.h /usr/include/nauty/nauty.h
