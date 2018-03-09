@@ -35,8 +35,11 @@ runtime_comparison(int nr_vars, int nr_vertices)
     rec_gen.reset(nr_vars, nr_vertices);
     size_t nr_seq_dags = 0;
     {
+        printf("starting clock\n");
         seq_start = std::chrono::high_resolution_clock::now();
+        printf("clock started\n");
         auto seq_dags = rec_gen.gen_dags();
+        printf("dags generated\n");
         seq_stop = std::chrono::high_resolution_clock::now();
         nr_seq_dags = seq_dags.size();
     }
@@ -63,7 +66,6 @@ int main(void)
 {
     runtime_comparison(3, 8);
     runtime_comparison(3, 10);
-    runtime_comparison(3, 11);
     
     auto num_cpus = std::thread::hardware_concurrency();
     if (num_cpus >= 10) {
