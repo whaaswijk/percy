@@ -520,18 +520,20 @@ namespace percy
                 spec.triv_functions[spec.nr_triv++] = 0;
             } else if (is_const0(~(*spec.functions[h]))) {
                 spec.triv_flag |= (1 << h);
-                spec.triv_functions[spec.nr_triv++] = 1;
+                spec.triv_functions[spec.nr_triv++] = 0;
+                spec.out_inv |= (1 << h);
             } else {
                 TT tt_var;
                 for (int i = 0; i < spec.nr_in; i++) {
                     create_nth_var(tt_var, i);
                     if (*spec.functions[h] == tt_var) {
                         spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = (i+1) << 1;
+                        spec.triv_functions[spec.nr_triv++] = i+1;
                         break;
                     } else if (*spec.functions[h] == ~(tt_var)) {
                         spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = ((i+1) << 1) + 1;
+                        spec.triv_functions[spec.nr_triv++] = i+1;
+                        spec.out_inv |= (1 << h);
                         break;
                     }
                 }
@@ -690,11 +692,15 @@ namespace percy
 
         auto triv_count = 0, nontriv_count = 0;
         for (int h = 0; h < spec.nr_out; h++) {
+            printf("out=%d\n");
             if ((spec.triv_flag >> h) & 1) {
-                chain.set_out(h, spec.triv_functions[triv_count++]);
+                chain.set_out(h, (spec.triv_functions[triv_count++] << 1) +
+                        ((spec.out_inv >> h) & 1));
+                printf("TRIV inv flag=%d\n", ((spec.out_inv >> h) & 1));
                 continue;
             }
             for (int i = 0; i < spec.nr_steps; i++) {
+                printf("nontriv\n");
                 if (solver_var_value(spec.solver(), 
                             get_out_var(spec, nontriv_count, i))) {
                     chain.set_out(h, ((i + spec.nr_in + 1) << 1) +
@@ -757,7 +763,8 @@ namespace percy
         auto triv_count = 0, nontriv_count = 0;
         for (int h = 0; h < spec.nr_out; h++) {
             if ((spec.triv_flag >> h) & 1) {
-                chain.set_out(h, spec.triv_functions[triv_count++]);
+                chain.set_out(h, (spec.triv_functions[triv_count++] << 1) +
+                        ((spec.out_inv >> h) & 1));
                 continue;
             }
             for (int i = 0; i < spec.nr_steps; i++) {
@@ -829,7 +836,8 @@ namespace percy
         auto triv_count = 0, nontriv_count = 0;
         for (int h = 0; h < spec.nr_out; h++) {
             if ((spec.triv_flag >> h) & 1) {
-                chain.set_out(h, spec.triv_functions[triv_count++]);
+                chain.set_out(h, (spec.triv_functions[triv_count++] << 1) +
+                        ((spec.out_inv >> h) & 1));
                 continue;
             }
             for (int i = 0; i < spec.nr_steps; i++) {
@@ -1149,7 +1157,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) + 
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1183,7 +1192,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1222,7 +1232,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) + 
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1257,7 +1268,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) + 
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1290,7 +1302,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1358,7 +1371,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1426,7 +1440,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }
@@ -1492,7 +1507,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             return success;
         }

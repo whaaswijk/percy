@@ -74,6 +74,7 @@ void check_overhead(int conflict_limit)
 
 int main(void)
 {
+    /*
     vector<int> conflict_limits = { 0, 10, 50, 100, 250, 500, 1000, 2500 };
     for (auto conflict_limit : conflict_limits) {
         printf("Setting conflict limit to %d\n", conflict_limit);
@@ -82,6 +83,7 @@ int main(void)
         check_overhead<4>(conflict_limit);
         check_overhead<5>(conflict_limit);
     }
+    */
 
     return 0;
 }

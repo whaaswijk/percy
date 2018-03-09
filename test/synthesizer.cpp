@@ -101,7 +101,7 @@ int main(void)
 
       chain<static_truth_table<4>> c;
 
-      /* enumerate mutants */
+      /* enumerate mutants *
       for ( auto i = 4u; i < g1_tt.size(); ++i )
       {
         synth_spec<static_truth_table<4>,sat_solver*> spec;
@@ -117,22 +117,22 @@ int main(void)
         create_nth_var( s1, 2 );
         create_nth_var( s2, 3 );
 
-        /* copy the output signal */
+        /* copy the output signal *
         auto g2_tt_copy = g2_tt;
         auto g1_tt_copy = g1_tt;
 
         /*
          * inject errors into the output signals (violates the
          * property never two grants at the same time)
-         */
+         *
         g1_tt_copy[i] = '1';
         g2_tt_copy[i] = '1';
 
-        /* next-state logic */
+        /* next-state logic *
         create_from_binary_string( s2_next, "1111" "0000" "1010" "0000" );
         create_from_binary_string( s1_next, "1111" "1100" "0000" "1000" );
 
-        /* output logic */
+        /* output logic *
         create_from_binary_string( g2, g2_tt_copy );
         create_from_binary_string( g1, g1_tt_copy );
 
@@ -148,6 +148,7 @@ int main(void)
         assert( *sim_fs[2] == g2 );
         assert( *sim_fs[3] == g1 );
       }
+      */
     }
 
     return 0;

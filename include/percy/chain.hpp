@@ -105,6 +105,7 @@ namespace percy
                     const auto var = out >> 1;
                     const auto inv = out & 1;
                     if (var == 0) {
+                        clear(tt_step);
                         fs[h].reset(new TT(inv ? unary_not(tt_step) : tt_step));
                     } else if (var <= nr_in()) {
                         create_nth_var(tt_step, var-1, inv);
