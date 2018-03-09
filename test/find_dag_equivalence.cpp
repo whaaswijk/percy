@@ -96,9 +96,11 @@ int main(void)
 
     check_npn_equivalence<2>();
     check_npn_equivalence<3>();
+    /*
     if (num_cpus >= 6) {
         check_npn_equivalence<4>();
     }
+    */
     
     return 0;
 }
