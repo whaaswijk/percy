@@ -1,10 +1,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # percy
-<img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy2.svg" width="64" height="64" align="left" style="margin-right: 12pt" />
+<img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy2.svg" width="78" height="64" align="left" style="margin-right: 12pt" />
 percy is a header-only exact synthesis library. It offers a collection of
-different synthesizers and exact synthesis methods for use in various
-applications.
+different synthesizers and exact synthesis methods for use in applications such
+as circuit resynthesis and design exploration.
 
 ## Quick installation guide
 
