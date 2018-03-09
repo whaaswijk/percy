@@ -1,8 +1,8 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cassert>
 #include <cstdio>
 
-using namespace topsynth;
+using namespace percy;
 using std::vector;
 
 /*******************************************************************************

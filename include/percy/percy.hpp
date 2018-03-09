@@ -38,7 +38,7 @@ using std::chrono::time_point;
     [2] Donald Ervin Knuth, "The Art of Computer Programming, Volume 4,
     Fascicle 6: Satisfiability," 2015
 *******************************************************************************/
-namespace topsynth
+namespace percy
 {
     template<typename TT, typename Solver>
     class synth_spec
@@ -3641,7 +3641,7 @@ namespace topsynth
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
         std::mutex m;
         std::vector<std::thread> threads(nr_threads);
-        std::vector<topsynth::chain<TT>> chains(nr_threads);
+        std::vector<percy::chain<TT>> chains(nr_threads);
         std::vector<synth_result> statuses(nr_threads);
         bool stop = false;
 
@@ -3694,7 +3694,7 @@ namespace topsynth
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
         std::mutex m;
         std::vector<std::thread> threads(nr_threads);
-        std::vector<topsynth::chain<TT,3>> chains(nr_threads);
+        std::vector<percy::chain<TT,3>> chains(nr_threads);
         std::vector<synth_result> statuses(nr_threads);
         bool stop = false;
 
@@ -3746,7 +3746,7 @@ namespace topsynth
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
         std::mutex m;
         std::vector<std::thread> threads(nr_threads);
-        std::vector<topsynth::chain<TT>> chains(nr_threads);
+        std::vector<percy::chain<TT>> chains(nr_threads);
         std::vector<synth_result> statuses(nr_threads);
         bool stop = false;
 
@@ -3798,7 +3798,7 @@ namespace topsynth
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
         std::mutex m;
         std::vector<std::thread> threads(nr_threads);
-        std::vector<topsynth::chain<TT,3>> chains(nr_threads);
+        std::vector<percy::chain<TT,3>> chains(nr_threads);
         std::vector<synth_result> statuses(nr_threads);
         bool stop = false;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace topsynth
+namespace percy
 {
     
     template<typename TT>

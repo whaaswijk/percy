@@ -1,8 +1,8 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
 
-using namespace topsynth;
+using namespace percy;
 
 int main(void)
 {

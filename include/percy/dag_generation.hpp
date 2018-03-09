@@ -14,7 +14,7 @@ extern "C"
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 
-namespace topsynth
+namespace percy
 {
     template<typename TT, typename Solver>
     class dag_synthesizer

@@ -1,8 +1,8 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     Verifies that the DAG to .dot conversion works properly.

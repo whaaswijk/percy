@@ -9,7 +9,7 @@
 using std::pair;
 using std::unordered_map;
 
-namespace topsynth
+namespace percy
 {
 
     class dag

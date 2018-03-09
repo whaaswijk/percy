@@ -1,5 +1,5 @@
 #include <cstdio>
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 
 extern "C"
@@ -11,7 +11,7 @@ void Abc_Stop();
 
 #define MAX_TESTS 256
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     Verifies that our synthesizers' results are equivalent to ABC's.

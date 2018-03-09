@@ -1,8 +1,8 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 
 #define MAX_TESTS 512
 
-using namespace topsynth;
+using namespace percy;
 
 
 /*******************************************************************************

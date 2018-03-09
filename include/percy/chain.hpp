@@ -20,7 +20,7 @@ using kitty::create_nth_var;
     step applies a Boolean operator to a fixed number of previous steps. The
     main objective of this package is to synthesize Boolean chains efficiently.
 *******************************************************************************/
-namespace topsynth
+namespace percy
 {
 
     /***************************************************************************

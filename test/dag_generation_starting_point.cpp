@@ -1,9 +1,9 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
 #include <ctime>
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     We want to be able to start the backtrack DAG generator at arbitrary points

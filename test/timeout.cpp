@@ -1,12 +1,12 @@
 #include <cstdio>
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 #include <ctime>
 
 #define NR_IN 5
 #define NR_FUNCS 2
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     Verifies that our timeouts work correctly.

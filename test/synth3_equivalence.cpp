@@ -1,10 +1,10 @@
 #include <cstdio>
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 
 #define MAX_TESTS 512
 
-using namespace topsynth;
+using namespace percy;
 using kitty::static_truth_table;
 
 /*******************************************************************************

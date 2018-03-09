@@ -1,8 +1,8 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 
 #define MAX_TESTS 512ul
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     When parallelizing synthesis based on fence or DAG structures we have the

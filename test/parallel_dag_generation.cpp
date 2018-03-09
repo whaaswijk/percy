@@ -1,10 +1,10 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
 #include <ctime>
 #include <thread>
 
-using namespace topsynth;
+using namespace percy;
 
 void
 runtime_comparison(int nr_vars, int nr_vertices)

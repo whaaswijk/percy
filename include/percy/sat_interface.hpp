@@ -11,7 +11,7 @@ extern "C" {
 
 #include <glucose/core/Solver.h>
 
-namespace topsynth 
+namespace percy 
 {
     enum synth_result
     {

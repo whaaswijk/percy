@@ -1,9 +1,9 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cassert>
 #include <cstdio>
 #include <boost/math/special_functions/binomial.hpp>
 
-using namespace topsynth;
+using namespace percy;
 
 
 /*******************************************************************************

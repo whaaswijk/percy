@@ -1,9 +1,9 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
-#include <topsynth/io.hpp>
+#include <percy/io.hpp>
 
-using namespace topsynth;
+using namespace percy;
 
 int main(void)
 {

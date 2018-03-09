@@ -1,10 +1,10 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 #include <cassert>
 #include <cstdio>
 #include <fstream>
 
-using namespace topsynth;
+using namespace percy;
 using kitty::static_truth_table;
 
 /*******************************************************************************

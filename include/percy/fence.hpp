@@ -21,7 +21,7 @@ using std::min;
     different generators/filters together, we can create customized fence
     streams for our particular synthesis demands.
 *******************************************************************************/
-namespace topsynth
+namespace percy
 {
     class fence
     {

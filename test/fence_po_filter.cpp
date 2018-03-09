@@ -1,9 +1,9 @@
-#include <topsynth/fence.hpp>
+#include <percy/fence.hpp>
 #include <cassert>
 #include <cstdio>
 #include <boost/math/special_functions/binomial.hpp>
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     Tests the PO and operator fanin count filter in various configurations.

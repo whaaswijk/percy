@@ -1,9 +1,9 @@
-#include <topsynth/topsynth.hpp>
+#include <percy/percy.hpp>
 #include <cassert>
 #include <cstdio>
 #include <ctime>
 
-using namespace topsynth;
+using namespace percy;
 
 /*******************************************************************************
     Times fence generators and filters. Here to ensure that this phase of
