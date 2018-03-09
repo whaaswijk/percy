@@ -20,6 +20,7 @@ The following software is required to build the tests:
 * cmake (at least version 3.0.0)
 * g++ (at least version 4.9.0) or clang++ (at least version 3.5.0)
 * boost (at least version 1.56.0)
+* libnauty2 (at least version 2.6)
 
 Once those requirements are met, run the following commands (or your operating
 system's equivalent) to build the tests:
