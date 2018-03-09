@@ -3045,7 +3045,8 @@ namespace percy
                 if (spec.nr_triv == spec.nr_out) {
                     chain.reset(spec.nr_in, spec.nr_out, 0);
                     for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, spec.triv_functions[h]);
+                        chain.set_out(h, (spec.triv_functions[h] << 1) +
+                                ((spec.out_inv >> h) & 1));
                     }
                     return success;
                 }
@@ -3183,7 +3184,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
             if (spec.verbosity > 2) {
@@ -3308,7 +3310,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) + 
+                        ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
             if (spec.verbosity > 2) {
@@ -3432,7 +3435,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
             if (spec.verbosity > 2) {
@@ -3556,7 +3560,8 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, spec.triv_functions[h]);
+                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                        ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
             if (spec.verbosity > 2) {
