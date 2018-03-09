@@ -9,7 +9,7 @@ foreach(FILENAME ${FILENAMES})
 
     add_executable(${TARGET_NAME} ${FILENAME})
     add_dependencies(${TARGET_NAME} abc)
-    target_link_libraries(${TARGET_NAME} libabc glucose pthread nauty)
+    target_link_libraries(${TARGET_NAME} libabc glucose pthread libnauty)
     add_test(${TARGET_NAME} ${TARGET_NAME})
 endforeach()
 

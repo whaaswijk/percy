@@ -1,12 +1,6 @@
 #pragma once
 
-/* The Travis build environment has a different path to nauty. */
-#ifdef TRAVIS_BUILD
 #include <nauty.h>
-#else
-#include <nauty/nauty.h>
-#endif
-
 #include <vector>
 #include <unordered_map>
 #include <ostream>

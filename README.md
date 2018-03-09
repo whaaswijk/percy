@@ -2,7 +2,7 @@
 [![Build Status](https://travis-ci.org/whaaswijk/percy.svg?branch=master)](https://travis-ci.org/whaaswijk/percy)
 
 # percy
-<img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy2.svg" width="78" height="64" align="left" style="margin-right: 12pt" />
+<img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy.svg" width="78" height="64" align="left" style="margin-right: 12pt" />
 percy is a header-only exact synthesis library. It offers a collection of
 different synthesizers and exact synthesis methods for use in applications such
 as circuit resynthesis and design exploration.
