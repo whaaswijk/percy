@@ -1,6 +1,6 @@
 #include <percy/percy.hpp>
 
-#define MAX_TESTS 512
+#define MAX_TESTS 256
 
 using namespace percy;
 using kitty::static_truth_table;
@@ -13,7 +13,7 @@ void gen_check_equivalence(bool full_coverage)
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_spec<static_truth_table<nrin>,sat_solver*> spec;
-    simple_synthesizer<static_truth_table<nrin>,sat_solver*,2> synth1;
+    symmetric_synthesizer<static_truth_table<nrin>,sat_solver*,2> synth1;
     dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
 
     spec.nr_in = nrin;
@@ -229,7 +229,9 @@ int main(int argc, char **argv)
     gen_check_equivalence<2>(full_coverage);
     gen_check_equivalence<3>(full_coverage);
 
-    check_npn_equivalence<4>();
+    if (full_coverage) {
+        check_npn_equivalence<4>();
+    }
 
     return 0;
 }

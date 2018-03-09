@@ -2,7 +2,7 @@
 #include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 
-#define MAX_TESTS 512
+#define MAX_TESTS 256
 
 using namespace percy;
 using kitty::static_truth_table;

@@ -3,7 +3,7 @@ language: cpp
 script:
     - mkdir build
     - cd build
-    - cmake ..
+    - cmake -DTRAVIS_BUILD=ON ..
     - make -j4
 
 matrix:
@@ -20,12 +20,6 @@ matrix:
 
 before_install:
     - sudo apt-get update -qq
-    - sudo apt-get install -qq mercurial build-essential
+    - sudo apt-get install -qq mercurial libnauty-dev
     - eval "${MATRIX_EVAL}"
-    - wget http://ftp.us.debian.org/debian/pool/main/n/nauty/libnauty2_2.6r7+ds-1_amd64.deb
-    - sudo dpkg -i libnauty2_2.6r7+ds-1_amd64.deb
-    - sudo apt-get install -f
-    - wget http://ftp.us.debian.org/debian/pool/main/n/nauty/libnauty2-dev_2.6r7+ds-1_amd64.deb
-    - sudo dpkg -i libnauty2-dev_2.6r7+ds-1_amd64.deb
-    - sudo apt-get install -f
 

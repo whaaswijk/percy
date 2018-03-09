@@ -153,9 +153,11 @@ int main(int argc, char **argv)
 
     check_equivalence<2>(full_coverage);
     check_equivalence<3>(full_coverage);
-    check_equivalence<5>(full_coverage);
 
-    check_npn_equivalence<4>();
+    if (full_coverage) {
+        check_equivalence<5>(full_coverage);
+        check_npn_equivalence<4>();
+    }
 
     return 0;
 }

@@ -7,6 +7,8 @@ project(percy LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
 
+option(TRAVIS_BUILD "Use alternative nauty include path" OFF)
+
 enable_testing()
 
 externalproject_add(
@@ -19,6 +21,10 @@ externalproject_add(
 	BUILD_IN_SOURCE 1
 	INSTALL_COMMAND ""
 )
+
+if (${TRAVIS_BUILD})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD")
+endif()
 
 SET(ABC_INCLUDE_DIR "${PROJECT_BINARY_DIR}/abc/src/abc/src")
 SET(ABC_LDIR "${PROJECT_BINARY_DIR}/abc/src/abc") 
