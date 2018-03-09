@@ -7,6 +7,8 @@ project(percy LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
 
+enable_testing()
+
 externalproject_add(
 	abc
 	HG_REPOSITORY "https://bitbucket.org/alanmi/abc"
