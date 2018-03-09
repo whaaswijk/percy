@@ -29,6 +29,6 @@ system's equivalent) to build the tests:
     cmake ..
     make
 
-The test will then be available under ${PERCY\_ROOT}/build/test .
+The tests will then be available under ${PERCY\_ROOT}/build/test .
 
 
