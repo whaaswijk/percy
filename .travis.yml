@@ -20,6 +20,6 @@ matrix:
 
 before_install:
     - sudo apt-get update -qq
-    - sudo apt-get install -qq mercurial libnauty-dev
+    - sudo apt-get install -qq mercurial libnauty-dev libboost-all-dev
     - eval "${MATRIX_EVAL}"
 
