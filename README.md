@@ -1,4 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://travis-ci.org/whaaswijk/percy.svg?branch=master)](https://travis-ci.org/whaaswijk/percy)
 
 # percy
 <img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy2.svg" width="78" height="64" align="left" style="margin-right: 12pt" />
@@ -6,11 +7,12 @@ percy is a header-only exact synthesis library. It offers a collection of
 different synthesizers and exact synthesis methods for use in applications such
 as circuit resynthesis and design exploration.
 
-## Quick installation guide
+## Quick install guide
 
 Percy is a header-only library. As such, no build steps are required to start
-using it. However, if you want to run the tests, you'll need to build some
-binaries.
+using it. Simply add ${PERCY_ROOT}/include to your compiler's include path and
+you're good to go. However, if you want to run the tests, you'll need to build
+some binaries.
 
 The following software is required to build the tests: 
 * git (at least version 1.6.5)
