@@ -41,6 +41,6 @@ include_directories(include "kitty/include" "glucose"
 
 include_directories(${PROJECT_SOURCE_DIR})
 add_subdirectory(glucose)
-#add_subdirectory(bench)
+add_subdirectory(bench)
 add_subdirectory(test)
 

@@ -488,10 +488,10 @@ namespace percy
         return status;
     }
 
-    template<typename T, typename TT, int StepSize=2>
+    template<typename T, typename TT>
     synth_result 
     cegar_chain_exists(
-            T* synth, synth_spec<TT>& spec, chain<TT,StepSize>& chain)
+            T* synth, synth_spec<TT>& spec, chain<TT,2>& chain)
     {
         if (spec.verbosity) {
             printf("  Existence check with %d steps...\n", spec.nr_steps);
@@ -545,10 +545,10 @@ namespace percy
         A parallel version which periodically checks if a solution has been
         found by another thread.
     ***************************************************************************/
-    template<typename T, typename TT, int StepSize=2>
+    template<typename T, typename TT>
     synth_result 
     pcegar_chain_exists(
-            T* synth, synth_spec<TT>& spec, chain<TT,StepSize>& chain,
+            T* synth, synth_spec<TT>& spec, chain<TT,2>& chain,
             bool* found)
     {
         if (spec.verbosity) {
@@ -604,7 +604,7 @@ namespace percy
     /***************************************************************************
         Base synthesizer class.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
+    template<typename TT, typename Solver>
     class synthesizer
     {
         protected:
@@ -875,7 +875,7 @@ namespace percy
             }
 
             virtual synth_result 
-            synthesize(synth_spec<TT>& spec, chain<TT,StepSize>& chain)
+            synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
             {
                 assert(spec.nr_in <= 6);
                 assert(spec.nr_out <= 64);
@@ -908,7 +908,7 @@ namespace percy
             }
             
             virtual synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<TT,StepSize>& chain)
+            cegar_synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
             {
                 assert(spec.nr_in <= 6);
                 assert(spec.nr_out <= 64);
@@ -1054,14 +1054,13 @@ namespace percy
         Implements a simple SAT based exact synthesis algorithm. Uses only the
         bare minimum constraints necessary for the synthesis to be correct.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class simple_synthesizer : public synthesizer<TT, Solver, StepSize>
+    template<typename TT, typename Solver>
+    class simple_synthesizer : public synthesizer<TT, Solver>
     {
         public:
             virtual void 
             add_clauses(synth_spec<TT>& spec)
             {
-                printf("adding simple clauses!\n");
                 this->create_variables(spec);
                 this->create_main_clauses(spec);
                 this->create_output_clauses(spec);
@@ -1083,8 +1082,8 @@ namespace percy
         operators. Note that this doesn't hurt our implementation, since we
         already detect and remove trivial functions from the synthesis spec.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class nontriv_synthesizer : public simple_synthesizer<TT, Solver, StepSize>
+    template<typename TT, typename Solver>
+    class nontriv_synthesizer : public simple_synthesizer<TT, Solver>
     {
         public:
             virtual void 
@@ -1138,8 +1137,8 @@ namespace percy
         This synthesizer extends the nontriv_synthesizer and adds clauses which
         ensure that every step is used at least once.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class alonce_synthesizer : public nontriv_synthesizer<TT, Solver, StepSize>
+    template<typename TT, typename Solver>
+    class alonce_synthesizer : public nontriv_synthesizer<TT, Solver>
     {
         public:
             virtual void 
@@ -1198,8 +1197,8 @@ namespace percy
         Extends the alonce_synthesizer and adds clauses which ensure that no
         operand is ever re-applied (i.e. fully contained in another).
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class noreapply_synthesizer : public alonce_synthesizer<TT,Solver,StepSize>
+    template<typename TT, typename Solver>
+    class noreapply_synthesizer : public alonce_synthesizer<TT,Solver>
     {
         public:
             virtual void 
@@ -1258,8 +1257,8 @@ namespace percy
         Extends the noreapply_synthesizer and adds clauses which ensure that
         steps occur in co-lexicographic order.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class colex_synthesizer : public noreapply_synthesizer<TT,Solver,StepSize>
+    template<typename TT, typename Solver>
+    class colex_synthesizer : public noreapply_synthesizer<TT,Solver>
     {
         public:
             virtual void 
@@ -1330,8 +1329,8 @@ namespace percy
         Extends the colex_synthesizer and adds clauses which ensure that
         step operators also occur in co-lexicographic order.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class colex_func_synthesizer : public colex_synthesizer<TT,Solver,StepSize>
+    template<typename TT, typename Solver>
+    class colex_func_synthesizer : public colex_synthesizer<TT,Solver>
     {
         public:
             virtual void 
@@ -1414,8 +1413,8 @@ namespace percy
         Extends the colex_synthesizer and adds clauses which ensure that
         symmetric variables occur in order.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class symmetric_synthesizer : public colex_synthesizer<TT, Solver, StepSize>
+    template<typename TT, typename Solver>
+    class symmetric_synthesizer : public colex_synthesizer<TT, Solver>
     {
         public:
             virtual void 
@@ -1449,7 +1448,7 @@ namespace percy
             synth_result 
             find_chain(
                     synth_spec<TT>& spec, 
-                    chain<TT,StepSize>& chain, 
+                    chain<TT,2>& chain, 
                     int nr_steps)
             {
                 assert(spec.nr_in <= 6);
@@ -1538,8 +1537,8 @@ namespace percy
         Extends the colex_func_synthesizer and adds clauses that constrain the 
         synthesized Boolbean chain to specific graph topologies.
     ***************************************************************************/
-    template<typename TT, typename Solver, int StepSize=2>
-    class fence_synthesizer : public symmetric_synthesizer<TT, Solver, StepSize>
+    template<typename TT, typename Solver>
+    class fence_synthesizer : public symmetric_synthesizer<TT, Solver>
     {
         public:
             virtual void 
@@ -2001,7 +2000,7 @@ namespace percy
             }
 
             virtual synth_result 
-            synthesize(synth_spec<TT>& spec, chain<TT,StepSize>& chain)
+            synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
             {
                 assert(spec.nr_in <= 6);
                 assert(spec.nr_out <= 64);
@@ -2068,7 +2067,7 @@ namespace percy
             }
 
             virtual synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<TT,StepSize>& chain)
+            cegar_synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
             {
                 assert(spec.nr_in <= 6);
                 assert(spec.nr_out <= 64);
@@ -2142,7 +2141,14 @@ namespace percy
         return std::make_unique<S>();
     }
 
-    template<typename TT, typename Solver>
+    template<template<class,class> class S, typename Solver = sat_solver*, class TT>
+    std::unique_ptr<S<TT, Solver>> 
+    new_synth(synth_spec<TT>& spec)
+    {
+        return std::make_unique<S<TT,Solver>>();
+    }
+
+    template<typename TT, typename Solver = sat_solver*>
     std::unique_ptr<synthesizer<TT, Solver>>
     new_synth(synth_type type)
     {
@@ -2168,6 +2174,31 @@ namespace percy
         }
     }
 
+    template<typename Solver = sat_solver*, typename TT>
+    std::unique_ptr<synthesizer<TT, Solver>>
+    new_synth(synth_spec<TT>& spec, synth_type type)
+    {
+        switch (type) {
+            case SIMPLE:
+                return std::make_unique<simple_synthesizer<TT, Solver>>();
+            case NONTRIV:
+                return std::make_unique<nontriv_synthesizer<TT, Solver>>();
+            case ALONCE:
+                return std::make_unique<alonce_synthesizer<TT, Solver>>();
+            case NOREAPPLY:
+                return std::make_unique<noreapply_synthesizer<TT, Solver>>();
+            case COLEX:
+                return std::make_unique<colex_synthesizer<TT, Solver>>();
+            case COLEX_FUNC:
+                return std::make_unique<colex_func_synthesizer<TT, Solver>>();
+            case SYMMETRIC:
+                return std::make_unique<symmetric_synthesizer<TT, Solver>>();
+            case FENCE:
+                return std::make_unique<fence_synthesizer<TT, Solver>>();
+            default:
+                return nullptr;
+        }
+    }
 
     template<typename TT, typename Solver, typename Generator>
     void 

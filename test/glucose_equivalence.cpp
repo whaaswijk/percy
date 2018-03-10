@@ -11,16 +11,16 @@ using kitty::static_truth_table;
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
 template<
-    template<typename,typename,int> class S1, 
-    template<typename,typename,int> class S2, 
+    template<typename,typename> class S1, 
+    template<typename,typename> class S2, 
     int NrIn>
 void check_equivalence(bool full_coverage)
 {
     synth_spec<static_truth_table<NrIn>> spec1;
     synth_spec<static_truth_table<NrIn>> spec2;
 
-    auto synth1 = new_synth<S1<static_truth_table<NrIn>,sat_solver*,2>>();
-    auto synth2 = new_synth<S2<static_truth_table<NrIn>,Glucose::Solver*,2>>();
+    auto synth1 = new_synth<S1<static_truth_table<NrIn>,sat_solver*>>();
+    auto synth2 = new_synth<S2<static_truth_table<NrIn>,Glucose::Solver*>>();
 
     spec1.nr_in = spec2.nr_in = NrIn;
     spec1.nr_out = spec2.nr_out = 1;

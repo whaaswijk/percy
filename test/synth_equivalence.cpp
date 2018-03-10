@@ -11,14 +11,14 @@ using kitty::static_truth_table;
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
 template<
-    template<typename,typename,int> class s1, 
-    template<typename,typename,int> class s2, 
+    template<typename,typename> class s1, 
+    template<typename,typename> class s2, 
     int nrin, typename solver=sat_solver*>
 void check_equivalence(bool full_coverage)
 {
     synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<s1<static_truth_table<nrin>,solver,2>>();
-    auto synth2 = new_synth<s2<static_truth_table<nrin>,solver,2>>();
+    auto synth1 = new_synth<s1,solver>(spec);
+    auto synth2 = new_synth<s2,solver>(spec);
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -74,12 +74,12 @@ void check_equivalence(bool full_coverage)
     Verifies that parallel synthesis behaves as expected.
 *******************************************************************************/
 template<
-    template<typename,typename,int> class s1, 
+    template<typename,typename> class s1, 
     int nrin, typename solver=sat_solver*>
 void check_equivalence_parallel(bool full_coverage)
 {
     synth_spec<static_truth_table<nrin>> spec;
-    auto synth = new_synth<s1<static_truth_table<nrin>,solver,2>>();
+    auto synth = new_synth<s1<static_truth_table<nrin>,solver>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
