@@ -3,7 +3,7 @@ language: cpp
 script:
     - mkdir build
     - cd build
-    - cmake ..
+    - cmake -DTRAVIS_BUILD ..
     - make -j4
     - make test
 

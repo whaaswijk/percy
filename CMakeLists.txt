@@ -31,6 +31,10 @@ externalproject_add(
 	INSTALL_COMMAND ""
 )
 
+if (${TRAVIS_BUILD})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD")
+endif()
+
 SET(ABC_INCLUDE_DIR "${PROJECT_BINARY_DIR}/abc/src/abc/src")
 SET(ABC_LDIR "${PROJECT_BINARY_DIR}/abc/src/abc") 
 

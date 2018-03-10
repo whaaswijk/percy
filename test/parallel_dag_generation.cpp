@@ -61,6 +61,7 @@ runtime_comparison(int nr_vars, int nr_vertices)
 
 int main(void)
 {
+#ifndef TRAVIS_BUILD
     runtime_comparison(3, 8);
     runtime_comparison(3, 9);
     
@@ -70,6 +71,7 @@ int main(void)
         runtime_comparison(5, 7);
         runtime_comparison(5, 8);
     }
+#endif
 
     return 0;
 }
