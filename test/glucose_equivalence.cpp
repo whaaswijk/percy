@@ -16,11 +16,11 @@ template<
     int NrIn>
 void check_equivalence(bool full_coverage)
 {
-    synth_spec<static_truth_table<NrIn>,sat_solver*> spec1;
-    synth_spec<static_truth_table<NrIn>,Glucose::Solver*> spec2;
+    synth_spec<static_truth_table<NrIn>> spec1;
+    synth_spec<static_truth_table<NrIn>> spec2;
 
-    S1<static_truth_table<NrIn>,sat_solver*,2> synth1;
-    S2<static_truth_table<NrIn>,Glucose::Solver*,2> synth2;
+    auto synth1 = new_synth<S1<static_truth_table<NrIn>,sat_solver*,2>>();
+    auto synth2 = new_synth<S2<static_truth_table<NrIn>,Glucose::Solver*,2>>();
 
     spec1.nr_in = spec2.nr_in = NrIn;
     spec1.nr_out = spec2.nr_out = 1;
@@ -42,22 +42,22 @@ void check_equivalence(bool full_coverage)
 
         spec1.functions[0] = &tt;
         spec2.functions[0] = &tt;
-        auto res1 = synth1.synthesize(spec1, c1);
+        auto res1 = synth1->synthesize(spec1, c1);
         assert(res1 == success);
         auto sim_tts1 = c1.simulate();
         auto c1_nr_steps = c1.nr_steps();
 
-        auto res1_cegar = synth1.cegar_synthesize(spec1, c1_cegar);
+        auto res1_cegar = synth1->cegar_synthesize(spec1, c1_cegar);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_steps = c1_cegar.nr_steps();
 
-        auto res2 = synth2.synthesize(spec2, c2);
+        auto res2 = synth2->synthesize(spec2, c2);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_steps = c2.nr_steps();
 
-        auto res2_cegar = synth2.cegar_synthesize(spec2, c2_cegar);
+        auto res2_cegar = synth2->cegar_synthesize(spec2, c2_cegar);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_steps = c2_cegar.nr_steps();

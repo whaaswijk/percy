@@ -16,8 +16,8 @@ template<
     int nrin, typename solver=sat_solver*>
 void check_find_chain(bool full_coverage)
 {
-    synth_spec<static_truth_table<nrin>,solver> spec;
-    s1<static_truth_table<nrin>,solver,2> synth1;
+    synth_spec<static_truth_table<nrin>> spec;
+    auto synth1 = new_synth<s1<static_truth_table<nrin>,solver,2>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -37,8 +37,8 @@ void check_find_chain(bool full_coverage)
         kitty::create_from_words(tt, &i, &i+1);
 
         spec.functions[0] = &tt;
-        auto res1 = synth1.synthesize(spec, c1);
-        auto res2 = synth1.find_chain(spec, c2, c1.nr_steps());
+        auto res1 = synth1->synthesize(spec, c1);
+        auto res2 = synth1->find_chain(spec, c2, c1.nr_steps());
         assert(res1 == success);
         assert(res2 == success);
 
@@ -61,8 +61,8 @@ template<
     int nrin, typename solver=sat_solver*>
 void check_equivalence_parallel(bool full_coverage)
 {
-    synth_spec<static_truth_table<nrin>,solver> spec;
-    s1<static_truth_table<nrin>,solver,2> synth;
+    synth_spec<static_truth_table<nrin>> spec;
+    auto synth = new_synth<s1<static_truth_table<nrin>,solver,2>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -84,7 +84,7 @@ void check_equivalence_parallel(bool full_coverage)
 
         spec.functions[0] = &tt;
 
-        auto res1_cegar = synth.cegar_synthesize(spec, c1_cegar);
+        auto res1_cegar = synth->cegar_synthesize(spec, c1_cegar);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_steps = c1_cegar.nr_steps();

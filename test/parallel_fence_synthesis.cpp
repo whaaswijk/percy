@@ -16,8 +16,8 @@ void check_equivalence()
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_stats stats;
-    synth_spec<static_truth_table<nrin>,sat_solver*> spec;
-    symmetric_synthesizer<static_truth_table<nrin>,sat_solver*,2> synth1;
+    synth_spec<static_truth_table<nrin>> spec;
+    auto synth1 = new_synth<static_truth_table<nrin>,sat_solver*>(SYMMETRIC);
     dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
 
     spec.nr_in = nrin;
@@ -42,7 +42,7 @@ void check_equivalence()
             continue;
         }
         spec.functions[0] = &tt;
-        auto res1 = synth1.synthesize(spec, c1);
+        auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = c1.simulate();
         auto c1_nr_steps = c1.nr_steps();
