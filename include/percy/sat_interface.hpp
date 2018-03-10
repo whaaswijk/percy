@@ -1,15 +1,15 @@
 #pragma once
 
-extern "C" {
 #include <base/abc/abc.h>
 #include <misc/vec/vecInt.h>
 #include <misc/vec/vecPtr.h>
 #include <sat/bsat/satSolver.h>
-}
-
 #include <thread>
 
 #include <glucose/core/Solver.h>
+
+using abc::lit;
+using abc::sat_solver;
 
 namespace percy 
 {
@@ -57,7 +57,7 @@ namespace percy
 	template<>
 	inline void solver_alloc<sat_solver*>(sat_solver** s) 
     {
-		*s = sat_solver_new();
+		*s = abc::sat_solver_new();
 	}
 
 	template<>
