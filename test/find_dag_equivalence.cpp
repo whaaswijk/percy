@@ -94,9 +94,9 @@ int main(void)
 {
     const auto num_cpus = std::thread::hardware_concurrency();
 
+    /*
     check_npn_equivalence<2>();
     check_npn_equivalence<3>();
-    /*
     if (num_cpus >= 6) {
         check_npn_equivalence<4>();
     }
