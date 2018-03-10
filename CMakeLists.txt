@@ -33,10 +33,13 @@ SET(NAUTY_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/nauty/src/nauty")
 SET(NAUTY_LDIR "${CMAKE_CURRENT_BINARY_DIR}/nauty/src/nauty") 
 
 add_library(libnauty STATIC IMPORTED)
+set_target_properties(libnauty PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${NAUTY_INCLUDE_DIR})
 set_target_properties(libnauty PROPERTIES IMPORTED_LOCATION ${NAUTY_LDIR}/nautyL1.a)
 
 include_directories(include "kitty/include" "glucose" 
     "pat/include" "pat/lib/range-v3/include" "pat/lib/fmt" ${NAUTY_INCLUDE_DIR})
+
+add_subdirectory(include)
 
 add_subdirectory(glucose)
 #add_subdirectory(bench)
