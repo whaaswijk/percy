@@ -14,11 +14,11 @@ int main(void)
 {
     
     {
-        synth_spec<static_truth_table<2>,sat_solver*> spec;
+        synth_spec<static_truth_table<2>> spec;
         spec.nr_in = 2;
         spec.nr_out = 1;
         spec.verbosity = 1;
-        simple_synthesizer<static_truth_table<2>,sat_solver*> synth;
+        auto synth = new_synth<static_truth_table<2>,sat_solver*>(SIMPLE);
         chain<static_truth_table<2>> c;
 
         static_truth_table<2> tti;
@@ -27,7 +27,7 @@ int main(void)
         for (int i = 0; i < 16; i++) {
             kitty::create_from_words(tti, &i, &i+1);
             spec.functions[0] = &tti;
-            synth.synthesize(spec, c);
+            synth->synthesize(spec, c);
             auto sim_fs = c.simulate();
             assert(c.nr_steps() <= 1);
             assert(*sim_fs[0] == tti);
@@ -40,7 +40,8 @@ int main(void)
             for (int j = 0; j < 16; j++) {
                 kitty::create_from_words(ttj, &j, &j+1);
                 spec.functions[1] = &ttj;
-                synth.synthesize(spec, c);
+                auto result = synth->synthesize(spec, c);
+                assert(result == success);
                 auto sim_fs = c.simulate();
                 assert(c.nr_steps() <= 2);
                 assert(*sim_fs[0] == tti);
@@ -51,11 +52,11 @@ int main(void)
     
     // Synthesize a full adder
     {
-        synth_spec<static_truth_table<3>,sat_solver*> spec;
+        synth_spec<static_truth_table<3>> spec;
         spec.nr_in = 3;
         spec.nr_out = 2;
         spec.verbosity = 1;
-        simple_synthesizer<static_truth_table<3>,sat_solver*> synth;
+        auto synth = new_synth<static_truth_table<3>,sat_solver*>(SIMPLE);
         chain<static_truth_table<3>> c;
 
         static_truth_table<3> x, y, z;
@@ -68,7 +69,8 @@ int main(void)
         const auto carry = ternary_majority(x, y, z);
         spec.functions[0] = &sum;
         spec.functions[1] = &carry;
-        synth.synthesize(spec, c);
+        auto result = synth->synthesize(spec, c);
+        assert(result == success);
         auto sim_fs = c.simulate();
         assert(*sim_fs[0] == sum);
         assert(*sim_fs[1] == carry);

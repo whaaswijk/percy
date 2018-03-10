@@ -16,9 +16,9 @@ template<
     int nrin, typename solver=sat_solver*>
 void check_equivalence(bool full_coverage)
 {
-    synth_spec<static_truth_table<nrin>,solver> spec;
-    s1<static_truth_table<nrin>,solver,2> synth1;
-    s2<static_truth_table<nrin>,solver,2> synth2;
+    synth_spec<static_truth_table<nrin>> spec;
+    auto synth1 = new_synth<s1<static_truth_table<nrin>,solver,2>>();
+    auto synth2 = new_synth<s2<static_truth_table<nrin>,solver,2>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -40,22 +40,22 @@ void check_equivalence(bool full_coverage)
         kitty::create_from_words(tt, &i, &i+1);
 
         spec.functions[0] = &tt;
-        auto res1 = synth1.synthesize(spec, c1);
+        auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = c1.simulate();
         auto c1_nr_steps = c1.nr_steps();
 
-        auto res1_cegar = synth1.cegar_synthesize(spec, c1_cegar);
+        auto res1_cegar = synth1->cegar_synthesize(spec, c1_cegar);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_steps = c1_cegar.nr_steps();
 
-        auto res2 = synth2.synthesize(spec, c2);
+        auto res2 = synth2->synthesize(spec, c2);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_steps = c2.nr_steps();
 
-        auto res2_cegar = synth2.cegar_synthesize(spec, c2_cegar);
+        auto res2_cegar = synth2->cegar_synthesize(spec, c2_cegar);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_steps = c2.nr_steps();
@@ -78,8 +78,8 @@ template<
     int nrin, typename solver=sat_solver*>
 void check_equivalence_parallel(bool full_coverage)
 {
-    synth_spec<static_truth_table<nrin>,solver> spec;
-    s1<static_truth_table<nrin>,solver,2> synth;
+    synth_spec<static_truth_table<nrin>> spec;
+    auto synth = new_synth<s1<static_truth_table<nrin>,solver,2>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -101,17 +101,20 @@ void check_equivalence_parallel(bool full_coverage)
 
         spec.functions[0] = &tt;
 
-        auto res1_cegar = synth.cegar_synthesize(spec, c1_cegar);
+        auto res1_cegar = synth->cegar_synthesize(spec, c1_cegar);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_steps = c1_cegar.nr_steps();
 
-        auto res2 = synthesize_parallel(spec, 4, c2);
+        auto res2 =
+            synthesize_parallel<static_truth_table<nrin>, solver>(spec, 4, c2);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_steps = c2.nr_steps();
 
-        auto res2_cegar = cegar_synthesize_parallel(spec, 4, c2_cegar);
+        auto res2_cegar = 
+            cegar_synthesize_parallel<static_truth_table<nrin>, solver>(spec, 
+                    4, c2_cegar);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_steps = c2_cegar.nr_steps();
@@ -142,17 +145,17 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    check_equivalence_parallel<top_synthesizer,2>(full_coverage);
-    check_equivalence_parallel<top_synthesizer,3>(full_coverage);
-    check_equivalence_parallel<top_synthesizer,4>(full_coverage);
+    check_equivalence_parallel<fence_synthesizer,2>(full_coverage);
+    check_equivalence_parallel<fence_synthesizer,3>(full_coverage);
+    check_equivalence_parallel<fence_synthesizer,4>(full_coverage);
     
-    check_equivalence<top_synthesizer,symmetric_synthesizer,2>(full_coverage);
-    check_equivalence<top_synthesizer,symmetric_synthesizer,3>(full_coverage);
-    check_equivalence<top_synthesizer,symmetric_synthesizer,4>(full_coverage);
+    check_equivalence<fence_synthesizer,symmetric_synthesizer,2>(full_coverage);
+    check_equivalence<fence_synthesizer,symmetric_synthesizer,3>(full_coverage);
+    check_equivalence<fence_synthesizer,symmetric_synthesizer,4>(full_coverage);
     
-    check_equivalence<colex_func_synthesizer,top_synthesizer,2>(full_coverage);
-    check_equivalence<colex_func_synthesizer,top_synthesizer,3>(full_coverage);
-    check_equivalence<colex_func_synthesizer,top_synthesizer,4>(full_coverage);
+    check_equivalence<colex_func_synthesizer,fence_synthesizer,2>(full_coverage);
+    check_equivalence<colex_func_synthesizer,fence_synthesizer,3>(full_coverage);
+    check_equivalence<colex_func_synthesizer,fence_synthesizer,4>(full_coverage);
     
     check_equivalence<colex_synthesizer,colex_func_synthesizer,2>(full_coverage);
     check_equivalence<colex_synthesizer,colex_func_synthesizer,3>(full_coverage);

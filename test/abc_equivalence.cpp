@@ -19,8 +19,8 @@ using namespace percy;
 template<int NrIn>
 void check_equivalence(bool full_coverage)
 {
-    synth_spec<static_truth_table<NrIn>,sat_solver*> spec;
-    simple_synthesizer<static_truth_table<NrIn>,sat_solver*> synth;
+    synth_spec<static_truth_table<NrIn>> spec;
+    auto synth = new_synth<static_truth_table<NrIn>,sat_solver*>(SIMPLE);
 
     spec.nr_in = NrIn;
     spec.nr_out = 1;
@@ -48,7 +48,7 @@ void check_equivalence(bool full_coverage)
         }
 
         spec.functions[0] = &tt;
-        auto res = synth.synthesize(spec, c);
+        auto res = synth->synthesize(spec, c);
         assert(res == success);
         auto chain_size = c.nr_steps();
 

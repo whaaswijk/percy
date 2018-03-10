@@ -14,8 +14,8 @@ using namespace percy;
 template<typename TT, int NrIn, template<typename,typename,int> class Synth>
 void check_timeout(static_truth_table<NrIn>& tt, int conflict_limit, vector<double>& times)
 {
-    Synth<TT,sat_solver*,2> synth;
-    synth_spec<TT,sat_solver*> spec;
+    synth_spec<TT> spec;
+    auto synth = new_synth<Synth<TT,sat_solver*,2>>();
     spec.nr_in = NrIn;
     spec.conflict_limit = conflict_limit;
 
@@ -26,7 +26,7 @@ void check_timeout(static_truth_table<NrIn>& tt, int conflict_limit, vector<doub
 
     chain<TT,2> chain;
     auto start = std::clock();
-    auto res = synth.synthesize(spec, chain);
+    auto res = synth->synthesize(spec, chain);
     auto elapsed = std::clock()-start;
     times.push_back(elapsed / (double) CLOCKS_PER_SEC);
     assert(res == timeout);
@@ -39,7 +39,7 @@ int main(void)
     vector<double> times;
     for (int i = 0; i < NR_FUNCS; i++) {
         kitty::create_random(tt);
-        check_timeout<static_truth_table<NR_IN>, NR_IN, top_synthesizer>(
+        check_timeout<static_truth_table<NR_IN>, NR_IN, fence_synthesizer>(
                 tt, 100000, times);
     }
 

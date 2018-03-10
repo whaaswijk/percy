@@ -19,7 +19,7 @@ void check_overhead(int conflict_limit)
 {
     dag g;
     synth_stats stats;
-    synth_spec<static_truth_table<nrin>, sat_solver*> spec;
+    synth_spec<static_truth_table<nrin>> spec;
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
