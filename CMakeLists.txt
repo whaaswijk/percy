@@ -9,6 +9,8 @@ set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
 
 enable_testing()
 
+option(TRAVIS_BUILD "Use Travis build configuration" OFF)
+
 externalproject_add(
 	abc
 	HG_REPOSITORY "https://bitbucket.org/alanmi/abc"

@@ -94,6 +94,7 @@ int main(void)
 {
     const auto num_cpus = std::thread::hardware_concurrency();
 
+// TODO: fix Travis errors.
 #ifndef TRAVIS_BUILD
     check_npn_equivalence<2>();
     check_npn_equivalence<3>();

@@ -61,6 +61,7 @@ runtime_comparison(int nr_vars, int nr_vertices)
 
 int main(void)
 {
+// TODO: fix Travis errors.
 #ifndef TRAVIS_BUILD
     runtime_comparison(3, 8);
     runtime_comparison(3, 9);
