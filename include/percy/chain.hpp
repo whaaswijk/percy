@@ -95,9 +95,12 @@ namespace percy
             {
                 vector<unique_ptr<TT>> fs(nr_out());
                 vector<unique_ptr<TT>> tmps(nr_steps());
-                TT ins[StepSize]; 
-                TT tt_step; 
-                TT tt_compute; 
+                std::vector<TT> ins;
+                for (auto i = 0; i < _nr_in; ++i) {
+                    ins.push_back(kitty::create<TT>(_nr_in));
+                }
+                TT tt_step = kitty::create<TT>(_nr_in);
+                TT tt_compute = kitty::create<TT>(_nr_in);
 
                 // Some outputs may be simple constants or projections.
                 for (int h = 0; h < nr_out(); h++) {
