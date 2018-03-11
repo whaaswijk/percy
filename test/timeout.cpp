@@ -11,11 +11,11 @@ using namespace percy;
 /*******************************************************************************
     Verifies that our timeouts work correctly.
 *******************************************************************************/
-template<typename TT, int NrIn, template<typename,typename,int> class Synth>
+template<typename TT, int NrIn, template<typename,typename> class Synth>
 void check_timeout(static_truth_table<NrIn>& tt, int conflict_limit, vector<double>& times)
 {
     synth_spec<TT> spec;
-    auto synth = new_synth<Synth<TT,sat_solver*,2>>();
+    auto synth = new_synth<Synth<TT,sat_solver*>>();
     spec.nr_in = NrIn;
     spec.conflict_limit = conflict_limit;
 

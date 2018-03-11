@@ -18,7 +18,7 @@ int main(void)
         spec.nr_in = 2;
         spec.nr_out = 1;
         spec.verbosity = 1;
-        auto synth = new_synth<static_truth_table<2>,sat_solver*>(SIMPLE);
+        auto synth = new_synth(spec, SIMPLE);
         chain<static_truth_table<2>> c;
 
         static_truth_table<2> tti;
@@ -56,7 +56,7 @@ int main(void)
         spec.nr_in = 3;
         spec.nr_out = 2;
         spec.verbosity = 1;
-        auto synth = new_synth<static_truth_table<3>,sat_solver*>(SIMPLE);
+        auto synth = new_synth(spec, SIMPLE);
         chain<static_truth_table<3>> c;
 
         static_truth_table<3> x, y, z;

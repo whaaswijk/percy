@@ -12,12 +12,12 @@ using kitty::static_truth_table;
     provided that such a chain exists.
 *******************************************************************************/
 template<
-    template<typename,typename,int> class s1, 
+    template<typename,typename> class s1, 
     int nrin, typename solver=sat_solver*>
 void check_find_chain(bool full_coverage)
 {
     synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<s1<static_truth_table<nrin>,solver,2>>();
+    auto synth1 = new_synth<s1<static_truth_table<nrin>,solver>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;
@@ -57,12 +57,12 @@ void check_find_chain(bool full_coverage)
     Verifies that parallel synthesis behaves as expected.
 *******************************************************************************/
 template<
-    template<typename,typename,int> class s1, 
+    template<typename,typename> class s1, 
     int nrin, typename solver=sat_solver*>
 void check_equivalence_parallel(bool full_coverage)
 {
     synth_spec<static_truth_table<nrin>> spec;
-    auto synth = new_synth<s1<static_truth_table<nrin>,solver,2>>();
+    auto synth = new_synth<s1<static_truth_table<nrin>,solver>>();
 
     spec.nr_in = nrin;
     spec.nr_out = 1;

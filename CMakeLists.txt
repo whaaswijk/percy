@@ -9,6 +9,7 @@ set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
 
 option(TRAVIS_BUILD "Use Travis build configuration" OFF)
 option(PERCY_TEST "Build tests" OFF)
+option(PERCY_BENCH "Build benchmarks" OFF)
 
 externalproject_add(
 	nauty
@@ -42,7 +43,10 @@ include_directories(include "kitty/include" "glucose"
 add_subdirectory(include)
 
 add_subdirectory(glucose)
-#add_subdirectory(bench)
+
+if (PERCY_BENCH)
+    add_subdirectory(bench)
+endif()
 
 if (PERCY_TEST)
     enable_testing()
