@@ -19,8 +19,8 @@ void check_equivalence(bool full_coverage)
     synth_spec<static_truth_table<NrIn>> spec1;
     synth_spec<static_truth_table<NrIn>> spec2;
 
-    auto synth1 = new_synth<S1<static_truth_table<NrIn>,sat_solver*>>();
-    auto synth2 = new_synth<S2<static_truth_table<NrIn>,Glucose::Solver*>>();
+    auto synth1 = new_synth<S1>(spec1);
+    auto synth2 = new_synth<S2,Glucose::Solver*>(spec2);
 
     spec1.nr_in = spec2.nr_in = NrIn;
     spec1.nr_out = spec2.nr_out = 1;

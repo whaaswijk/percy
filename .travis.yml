@@ -3,7 +3,7 @@ language: cpp
 script:
     - mkdir build
     - cd build
-    - cmake -DTRAVIS_BUILD=ON ..
+    - cmake -DPERCY_TEST=ON -DTRAVIS_BUILD=ON ..
     - make -j4
     - make test
 
