@@ -8,7 +8,7 @@ foreach(FILENAME ${FILENAMES})
     set(TARGET_NAME ${BASENAME})
 
     add_executable(${TARGET_NAME} ${FILENAME})
-    target_link_libraries(${TARGET_NAME} libabc glucose pthread libnauty)
+    target_link_libraries(${TARGET_NAME} percy)
     add_test(${TARGET_NAME} ${TARGET_NAME})
 endforeach()
 

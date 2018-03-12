@@ -10,6 +10,7 @@ set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
 option(TRAVIS_BUILD "Use Travis build configuration" OFF)
 option(PERCY_TEST "Build tests" OFF)
 option(PERCY_BENCH "Build benchmarks" OFF)
+option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
 
 externalproject_add(
 	nauty
@@ -30,19 +31,18 @@ set(ABC_USE_NAMESPACE "abc")
 add_subdirectory(abc)
 target_compile_definitions(libabc-pic PUBLIC "LIN64")
 
-SET(NAUTY_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/nauty/src/nauty")
-SET(NAUTY_LDIR "${CMAKE_CURRENT_BINARY_DIR}/nauty/src/nauty") 
+SET(NAUTY_INCLUDE_DIR "${PROJECT_BINARY_DIR}/nauty/src/nauty")
+SET(NAUTY_LDIR "${PROJECT_BINARY_DIR}/nauty/src/nauty") 
 
 add_library(libnauty STATIC IMPORTED)
 set_target_properties(libnauty PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${NAUTY_INCLUDE_DIR})
 set_target_properties(libnauty PROPERTIES IMPORTED_LOCATION ${NAUTY_LDIR}/nautyL1.a)
 
-include_directories(include "kitty/include" "glucose" 
-    "pat/include" "pat/lib/range-v3/include" "pat/lib/fmt" ${NAUTY_INCLUDE_DIR})
-
-add_subdirectory(include)
-
 add_subdirectory(glucose)
+if (PERCY_BUILD_KITTY)
+    add_subdirectory(kitty EXCLUDE_FROM_ALL)
+endif()
+add_subdirectory(include)
 
 if (PERCY_BENCH)
     add_subdirectory(bench)

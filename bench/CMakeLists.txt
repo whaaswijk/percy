@@ -13,7 +13,7 @@ foreach(FILENAME ${FILENAMES})
     set(TARGET_NAME ${BASENAME})
 
     add_executable(${TARGET_NAME} ${FILENAME})
-    target_link_libraries(${TARGET_NAME} libabc benchmark glucose)
+    target_link_libraries(${TARGET_NAME} percy benchmark)
 endforeach()
 
 
