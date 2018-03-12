@@ -339,7 +339,7 @@ namespace percy
                 spec.triv_functions[spec.nr_triv++] = 0;
                 spec.out_inv |= (1 << h);
             } else {
-                TT tt_var;
+                auto tt_var = spec.functions[0]->construct();
                 for (int i = 0; i < spec.nr_in; i++) {
                     create_nth_var(tt_var, i);
                     if (*spec.functions[h] == tt_var) {
@@ -1420,7 +1420,9 @@ namespace percy
             virtual void 
             add_clauses(synth_spec<TT>& spec)
             {
-                printf("adding symmetric clauses!\n");
+                if (spec.verbosity) {
+                    printf("adding symmetric clauses!\n");
+                }
                 this->create_variables(spec);
                 this->create_main_clauses(spec);
                 this->create_output_clauses(spec);
