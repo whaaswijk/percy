@@ -28,7 +28,7 @@ system's equivalent) to build and run the tests:
     cd percy
     mkdir build
     cd build
-    cmake ..
+    cmake .. -DPERCY_TEST=ON
     make
     make test
 
