@@ -42,6 +42,11 @@ namespace percy
         public:
             dag() { }
 
+            dag(int n)
+            {
+                reset(n, 0);
+            }
+
             dag(int n, int v)
             {
                 reset(n, v);
@@ -148,10 +153,34 @@ namespace percy
             set_vertex(int v_idx, const std::vector<int>& fanins)
             {
                 assert(v_idx < nr_vertices);
-                assert(fanins.size() == NrFanin);
+                assert(fanins.size() >= NrFanin);
                 for (int i = 0; i < NrFanin; i++) {
                     vertices[v_idx][i] = fanins[i];
                 }
+            }
+
+            void 
+            add_vertex(const fanin* const fanins)
+            {
+                vertex newv;
+                for (int i = 0; i < NrFanin; i++) {
+                    newv[i] = fanins[i];
+                }
+                vertices.push_back(newv);
+                nr_vertices++;
+            }
+
+            void 
+            add_vertex(const std::vector<fanin>& fanins)
+            {
+                assert(fanins.size() >= NrFanin);
+                
+                vertex newv;
+                for (int i = 0; i < NrFanin; i++) {
+                    newv[i] = fanins[i];
+                }
+                vertices.push_back(newv);
+                nr_vertices++;
             }
 
             vertex& get_vertex(int v_idx)

@@ -32,11 +32,11 @@ int main(void)
         to_dot(g, std::cout);
     }
 
-    ternary_dag h(5, 4);
-    h.set_vertex(0, { 0, 1, 2});
-    h.set_vertex(1, { 4, 3, 1});
-    h.set_vertex(2, { 5, 6, 0});
-    h.set_vertex(3, { 7, 6, 1});
+    ternary_dag h(5);
+    h.add_vertex({ 0, 1, 2 });
+    h.add_vertex({ 4, 3, 1 });
+    h.add_vertex({ 5, 6, 0 });
+    h.add_vertex({ 7, 6, 1 });
     to_dot(h, std::cout);
 
     return 0;
