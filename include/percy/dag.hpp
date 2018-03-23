@@ -16,8 +16,9 @@ namespace percy
     template<int NrFanin=2>
     class dag
     {
-        using fanin = int;
-        using vertex = std::array<fanin, NrFanin>&;
+        public:
+            using fanin = int;
+            using vertex = std::array<fanin, NrFanin>;
 
         private:
             int nr_inputs;
@@ -39,8 +40,12 @@ namespace percy
             }
 
         public:
-
             dag() { }
+
+            dag(int n, int v)
+            {
+                reset(n, v);
+            }
 
             dag(dag&& dag)
             {
@@ -107,22 +112,22 @@ namespace percy
             foreach_fanin(vertex v, Fn&& fn)
             {
                 for (auto i = 0; i < NrFanin; i++) {
-                    fn(v, v[i]);
+                    fn(v[i]);
                 }
             }
 
             void 
-            reset(int nr_inputs, int nr_vertices)
+            reset(int n, int v)
             {
-                nr_inputs = nr_inputs;
-                nr_vertices = nr_vertices;
+                nr_inputs = n;
+                nr_vertices = v;
+                vertices.resize(nr_vertices);
 
-                foreach_vertex([] (std::size_t v_idx) {
-                    auto v = get_vertex(v_idx);
-                    for (int i = 0; i < NrFanin; i++) {
-                        v[i] = -1;
+                for (int i = 0; i < nr_vertices; i++) {
+                    for (int j = 0; j < NrFanin; j++) {
+                        vertices[i][j] = -1;
                     }
-                });
+                }
             }
 
             void set_nr_inputs(int n) { nr_inputs = n; }
@@ -131,17 +136,16 @@ namespace percy
             int get_nr_inputs() const { return nr_inputs; }
 
             void 
-            set_vertex(int v_idx, int* fanins, int nr_fanins)
+            set_vertex(int v_idx, const fanin* const fanins)
             {
                 assert(v_idx < nr_vertices);
-                assert(nr_fanins == NrFanin);
                 for (int i = 0; i < NrFanin; i++) {
                     vertices[v_idx][i] = fanins[i];
                 }
             }
 
             void 
-            set_vertex(int v_idx, std::vector<int>& fanins)
+            set_vertex(int v_idx, const std::vector<int>& fanins)
             {
                 assert(v_idx < nr_vertices);
                 assert(fanins.size() == NrFanin);
@@ -150,7 +154,7 @@ namespace percy
                 }
             }
 
-            vertex get_vertex(int v_idx) const
+            vertex& get_vertex(int v_idx)
             {
                 return vertices[v_idx];
             }
@@ -256,7 +260,7 @@ namespace percy
             int get_nr_vertices() const { return nr_vertices; }
             int get_nr_inputs() const { return nr_inputs; }
 
-            void set_vertex(int v_idx, int fanin1, int fanin2)
+            void set_vertex(int v_idx, fanin fanin1, fanin fanin2)
             {
                 assert(v_idx < nr_vertices);
                 _js[v_idx] = fanin1;
