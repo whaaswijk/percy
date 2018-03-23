@@ -7,7 +7,7 @@ using namespace percy;
 
 int main(void)
 {
-    dag g;
+    dag<2> g;
     sat_dag_generator<sat_solver*> gen;
     unbounded_dag_generator<sat_solver*> ugen;
 
@@ -53,7 +53,7 @@ int main(void)
     ugen.reset(3);
     nr_dags = 0;
     while (ugen.next_dag(g)) {
-        if (g.nr_vertices() > 3) {
+        if (g.get_nr_vertices() > 3) {
             break;
         }
         nr_dags++;

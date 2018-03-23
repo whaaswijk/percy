@@ -6,7 +6,7 @@ using namespace percy;
 
 int main(void)
 {
-    dag g1, g2;
+    dag<2> g1, g2;
     sat_dag_generator<sat_solver*> gen;
     unbounded_dag_generator<sat_solver*> ugen;
 

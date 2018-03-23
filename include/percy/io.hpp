@@ -15,7 +15,8 @@ namespace percy
         NOTE: the function assumes that enough memory has been allocated in
         the buffer.
     ***************************************************************************/
-    void dag_to_string(const dag& g, char* buf)
+    template<class Dag=dag<2>>
+    void dag_to_string(const Dag& g, char* buf)
     {
         buf[0] = char(g.nr_vars() + '0');
         buf[1] = ',';
@@ -38,8 +39,53 @@ namespace percy
     /***************************************************************************
         Parses a DAG string into a DAG object.
     ***************************************************************************/
-    void dag_read_string(dag& g, char* buf)
+    template<class Dag=dag<2>>
+    void dag_read_string(Dag& g, char* buf)
     {
+    }
+
+    /***************************************************************************
+        Converts a dag to the graphviz dot format and writes it to the
+        specified output stream.
+    ***************************************************************************/
+    template<class Dag>
+    void to_dot(Dag& dag, std::ostream& o)
+    {
+        o << "graph{\n";
+        o << "rankdir = BT\n";
+        dag.foreach_input([&o] (int input_idx) {
+            const auto dot_idx = input_idx +1;
+            o << "x" << dot_idx << " [shape=none,label=<x<sub>" << dot_idx 
+                << "</sub>>];\n";
+        });
+
+        o << "node [shape=circle];\n";
+        dag.foreach_vertex([&dag, &o] (int v_idx) {
+            const auto v = dag.get_vertex(v_idx);
+            const auto dot_idx = dag.get_nr_inputs() + v_idx + 1;
+            o << "x" << dot_idx << " [label=<x<sub>" << dot_idx 
+                << "</sub>>];\n";
+
+            dag.foreach_fanin(v, [&o, dot_idx] (typename Dag::fanin f_id) {
+                o << "x" << f_id+1 << " -- x" << dot_idx << ";\n";
+            });
+
+        });
+
+        // Group inputs on same level.
+        o << "{rank = same; ";
+        for (int i = 0; i < dag.get_nr_inputs(); i++) {
+            o << "x" << i+1 << "; ";
+        }
+        o << "}\n";
+
+        // Add invisible edges between PIs to enforce order.
+        o << "edge[style=invisible];\n";
+        for (int i = dag.get_nr_inputs(); i > 1; i--) {
+            o << "x" << i-1 << " -- x" << i << ";\n";
+        }
+
+        o << "}\n";
     }
 }
 

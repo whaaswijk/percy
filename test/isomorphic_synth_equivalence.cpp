@@ -10,7 +10,7 @@ void check_equivalence(bool full_coverage)
 {
     printf("Checking synthesis equivalence for %d-input functions\n", nrin);
 
-    dag g;
+    dag<2> g;
     vector<int> perm(nrin);
     static_truth_table<nrin> tt;
     chain<static_truth_table<nrin>> c1;
@@ -35,7 +35,7 @@ void check_equivalence(bool full_coverage)
 
         ugen.reset(nrin);
         while (ugen.next_dag(g)) {
-            synth.reset(nrin, g.nr_vertices());
+            synth.reset(nrin, g.get_nr_vertices());
             auto result = synth.synthesize(tt, g, c1);
             if (result == success) {
                 break;
@@ -44,8 +44,8 @@ void check_equivalence(bool full_coverage)
 
         igen.reset(nrin);
         while (igen.next_dag(g)) {
-            assert(g.nr_vertices() <= c1.nr_steps());
-            synth.reset(nrin, g.nr_vertices());
+            assert(g.get_nr_vertices() <= c1.nr_steps());
+            synth.reset(nrin, g.get_nr_vertices());
             auto result = synth.perm_synthesize(tt, g, c2, perm);
             if (result == success) {
                 break;
@@ -94,7 +94,7 @@ void check_npn_equivalence()
 {
     auto npn_set = get_npn_classes<nrin>();
 
-    dag g;
+    dag<2> g;
     vector<int> perm(nrin);
     chain<static_truth_table<nrin>> c1;
     chain<static_truth_table<nrin>> c2;
@@ -114,7 +114,7 @@ void check_npn_equivalence()
         
         ugen.reset(nrin);
         while (ugen.next_dag(g)) {
-            synth.reset(nrin, g.nr_vertices());
+            synth.reset(nrin, g.get_nr_vertices());
             auto result = synth.synthesize(tt, g, c1);
             if (result == success) {
                 break;
@@ -123,7 +123,7 @@ void check_npn_equivalence()
 
         igen.reset(nrin);
         while (igen.next_dag(g)) {
-            synth.reset(nrin, g.nr_vertices());
+            synth.reset(nrin, g.get_nr_vertices());
             auto result = synth.perm_synthesize(tt, g, c2, perm);
             if (result == success) {
                 break;

@@ -9,7 +9,7 @@ using kitty::static_truth_table;
 template<int nrin>
 void gen_check_equivalence(bool full_coverage)
 {
-    dag g;
+    dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_spec<static_truth_table<nrin>> spec;
@@ -45,7 +45,7 @@ void gen_check_equivalence(bool full_coverage)
 
         const auto dag_found = find_dag<static_truth_table<nrin>>(tt, g, nrin);
         assert(dag_found == success);
-        synth2.reset(nrin, g.nr_vertices());
+        synth2.reset(nrin, g.get_nr_vertices());
         auto result = synth2.synthesize(tt, g, c2);
         assert(result == success);
         auto c2_nr_steps = c2.nr_steps();
@@ -58,7 +58,7 @@ void gen_check_equivalence(bool full_coverage)
 template<int nrin>
 void check_equivalence(bool full_coverage)
 {
-    dag g;
+    dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_spec<static_truth_table<nrin>> spec;
@@ -95,10 +95,10 @@ void check_equivalence(bool full_coverage)
         ugen.reset(nrin);
         int min_size = -1;
         while (ugen.next_dag(g)) {
-            if (min_size != -1 && g.nr_vertices() > min_size) {
+            if (min_size != -1 && g.get_nr_vertices() > min_size) {
                 break;
             }
-            synth2.reset(nrin, g.nr_vertices());
+            synth2.reset(nrin, g.get_nr_vertices());
             auto result = synth2.synthesize(tt, g, c2);
             if (result == success) {
                 auto c2_nr_steps = c2.nr_steps();
@@ -146,7 +146,7 @@ void check_npn_equivalence()
 {
     auto npn_set = get_npn_classes<nrin>();
 
-    dag g;
+    dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_spec<static_truth_table<nrin>> spec;
@@ -184,10 +184,10 @@ void check_npn_equivalence()
         ugen.reset(nrin);
         int min_size = -1;
         while (ugen.next_dag(g)) {
-            if (min_size != -1 && g.nr_vertices() > min_size) {
+            if (min_size != -1 && g.get_nr_vertices() > min_size) {
                 break;
             }
-            synth2.reset(nrin, g.nr_vertices());
+            synth2.reset(nrin, g.get_nr_vertices());
             auto result = synth2.synthesize(tt, g, c2);
             if (result == success) {
                 auto c2_nr_steps = c2.nr_steps();
@@ -201,7 +201,7 @@ void check_npn_equivalence()
         }
         const auto dag_found = find_dag<static_truth_table<nrin>>(tt, g, nrin);
         assert(dag_found == success);
-        synth2.reset(nrin, g.nr_vertices());
+        synth2.reset(nrin, g.get_nr_vertices());
         auto result = synth2.synthesize(tt, g, c2);
         assert(result == success);
         auto c2_nr_steps = c2.nr_steps();

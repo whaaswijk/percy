@@ -17,7 +17,7 @@ using namespace percy;
 template<int nrin>
 void check_overhead(int conflict_limit)
 {
-    dag g;
+    dag<2> g;
     synth_stats stats;
     synth_spec<static_truth_table<nrin>> spec;
 

@@ -12,7 +12,7 @@ using namespace percy;
 template<int nrin>
 void check_equivalence()
 {
-    dag g;
+    dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_stats stats;
@@ -50,7 +50,7 @@ void check_equivalence()
         auto res2 = qpfence_synth(&stats, tt, g, nrin, 0);
         assert(res2 == success);
         // Make sure that the found DAG is indeed valid for this function.
-        synth2.reset(nrin, g.nr_vertices());
+        synth2.reset(nrin, g.get_nr_vertices());
         synth2.synthesize(tt, g, c2);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_steps = c2.nr_steps();

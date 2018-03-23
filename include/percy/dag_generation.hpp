@@ -115,7 +115,7 @@ namespace percy
                 return solver_add_clause(_solver, pLits, pLits + ctr);
             }
 
-            bool create_tt_clauses(const TT& spec, const dag& dag, int t)
+            bool create_tt_clauses(const TT& spec, const dag<2>& dag, int t)
             {
                 int pLits[2];
 
@@ -152,7 +152,7 @@ namespace percy
                 return ret;
             }
 
-            bool create_main_clauses(const TT& spec, const dag& dag)
+            bool create_main_clauses(const TT& spec, const dag<2>& dag)
             {
                 bool success = true;
                 for (int t = 0; t < _tt_size; t++) {
@@ -185,7 +185,7 @@ namespace percy
                 return success;
             }
 
-            bool add_clauses(const TT& spec, const dag& dag)
+            bool add_clauses(const TT& spec, const dag<2>& dag)
             {
                 bool success = true;
                 create_variables(spec);
@@ -195,7 +195,7 @@ namespace percy
             }
 
             void 
-            dag_chain_extract(const dag& dag, chain<TT>& chain, bool invert)
+            dag_chain_extract(const dag<2>& dag, chain<TT>& chain, bool invert)
             {
                 int op_inputs[2];
 
@@ -237,7 +237,7 @@ namespace percy
             }
 
             synth_result 
-            synthesize(const TT& spec, const dag& dag, chain<TT>& chain)
+            synthesize(const TT& spec, const dag<2>& dag, chain<TT>& chain)
             {
                 TT local_spec = spec;
 
@@ -262,7 +262,7 @@ namespace percy
             synth_result 
             perm_synthesize(
                     const TT& spec, 
-                    dag& dag, 
+                    dag<2>& dag, 
                     chain<TT>& chain, 
                     vector<int>& perm)
             {
@@ -573,7 +573,7 @@ namespace percy
                 }
             }
 
-            void dag_extract(dag& g)
+            void dag_extract(dag<2>& g)
             {
                 g.reset(_nr_vars, _nr_vertices);
 
@@ -703,7 +703,7 @@ namespace percy
                 }
             }
 
-            bool next_dag(dag& g)
+            bool next_dag(dag<2>& g)
             {
                 if (!_reset) {
                     // Block current solution
@@ -736,7 +736,7 @@ namespace percy
             }
 
             int count_dags() {
-                dag g;
+                dag<2> g;
                 int counter = 0;
                 while (next_dag(g)) {
                     counter++;
@@ -749,28 +749,28 @@ namespace percy
     class unbounded_dag_generator
     {
         private:
-            int _nr_vars;
-            sat_dag_generator<Solver> _gen;
+            int nr_inputs;
+            sat_dag_generator<Solver> gen;
 
         public:
             unbounded_dag_generator()
             {
-                _nr_vars = -1;
+                nr_inputs = -1;
             }
 
-            void reset(int nr_vars) {
-                assert(nr_vars > 0);
+            void reset(int n) {
+                assert(n > 0);
 
-                _nr_vars = nr_vars;
-                _gen.reset(nr_vars, 1);
+                nr_inputs = n;
+                gen.reset(nr_inputs, 1);
             }
 
-            void gen_true_dags(bool gen) { _gen.gen_true_dags(gen); }
+            void gen_true_dags(bool true_dags) { gen.gen_true_dags(true_dags); }
 
-            bool next_dag(dag& g)
+            bool next_dag(dag<2>& g)
             {
-                if (!_gen.next_dag(g)) {
-                    _gen.reset(_nr_vars, _gen.nr_vertices()+1);
+                if (!gen.next_dag(g)) {
+                    gen.reset(nr_inputs, gen.nr_vertices()+1);
                     return next_dag(g);
                 }
                 return true;
@@ -784,7 +784,7 @@ namespace percy
         private:
             int _nr_vars;
             unbounded_dag_generator<Solver> _gen;
-            vector<dag> _dags;
+            vector<dag<2>> _dags;
 
         public:
             nonisomorphic_dag_generator()
@@ -804,15 +804,15 @@ namespace percy
 
             int nr_dags() { return _dags.size(); }
 
-            bool next_dag(dag& g)
+            bool next_dag(dag<2>& g)
             {
                 while (true) {
                     bool found_isomorphism = false;
                     _gen.next_dag(g);
-                    const auto num_vertices = g.nr_vertices();
+                    const auto num_vertices = g.get_nr_vertices();
                     for (int i = (_dags.size()-1); i >= 0; i--) {
                         const auto& g2 = _dags[i];
-                        if (g2.nr_vertices() != num_vertices) {
+                        if (g2.get_nr_vertices() != num_vertices) {
                             // We haven't found an isomorphism.
                             _dags.push_back(g);
                             return true;
@@ -1232,7 +1232,7 @@ namespace percy
             template<typename TT>
             void search_dags(
                     const TT& f, 
-                    dag& g, 
+                    dag<2>& g, 
                     dag_synthesizer<TT,sat_solver*>& synth,
                     chain<TT>& chain)
             {
@@ -1346,7 +1346,7 @@ namespace percy
             template<typename TT>
             void psearch_dags(
                     const TT& f, 
-                    dag& g, 
+                    dag<2>& g, 
                     dag_synthesizer<TT,sat_solver*>& synth,
                     chain<TT>& chain,
                     bool *found,
@@ -1465,8 +1465,8 @@ namespace percy
 
             void 
             qpsearch_dags(
-                    dag& g, 
-                    moodycamel::ConcurrentQueue<dag>& q, 
+                    dag<2>& g, 
+                    moodycamel::ConcurrentQueue<dag<2>>& q, 
                     bool* found)
             {
                 if (*found) {
@@ -1622,11 +1622,11 @@ namespace percy
                 ++_covered_steps[k];
             }
 
-            vector<dag> gen_dags()
+            vector<dag<2>> gen_dags()
             {
                 assert(_initialized);
-                dag g;
-                vector<dag> dags;
+                dag<2> g;
+                vector<dag<2>> dags;
                 
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
@@ -1655,7 +1655,7 @@ namespace percy
             synth_result 
             find_dag(
                     const TT& f, 
-                    dag& g, 
+                    dag<2>& g, 
                     chain<TT>& chain, 
                     dag_synthesizer<TT, Solver>& synth)
             {
@@ -1677,7 +1677,7 @@ namespace percy
             synth_result 
             pfind_dag(
                     const TT& f, 
-                    dag& g, 
+                    dag<2>& g, 
                     chain<TT>& chain, 
                     dag_synthesizer<TT, Solver>& synth,
                     bool *found,
@@ -1700,9 +1700,9 @@ namespace percy
                 into a concurrent queue.
             *******************************************************************/
             void 
-            qpfind_dag(moodycamel::ConcurrentQueue<dag>& q, bool* found)
+            qpfind_dag(moodycamel::ConcurrentQueue<dag<2>>& q, bool* found)
             {
-                dag g;
+                dag<2> g;
                 assert(_initialized);
 
                 assert(_nr_solutions == 0);
@@ -1712,8 +1712,8 @@ namespace percy
             uint64_t count_non_isomorphic_dags()
             {
                 assert(_initialized);
-                dag g;
-                vector<dag> dags;
+                dag<2> g;
+                vector<dag<2>> dags;
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
 
@@ -1741,11 +1741,11 @@ namespace percy
                 return uint64_t(dags.size());
             }
 
-            vector<dag> gen_non_isomorphic_dags()
+            vector<dag<2>> gen_non_isomorphic_dags()
             {
                 assert(_initialized);
-                dag g;
-                vector<dag> dags;
+                dag<2> g;
+                vector<dag<2>> dags;
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
 

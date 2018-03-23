@@ -43,7 +43,7 @@ get_npn_classes()
 template<int nrin>
 void check_npn_equivalence()
 {
-    dag g1, g2, g3;
+    dag<2> g1, g2, g3;
     
     auto npn_set = get_npn_classes<nrin>();
     const auto num_cpus = std::thread::hardware_concurrency();
@@ -75,8 +75,8 @@ void check_npn_equivalence()
         assert(seq_result == success);
         assert(par_result == success);
         assert(qpar_result == success);
-        assert(g1.nr_vertices() == g2.nr_vertices());
-        assert(g2.nr_vertices() == g3.nr_vertices());
+        assert(g1.get_nr_vertices() == g2.get_nr_vertices());
+        assert(g2.get_nr_vertices() == g3.get_nr_vertices());
 
         printf("Time elapsed: %fms (SEQ)\n", 
             std::chrono::duration<double,std::milli>(

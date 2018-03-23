@@ -109,7 +109,7 @@ int main(void)
             auto dags4 = rec_gen4.gen_dags();
             auto dags5 = rec_gen5.gen_dags();
             auto dags6 = rec_gen6.gen_dags();
-            vector<dag> par_dags;
+            vector<dag<2>> par_dags;
             for (auto& dag : dags1) {
                 par_dags.push_back(dag);
             }

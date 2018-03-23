@@ -1,4 +1,5 @@
 #include <percy/percy.hpp>
+#include <percy/io.hpp>
 #include <cstdio>
 #include <fstream>
 
@@ -10,7 +11,7 @@ using namespace percy;
 int main(void)
 {
     int ctr = 0;
-    dag g;
+    binary_dag g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     ugen.reset(3);
@@ -19,7 +20,7 @@ int main(void)
         if (++ctr > 10) {
             break;
         }
-        g.to_dot(std::cout);
+        to_dot(g, std::cout);
     }
 
     ugen.reset(4);
@@ -28,8 +29,10 @@ int main(void)
         if (++ctr > 10) {
             break;
         }
-        g.to_dot(std::cout);
+        to_dot(g, std::cout);
     }
+
+    ternary_dag h;
 
     return 0;
 }

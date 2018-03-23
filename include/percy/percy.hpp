@@ -604,7 +604,7 @@ namespace percy
     /***************************************************************************
         Base synthesizer class.
     ***************************************************************************/
-    template<typename TT, typename Solver>
+    template<typename TT, typename Solver, class Dag=dag<2>>
     class synthesizer
     {
         protected:
@@ -1030,7 +1030,7 @@ namespace percy
                 Extracts only the underlying DAG structure from a solution.
             *******************************************************************/
             virtual void 
-            dag_extract(synth_spec<TT>& spec, dag& dag)
+            dag_extract(synth_spec<TT>& spec, Dag& dag)
             {
                 dag.reset(spec.nr_in, spec.nr_steps);
 
@@ -2564,7 +2564,7 @@ namespace percy
         function.
     ***************************************************************************/
     template<typename TT>
-    synth_result find_dag(const TT& f, dag& g, int nr_vars)
+    synth_result find_dag(const TT& f, dag<2>& g, int nr_vars)
     {
         chain<TT> chain;
         rec_dag_generator gen;
@@ -2590,7 +2590,7 @@ namespace percy
     ***************************************************************************/
     template<typename TT>
     synth_result 
-    find_dag(const TT& f, dag& g, int nr_vars, int nr_vertices)
+    find_dag(const TT& f, dag<2>& g, int nr_vars, int nr_vertices)
     {
         chain<TT> chain;
         rec_dag_generator gen;
@@ -2610,7 +2610,7 @@ namespace percy
     synth_result 
     pfind_dag(
             const TT& function, 
-            dag& g, 
+            dag<2>& g, 
             int nr_vars, 
             int nr_threads)
     {
@@ -2631,7 +2631,7 @@ namespace percy
     synth_result 
     pfind_dag(
             const TT& f, 
-            dag& g, 
+            dag<2>& g, 
             int nr_vars, 
             int nr_vertices, 
             int nr_threads)
@@ -2653,7 +2653,7 @@ namespace percy
         }
         
         auto solv = new synth_result[starting_points.size()];
-        vector<dag> dags(starting_points.size());
+        vector<dag<2>> dags(starting_points.size());
         std::mutex vmutex;
         std::mutex found_mutex;
         bool found = false;
@@ -2665,7 +2665,7 @@ namespace percy
                 std::thread(
                     [i, &f, &dags, &vmutex, solv, &sp, nr_vars,
                     nr_vertices, &found_mutex, found_ptr] {
-                    dag local_g;
+                    dag<2> local_g;
                     chain<TT> chain;
                     rec_dag_generator gen;
                     dag_synthesizer<TT, sat_solver*> synth;
@@ -2716,7 +2716,7 @@ namespace percy
     synth_result 
     qpfind_dag(
             const TT& function, 
-            dag& g, 
+            dag<2>& g, 
             int nr_vars,
             bool verbose=false)
     {
@@ -2741,7 +2741,7 @@ namespace percy
     synth_result 
     qpfind_dag(
             const TT& f, 
-            dag& g, 
+            dag<2>& g, 
             int nr_vars, 
             int nr_vertices)
     {
@@ -2749,7 +2749,7 @@ namespace percy
        
         const auto nr_threads = std::thread::hardware_concurrency() - 1;
         
-        moodycamel::ConcurrentQueue<dag> q(nr_threads*3);
+        moodycamel::ConcurrentQueue<dag<2>> q(nr_threads*3);
         
 
         bool finished_generating = false;
@@ -2763,7 +2763,7 @@ namespace percy
             threads.push_back(
                 std::thread([&f, pfinished, pfound, &found_mutex, &g, 
                             &q, nr_vars, nr_vertices] {
-                    dag local_dag;
+                    dag<2> local_dag;
                     chain<TT> chain;
                     dag_synthesizer<TT, sat_solver*> synth;
                     synth.reset(nr_vars, nr_vertices);
@@ -2805,7 +2805,7 @@ namespace percy
         // After the generating thread has finished, we have room to spare
         // for another thread (if no solution was found yet.)
         if (!found) {
-            dag local_dag;
+            dag<2> local_dag;
             chain<TT> chain;
             dag_synthesizer<TT, sat_solver*> synth;
             synth.reset(nr_vars, nr_vertices);
@@ -2836,12 +2836,12 @@ namespace percy
         return found ? success : failure;
     }
 
-    template<typename TT>
+    template<typename TT, class Dag=dag<2>>
     synth_result 
     qpfence_synth(
             synth_stats* stats,
             const TT& function, 
-            dag& g, 
+            Dag& g, 
             int nr_vars,
             int conflict_limit)
     {
@@ -2858,12 +2858,12 @@ namespace percy
         return failure;
     }
 
-    template<typename TT>
+    template<typename TT, class Dag=dag<2>>
     synth_result 
     qpfence_synth(
             synth_stats* stats,
             const TT& f, 
-            dag& g, 
+            Dag& g, 
             int nr_vars, 
             int nr_vertices,
             int conflict_limit)
@@ -3069,7 +3069,7 @@ namespace percy
         return total_nsols;
     }
 
-    vector<dag> 
+    vector<dag<2>> 
     parallel_dag_gen(int nr_vars, int nr_vertices, int nr_threads)
     {
         printf("Initializing %d-thread parallel DAG gen\n", nr_threads);
@@ -3077,7 +3077,7 @@ namespace percy
         vector<std::thread> threads;
 
         // Each thread will write the DAGs it has found to this vector.
-        vector<dag> dags;
+        vector<dag<2>> dags;
 
         // First estimate the number of solutions down each branch by looking
         // at DAGs with small numbers of vertices.

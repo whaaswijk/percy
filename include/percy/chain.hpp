@@ -387,7 +387,7 @@ namespace percy
                 to_expression(std::cout);
             }
 
-            void extract_dag(dag& g) const
+            void extract_dag(dag<2>& g) const
             {
                 const auto nr_steps = _steps.size();
                 g.reset(_nr_in, nr_steps);
