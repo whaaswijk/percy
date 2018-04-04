@@ -11,20 +11,19 @@ using namespace percy;
 /*******************************************************************************
     Verifies that our timeouts work correctly.
 *******************************************************************************/
-template<typename TT, int NrIn, template<typename,typename> class Synth>
+template<int NrIn, template<int, typename, typename> class Synth>
 void check_timeout(static_truth_table<NrIn>& tt, int conflict_limit, vector<double>& times)
 {
-    synth_spec<TT> spec;
-    auto synth = new_synth<Synth<TT,sat_solver*>>();
-    spec.nr_in = NrIn;
+    synth_spec<static_truth_table<NrIn>> spec;
+    spec.set_nr_in(NrIn);
+    spec.set_nr_out(1);
     spec.conflict_limit = conflict_limit;
-
     spec.functions[0] = &tt;
-    spec.nr_out = 1;
-    spec.nr_in = NrIn;
     spec.verbosity = 0;
+    
+    auto synth = new_fence_synth();
 
-    chain<TT,2> chain;
+    chain<2> chain;
     auto start = std::clock();
     auto res = synth->synthesize(spec, chain);
     auto elapsed = std::clock()-start;
@@ -39,8 +38,7 @@ int main(void)
     vector<double> times;
     for (int i = 0; i < NR_FUNCS; i++) {
         kitty::create_random(tt);
-        check_timeout<static_truth_table<NR_IN>, NR_IN, fence_synthesizer>(
-                tt, 100000, times);
+        check_timeout<NR_IN, fence_synthesizer>(tt, 100000, times);
     }
 
     for (int i = 0; i < NR_FUNCS; i++) {
@@ -54,5 +52,7 @@ int main(void)
     double sq_sum = std::inner_product(times.begin(), times.end(), times.begin(), 0.0);
     double stdev = std::sqrt(sq_sum / NR_FUNCS - mean * mean);
     printf("Standard deviation = %fs\n", stdev);
+
+    return 0;
 }
 

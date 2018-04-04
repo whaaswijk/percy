@@ -6,29 +6,35 @@ using namespace percy;
 using kitty::static_truth_table;
 
 
-template<int nrin>
+template<int nr_in>
 void gen_check_equivalence(bool full_coverage)
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
-    synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<static_truth_table<nrin>,sat_solver*>(SYMMETRIC);
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
+    auto synth1 = new_std_synth();
+    auto synth2 = new_dag_synth();
 
-    spec.nr_in = nrin;
-    spec.nr_out = 1;
+    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec.add_nontriv_clauses = true;
+    spec.add_alonce_clauses = true;
+    spec.add_noreapply_clauses = true;
+    spec.add_colex_clauses = true;
+    spec.add_colex_func_clauses = true;
+    spec.add_symvar_clauses = true;
+
     spec.verbosity = 0;
 
+
     // don't run too many tests.
-    auto max_tests = (1 << (1 << nrin));
+    auto max_tests = (1 << (1 << nr_in));
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
 
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    chain<2> c1;
+    chain<2> c2;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -40,44 +46,49 @@ void gen_check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate();
-        auto c1_nr_steps = c1.nr_steps();
+        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto c1_nr_steps = c1.get_nr_vertices();
 
-        const auto dag_found = find_dag<static_truth_table<nrin>>(tt, g, nrin);
+        const auto dag_found = 
+            find_dag<static_truth_table<nr_in>>(tt, g, nr_in);
         assert(dag_found == success);
-        synth2.reset(nrin, g.get_nr_vertices());
-        auto result = synth2.synthesize(tt, g, c2);
+        auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
-        auto c2_nr_steps = c2.nr_steps();
-        auto sim_tts2 = c2.simulate();
+        auto c2_nr_steps = c2.get_nr_vertices();
+        auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
         assert(c1_nr_steps == c2_nr_steps);
-        assert(*sim_tts1[0] == *sim_tts2[0]);
+        assert(sim_tts1[0] == sim_tts2[0]);
     } 
 }
 
-template<int nrin>
+template<int nr_in>
 void check_equivalence(bool full_coverage)
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
-    synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<static_truth_table<nrin>,sat_solver*>(SIMPLE);
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
+    auto synth1 = new_std_synth();
+    auto synth2 = new_dag_synth();
+       
+    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec.add_nontriv_clauses = true;
+    spec.add_alonce_clauses = true;
+    spec.add_noreapply_clauses = true;
+    spec.add_colex_clauses = true;
+    spec.add_colex_func_clauses = true;
+    spec.add_symvar_clauses = true;
 
-    spec.nr_in = nrin;
-    spec.nr_out = 1;
     spec.verbosity = 0;
 
     // don't run too many tests.
-    auto max_tests = (1 << (1 << nrin));
+    auto max_tests = (1 << (1 << nr_in));
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
 
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    chain<2> c1;
+    chain<2> c2;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -89,41 +100,41 @@ void check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate();
-        auto c1_nr_steps = c1.nr_steps();
+        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto c1_nr_steps = c1.get_nr_vertices();
 
-        ugen.reset(nrin);
+        ugen.reset(nr_in);
         int min_size = -1;
         while (ugen.next_dag(g)) {
             if (min_size != -1 && g.get_nr_vertices() > min_size) {
                 break;
             }
-            synth2.reset(nrin, g.get_nr_vertices());
-            auto result = synth2.synthesize(tt, g, c2);
+            auto result = synth2->synthesize(spec, g, c2);
             if (result == success) {
-                auto c2_nr_steps = c2.nr_steps();
+                auto c2_nr_steps = c2.get_nr_vertices();
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
-                auto sim_tts2 = c2.simulate();
+                auto sim_tts2 = 
+                    c2.template simulate<static_truth_table<nr_in>>();
                 assert(c1_nr_steps == c2_nr_steps);
-                assert(*sim_tts1[0] == *sim_tts2[0]);
+                assert(sim_tts1[0] == sim_tts2[0]);
             }
         }
     } 
 }
 
-template<int nrin>
+template<int nr_in>
 auto
 get_npn_classes()
 {
-    std::unordered_set<static_truth_table<nrin>, kitty::hash<static_truth_table<nrin>>> classes;
-    static_truth_table<1 << nrin> map;
+    std::unordered_set<static_truth_table<nr_in>, kitty::hash<static_truth_table<nr_in>>> classes;
+    static_truth_table<1 << nr_in> map;
     std::transform(map.cbegin(), map.cend(), map.begin(), 
             []( auto w ) { return ~w; } );
 
     int64_t index = 0;
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
     while (index != -1) {
         kitty::create_from_words(tt, &index, &index + 1);
         const auto res = kitty::exact_npn_canonization(
@@ -141,36 +152,41 @@ get_npn_classes()
     return classes;
 }
 
-template<int nrin>
+template<int nr_in>
 void check_npn_equivalence()
 {
-    auto npn_set = get_npn_classes<nrin>();
+    auto npn_set = get_npn_classes<nr_in>();
 
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
-    synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<static_truth_table<nrin>,sat_solver*>(COLEX);
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
+    auto synth1 = new_std_synth();
+    auto synth2 = new_dag_synth();
 
-    spec.nr_in = nrin;
-    spec.nr_out = 1;
+    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec.add_nontriv_clauses = true;
+    spec.add_alonce_clauses = true;
+    spec.add_noreapply_clauses = true;
+    spec.add_colex_clauses = true;
+    spec.add_colex_func_clauses = true;
+    spec.add_symvar_clauses = true;
+
     spec.verbosity = 0;
 
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    chain<2> c1;
+    chain<2> c2;
 
     int i = 0;
     for (auto& npn_tt : npn_set) {
         printf("i = %d\n", ++i);
-        static_truth_table<nrin> tt = npn_tt;
+        static_truth_table<nr_in> tt = npn_tt;
 
         // We skip the trivial functions
         if (is_trivial(tt)) {
             continue;
         }
         auto support = min_base_inplace(tt);
-        if (support.size() < nrin) {
+        if (support.size() < nr_in) {
             continue;
         }
         expand_inplace(tt, support);
@@ -178,36 +194,35 @@ void check_npn_equivalence()
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate();
-        auto c1_nr_steps = c1.nr_steps();
+        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto c1_nr_steps = c1.get_nr_vertices();
 
-        ugen.reset(nrin);
+        ugen.reset(nr_in);
         int min_size = -1;
         while (ugen.next_dag(g)) {
             if (min_size != -1 && g.get_nr_vertices() > min_size) {
                 break;
             }
-            synth2.reset(nrin, g.get_nr_vertices());
-            auto result = synth2.synthesize(tt, g, c2);
+            auto result = synth2->synthesize(spec, g, c2);
             if (result == success) {
-                auto c2_nr_steps = c2.nr_steps();
+                auto c2_nr_steps = c2.get_nr_vertices();
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
-                auto sim_tts2 = c2.simulate();
+                auto sim_tts2 = 
+                    c2.template simulate<static_truth_table<nr_in>>();
                 assert(c1_nr_steps == c2_nr_steps);
-                assert(*sim_tts1[0] == *sim_tts2[0]);
+                assert(sim_tts1[0] == sim_tts2[0]);
             }
         }
-        const auto dag_found = find_dag<static_truth_table<nrin>>(tt, g, nrin);
+        const auto dag_found = find_dag<static_truth_table<nr_in>>(tt, g, nr_in);
         assert(dag_found == success);
-        synth2.reset(nrin, g.get_nr_vertices());
-        auto result = synth2.synthesize(tt, g, c2);
+        auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
-        auto c2_nr_steps = c2.nr_steps();
-        auto sim_tts2 = c2.simulate();
+        auto c2_nr_steps = c2.get_nr_vertices();
+        auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
         assert(c1_nr_steps == c2_nr_steps);
-        assert(*sim_tts1[0] == *sim_tts2[0]);
+        assert(sim_tts1[0] == sim_tts2[0]);
     }
 }
 

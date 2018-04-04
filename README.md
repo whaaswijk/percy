@@ -19,7 +19,6 @@ The following software is required to build the tests:
 * mercurial (at least version 4.x)
 * cmake (at least version 3.0.0)
 * g++ (at least version 4.9.0) or clang++ (at least version 3.5.0)
-* boost (at least version 1.56.0)
 
 Once those requirements are met, run the following commands (or your operating
 system's equivalent) to build and run the tests:

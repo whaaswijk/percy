@@ -14,9 +14,9 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include <chrono>
-
-#define MAX_OUT 64 // The maximum supported number of outputs
-#define MAX_STEPS 20 // The maximum number of steps we'll synthesize
+#include "spec.hpp"
+#include "synthesizers.hpp"
+#include <kitty/kitty.hpp>
 
 
 using abc::lit;
@@ -40,107 +40,7 @@ using std::chrono::time_point;
 *******************************************************************************/
 namespace percy
 {
-    template<typename TT>
-    class synth_spec
-    {
-        public:
-        int nr_in; // The number of inputs to the function 
-        int tt_size; // The size of the truth table
-        int op_size; // The size of the Boolean operators to synthesize
-        int nr_out; // The number of outputs to synthesize
-        int nr_steps; // The number of Boolean operators to use
-        int nr_levels; // The number of levels in the Boolean fence
-        int nr_op_vars; // Number of vars used to spec. operator functionality
-        int nr_sel_vars; // Number of vars used to spec. operand selection
-        int nr_out_vars; // Number of vars used to spec. output selection
-        int nr_sim_vars; // Number of vars used to spec. global truth tables
-        int sel_offset;
-        int steps_offset;
-        int out_offset;
-        int sim_offset;
-        int fence_offset;
-        int verbosity; // Verbosity level for debugging purposes
-        uint64_t out_inv; // Is 1 at index i if output i must be inverted
-        uint64_t triv_flag; // Is 1 at index i if output i is 0/1 or projection
-        int nr_triv; // Number of trivial output functions
-        int nr_nontriv; // Number of non-trivial output functions
-
-        const TT* functions[MAX_OUT]; // The requested functions
-        int triv_functions[MAX_OUT]; // Trivial outputs
-        int synth_functions[MAX_OUT]; // Nontrivial outputs
-
-        int selection_vars[MAX_STEPS][MAX_STEPS-2][MAX_STEPS-1];
-
-        int nr_rand_tt_assigns;
-
-        int level_dist[65]; // How many steps are below a certain level
-
-        abc::Vec_Int_t* vLits; // Dynamic vector of literals
-
-        int conflict_limit;
         
-        synth_spec()
-        {
-            vLits = abc::Vec_IntAlloc(0);
-            conflict_limit = 0;
-        }
-
-        ~synth_spec()
-        {
-            abc::Vec_IntFree(vLits);
-        }
-
-        void update_level_map(fence& f)
-        {
-            nr_levels = f.nr_levels();
-            level_dist[0] = nr_in;
-            for (int i = 1; i <= nr_levels; i++) {
-                level_dist[i] = level_dist[i-1] + f[i-1];
-            }
-        }
-
-        /***********************************************************************
-            Returns the level (in the Boolean chain) of the specified step.
-        ***********************************************************************/
-        int get_level(int step_idx) const
-        {
-            if (step_idx == nr_in) { // First step is always on level 1
-                return 1;
-            }
-            for (int i = 0; i <= nr_levels; i++) {
-                if (level_dist[i] > step_idx) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        /***********************************************************************
-            Returns the index of the first step on the specified level.
-        ***********************************************************************/
-        int first_step_on_level(int level) const
-        {
-            if (level == 0) { return 0; }
-            return level_dist[level-1];
-        }
-
-    };
-
-    /***************************************************************************
-        This enum keeps track of the different available synthesizers.
-    ***************************************************************************/
-    enum synth_type
-    {
-        SIMPLE,
-        NONTRIV,
-        ALONCE,
-        NOREAPPLY,
-        COLEX,
-        COLEX_FUNC,
-        SYMMETRIC,
-        FENCE,
-    };
-    
     /***************************************************************************
         Used to gather data on synthesis experiments.
     ***************************************************************************/
@@ -174,9 +74,9 @@ namespace percy
         return false;
     }
 
-    static inline bool is_trivial(const dynamic_truth_table& tt)
+    static inline bool is_trivial(const kitty::dynamic_truth_table& tt)
     {
-        dynamic_truth_table tt_check(tt.num_vars());
+        kitty::dynamic_truth_table tt_check(tt.num_vars());
 
         if (tt == tt_check || tt == ~tt_check) {
             return true;
@@ -192,6 +92,7 @@ namespace percy
         return false;
     }
 
+    /*
     template<typename TT>
     static inline int 
     get_sim_var(const synth_spec<TT>& spec, int i, int t)
@@ -284,6 +185,7 @@ namespace percy
 
         return offset;
     }
+    */
 
     template<typename TT>
     static inline int
@@ -292,96 +194,7 @@ namespace percy
         return spec.fence_offset + idx;
     }
 
-    /***************************************************************************
-        Normalize outputs by converting them to normal function.  Also check
-        for trivial outputs, such as constant functions or projections. This
-        determines which of the specifeid functions need to be synthesized.
-        This function expects the following invariants to hold:
-            (1) The number of input variables has been set.
-            (2) The number of output variables has been set.
-            (3) The functions requested to be synthesized have been set.
-    ***************************************************************************/
-    template<typename TT>
-    void spec_preprocess(synth_spec<TT>& spec) 
-    {
-        spec.tt_size = (1 << spec.nr_in) - 1;
-
-        if (spec.verbosity) {
-            printf("\n");
-            printf("========================================"
-                   "========================================\n");
-            printf("  Pre-processing for %s:\n", spec.nr_out > 1 ? 
-                    "functions" : "function");
-            for (int h = 0; h < spec.nr_out; h++) {
-                printf("  ");
-                kitty::print_binary(*spec.functions[h], std::cout);
-                printf("\n");
-            }
-            printf("========================================"
-                   "========================================\n");
-            printf("  SPEC:\n");
-            printf("\tnr_in=%d\n", spec.nr_in);
-            printf("\tnr_out=%d\n", spec.nr_out);
-            printf("\ttt_size=%d\n", spec.tt_size);
-        }
-
-        // Detect any trivial outputs.
-        spec.nr_triv = 0;
-        spec.nr_nontriv = 0;
-        spec.out_inv = 0;
-        spec.triv_flag = 0;
-        for (int h = 0; h < spec.nr_out; h++) {
-            if (is_const0(*spec.functions[h])) {
-                spec.triv_flag |= (1 << h);
-                spec.triv_functions[spec.nr_triv++] = 0;
-            } else if (is_const0(~(*spec.functions[h]))) {
-                spec.triv_flag |= (1 << h);
-                spec.triv_functions[spec.nr_triv++] = 0;
-                spec.out_inv |= (1 << h);
-            } else {
-                auto tt_var = spec.functions[0]->construct();
-                for (int i = 0; i < spec.nr_in; i++) {
-                    create_nth_var(tt_var, i);
-                    if (*spec.functions[h] == tt_var) {
-                        spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = i+1;
-                        break;
-                    } else if (*spec.functions[h] == ~(tt_var)) {
-                        spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = i+1;
-                        spec.out_inv |= (1 << h);
-                        break;
-                    }
-                }
-                // Even when the output is not trivial, we still need to ensure
-                // that it's normal.
-                if (!((spec.triv_flag >> h) & 1)) {
-                    if (!is_normal(*spec.functions[h])) {
-                        spec.out_inv |= (1 << h);
-                    }
-                    spec.synth_functions[spec.nr_nontriv++] = h;
-                }
-            }
-        }
-
-        if (spec.verbosity) {
-            for (int h = 0; h < spec.nr_out; h++) {
-                if ((spec.triv_flag >> h) & 1) {
-                    printf("  Output %d is trivial\n", h+1);
-                }
-                if ((spec.out_inv >> h) & 1) {
-                    printf("  Inverting output %d\n", h+1);
-                }
-            }
-            printf("  Trivial outputs=%d\n", spec.nr_triv);
-            printf("  Non-trivial outputs=%d\n", spec.nr_out-spec.nr_triv);
-            printf("========================================"
-                    "========================================\n");
-            printf("\n");
-        }
-    }
-
-
+    /*
     template<typename Solver>
     void spec_preprocess(synth_spec<dynamic_truth_table>& spec) 
     {
@@ -459,7 +272,6 @@ namespace percy
             printf("\n");
         }
     }
-
     
 
     template<typename T, typename TT>
@@ -540,15 +352,16 @@ namespace percy
             }
         }
     }
+*/
+
 
     /***************************************************************************
         A parallel version which periodically checks if a solution has been
         found by another thread.
-    ***************************************************************************/
     template<typename T, typename TT>
     synth_result 
     pcegar_chain_exists(
-            T* synth, synth_spec<TT>& spec, chain<TT,2>& chain,
+            T* synth, synth_spec<TT>& spec, chain<2>& chain,
             bool* found)
     {
         if (spec.verbosity) {
@@ -570,7 +383,7 @@ namespace percy
                     synth->print_solver_state(spec);
                 }
                 synth->chain_extract(spec, chain);
-                auto sim_tts = chain.simulate();
+                auto sim_tts = chain.simulate<TT>();
                 auto xor_tt = (*sim_tts[0]) ^ (*spec.functions[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -598,1614 +411,38 @@ namespace percy
             }
         }
     }
-
-
-
-    /***************************************************************************
-        Base synthesizer class.
     ***************************************************************************/
-    template<typename TT, typename Solver, class Dag=dag<2>>
-    class synthesizer
-    {
-        protected:
-            Solver _solver;
-
-        public:
-            synthesizer()
-            {
-                solver_alloc(&_solver);
-            }
-
-            synth_result
-            solve(int conflict_limit)
-            {
-                return solver_solve(_solver, 0, 0, conflict_limit);
-            }
-
-            int get_nr_conflicts()
-            {
-                return solver_nr_conflicts(_solver);
-            }
-
-            int
-            get_solver_var_value(int var)
-            {
-                return solver_var_value(_solver, var);
-            }
-
-            ~synthesizer()
-            {
-                solver_dealloc(&_solver);
-            }
-
-            virtual void restart_solver()
-            {
-                solver_restart(&_solver);
-            }
-
-            virtual void add_clauses(synth_spec<TT>& spec) = 0;
-            virtual void cegar_add_clauses(synth_spec<TT>& spec) = 0;
-
-            virtual void 
-            create_main_clauses(const synth_spec<TT>& spec)
-            {
-                for (int t = 0; t < spec.tt_size; t++) {
-                    create_tt_clauses(spec, t);
-                }
-            }
-
-            virtual bool 
-            add_simulation_clause(const synth_spec<TT>& spec, int i, int j, 
-                int k, int t, int a, int b, int c)
-            {
-                int pLits[5], ctr = 0;
-
-                if (j < spec.nr_in) {
-                    if (( ( ( t + 1 ) & ( 1 << j ) ) ? 1 : 0 ) != b) {
-                        return true;
-                    }
-                } else {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_sim_var(spec, j - spec.nr_in, t), b);
-                }
-
-                if (k < spec.nr_in) {
-                    if (( ( ( t + 1 ) & ( 1 << k ) ) ? 1 : 0 ) != c)
-                        return true;
-                } else {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_sim_var(spec, k - spec.nr_in, t), c);
-                }
-
-                pLits[ctr++] = abc::Abc_Var2Lit(get_sel_var(spec, i, j, k ), 1);
-                pLits[ctr++] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), a);
-
-                if (b | c) {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_op_var(spec, i, c, b), 1 - a);
-                }
-
-                return solver_add_clause(_solver, pLits, pLits + ctr);
-            }
-
-            virtual bool 
-            create_tt_clauses(const synth_spec<TT>& spec, int t)
-            {
-                int pLits[2];
-
-                auto ret = true;
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.nr_in + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 0, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 1, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 1, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 0, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 0, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 1, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 1, 1);
-                        }
-                    }
-
-                    // If an output has selected this particular operand, we
-                    // need to ensure that this operand's truth table satisfies
-                    // the specified output function.
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        auto outbit = kitty::get_bit(
-                                *spec.functions[spec.synth_functions[h]], t+1);
-                        if ((spec.out_inv >> spec.synth_functions[h]) & 1) {
-                            outbit = 1 - outbit;
-                        }
-                        pLits[0] = abc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
-                        pLits[1] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), 
-                                1 - outbit);
-                        ret &= solver_add_clause(_solver, pLits, pLits+2);
-                        if (spec.verbosity > 1) {
-                            printf("  (g_%d_%d --> %sx_%d_%d)\n", 
-                                    h+1, spec.nr_in+i+1, (1 - outbit) ? 
-                                    "!" : "", spec.nr_in+i+1, t+1);
-                        }
-                    }
-                }
-
-                return ret;
-            }
-
-            virtual void
-            create_variables(synth_spec<TT>& spec)
-            {
-                spec.nr_op_vars = spec.nr_steps * 3;
-                spec.nr_out_vars = spec.nr_nontriv * spec.nr_steps;
-                spec.nr_sim_vars = spec.nr_steps * spec.tt_size;
-                spec.nr_sel_vars = 0;
-                for (int i = spec.nr_in; i < spec.nr_in + spec.nr_steps; i++) {
-                    // TODO: right shift to make more efficient?
-                    spec.nr_sel_vars += ( i * ( i - 1 ) ) / 2;
-                }
-                spec.sel_offset = 0;
-                spec.steps_offset = spec.nr_sel_vars;
-                spec.out_offset = spec.nr_sel_vars + spec.nr_op_vars;
-                spec.sim_offset = spec.nr_sel_vars + spec.nr_op_vars + 
-                    spec.nr_out_vars;
-
-                solver_set_nr_vars(_solver, spec.nr_op_vars + 
-                        spec.nr_out_vars + spec.nr_sim_vars + spec.nr_sel_vars);
-
-                // TODO: compute better upper bound on number of literals
-                abc::Vec_IntGrowResize(spec.vLits, spec.nr_sel_vars);
-            }
-
-            /*******************************************************************
-                Ensures that each gate has two operands.
-            *******************************************************************/
-            virtual void 
-            create_op_clauses(const synth_spec<TT>& spec)
-            {
-                for (int i = 0; i < spec.nr_steps; i++)
-                {
-                    int ctr = 0;
-                    for (int k = 1; k < spec.nr_in + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            abc::Vec_IntSetEntry(spec.vLits,ctr++,abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k ), 0));
-                        }
-                    }
-                    solver_add_clause(_solver, abc::Vec_IntArray(spec.vLits), 
-                            abc::Vec_IntArray(spec.vLits) + ctr);
-                }
-            }
-
-            virtual void 
-            create_output_clauses(const synth_spec<TT>& spec)
-            {
-                // Every output points to an operand.
-                if (spec.nr_nontriv > 1) {
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        for (int i = 0; i < spec.nr_steps; i++) {
-                            abc::Vec_IntSetEntry(spec.vLits, i, 
-                                    abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
-                            if (spec.verbosity) {
-                                printf("  output %d may point to step %d\n", 
-                                        h+1, spec.nr_in+i+1);
-                            }
-                        }
-                        solver_add_clause(_solver,abc::Vec_IntArray(spec.vLits), 
-                                abc::Vec_IntArray(spec.vLits) + spec.nr_steps);
-                    }
-                }
-
-                // At least one of the outputs has to refer to the final
-                // operator, otherwise it may as well not be there.
-                const auto last_op = spec.nr_steps - 1;
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    abc::Vec_IntSetEntry(spec.vLits, h, 
-                            abc::Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
-                }
-                solver_add_clause(_solver, abc::Vec_IntArray(spec.vLits), 
-                        abc::Vec_IntArray(spec.vLits) + spec.nr_nontriv);
-            }
-
-            /*******************************************************************
-              Extracts a Boolean chain from a satisfiable solution.
-            *******************************************************************/
-            virtual void 
-            chain_extract(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                int op_inputs[2];
-
-                chain.reset(spec.nr_in, spec.nr_out, spec.nr_steps);
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    kitty::static_truth_table<2> op;
-                    if (solver_var_value(_solver, get_op_var(spec, i, 0, 1 )))
-                        kitty::set_bit(op, 1); 
-                    if (solver_var_value(_solver, get_op_var(spec, i, 1, 0)))
-                        kitty::set_bit(op, 2); 
-                    if (solver_var_value(_solver, get_op_var(spec, i, 1, 1)))
-                        kitty::set_bit(op, 3); 
-
-                    if (spec.verbosity) {
-                        printf("  step x_%d performs operation\n  ", 
-                                i+spec.nr_in+1);
-                        kitty::print_binary(op, std::cout);
-                        printf("\n");
-                    }
-
-                    for (int k = 1; k < spec.nr_in + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver_var_value(_solver,
-                                        get_sel_var(spec, i, j, k)))
-                            {
-                                if (spec.verbosity) {
-                                    printf("  with operands x_%d and x_%d", 
-                                            j+1, k+1);
-                                }
-                                op_inputs[0] = j;
-                                op_inputs[1] = k;
-                                chain.set_step(i, op, op_inputs);
-                                break;
-                            }
-
-                        }
-                    }
-                    if (spec.verbosity) {
-                        printf("\n");
-                    }
-                }
-
-                auto triv_count = 0, nontriv_count = 0;
-                for (int h = 0; h < spec.nr_out; h++) {
-                    if ((spec.triv_flag >> h) & 1) {
-                        chain.set_out(h, 
-                                (spec.triv_functions[triv_count++] << 1) +
-                                ((spec.out_inv >> h) & 1));
-                        continue;
-                    }
-                    for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(_solver, 
-                                    get_out_var(spec, nontriv_count, i))) {
-                            chain.set_out(h, ((i + spec.nr_in + 1) << 1) +
-                                    ((spec.out_inv >> h) & 1));
-                            nontriv_count++;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            virtual synth_result 
-            synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                assert(spec.nr_in <= 6);
-                assert(spec.nr_out <= 64);
-
-                spec_preprocess(spec);
-
-                // The special case when the Boolean chain to be synthesized
-                // consists entirely of trivial functions.
-                if (spec.nr_triv == spec.nr_out) {
-                    chain.reset(spec.nr_in, spec.nr_out, 0);
-                    for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, (spec.triv_functions[h] << 1) + 
-                                ((spec.out_inv >> h) & 1));
-                    }
-                    return success;
-                }
-
-                spec.nr_steps = 1;
-                while (true) {
-                    auto result = chain_exists(this, spec);
-                    if (result == success) {
-                        this->chain_extract(spec, chain);
-                        return success;
-                    } else if (result == failure) {
-                        spec.nr_steps++;
-                    } else {
-                        return timeout;
-                    }
-                }
-            }
-            
-            virtual synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                assert(spec.nr_in <= 6);
-                assert(spec.nr_out <= 64);
-
-                spec_preprocess(spec);
-
-                spec.nr_rand_tt_assigns = 2*spec.nr_in;
-
-                // The special case when the Boolean chain to be synthesized
-                // consists entirely of trivial functions.
-                if (spec.nr_triv == spec.nr_out) {
-                    chain.reset(spec.nr_in, spec.nr_out, 0);
-                    for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, (spec.triv_functions[h] << 1) + 
-                                ((spec.out_inv >> h) & 1));
-                    }
-                    return success;
-                }
-
-                spec.nr_steps = 1;
-                while (true) {
-                    auto status = cegar_chain_exists(this, spec, chain);
-                    if (status == success) {
-                        return success;
-                    } else if (status == failure) {
-                        spec.nr_steps++;
-                    } else {
-                        return timeout;
-                    }
-                }
-            }
-
-            virtual void
-            print_solver_state(const synth_spec<TT>& spec)
-            {
-                printf("\n");
-                printf("========================================"
-                        "========================================\n");
-                printf("  SOLVER STATE\n\n");
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.nr_in+i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver_var_value(_solver, 
-                                        get_sel_var(spec, i, j, k))) {
-                                printf("  x_%d has inputs x_%d and x_%d\n",
-                                        spec.nr_in+i+1, j+1, k+1);
-                            }
-                        }
-                    }
-                    printf("  f_%d = ", spec.nr_in+i+1);
-                    printf("%d", solver_var_value(_solver, 
-                                get_op_var(spec, i, 1, 1)));
-                    printf("%d", solver_var_value(_solver, 
-                                get_op_var(spec, i, 1, 0)));
-                    printf("%d", solver_var_value(_solver, 
-                                get_op_var(spec, i, 0, 1)));
-                    printf("0\n");
-                    printf("  tt_%d = ",spec.nr_in+ i+1);
-                    for (int t = spec.tt_size - 1; t >= 0; t--) {
-                        printf("%d", solver_var_value(_solver, 
-                                    get_sim_var(spec, i, t)));
-                    }
-                    printf("0\n\n");
-                }
-
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(_solver, get_out_var(spec,h,i))) {
-                            printf("  g_%d --> x_%d\n", h+1, spec.nr_in+i+1);
-                        }
-                    }
-                }
-
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    for (int i = 0; i < spec.nr_steps; i++) {
-                        printf("  g_%d_%d=%d\n", h+1, spec.nr_in+i+1,
-                                solver_var_value(_solver, get_out_var(spec, h, i))
-                              );
-                    }
-                }
-                printf("\n");
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.nr_in+i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            printf("s_%d_%d_%d=%d\n", spec.nr_in+i+1, j+1, k+1,
-                                    solver_var_value(_solver, 
-                                        get_sel_var(spec, i, j, k)));
-                        }
-                    }
-                    printf("\n");
-                    printf("f_%d_0_0=0\n", spec.nr_in+i+1);
-                    printf("f_%d_0_1=%d\n", spec.nr_in+i+1, 
-                            solver_var_value(_solver, 
-                                get_op_var(spec, i, 0, 1)));
-                    printf("f_%d_1_0=%d\n", spec.nr_in+i+1, 
-                            solver_var_value(_solver,
-                                get_op_var(spec, i, 1, 0)));
-                    printf("f_%d_1_1=%d\n", spec.nr_in+i+1, 
-                            solver_var_value(_solver, 
-                                get_op_var(spec, i, 1, 1)));
-                    printf("\n");
-                    for (int t = spec.tt_size - 1; t >= 0; t--) {
-                        printf("x_%d_%d=%d\n", spec.nr_in+i+1, t+1, 
-                                solver_var_value(_solver, 
-                                    get_sim_var(spec, i, t)));
-                    }
-                    printf("x_%d_0=0\n", spec.nr_in+i);
-                    printf("\n");
-                }
-                printf("\n");
-
-                printf("========================================"
-                        "========================================\n");
-            }
-
-            /*******************************************************************
-                Extracts only the underlying DAG structure from a solution.
-            *******************************************************************/
-            virtual void 
-            dag_extract(synth_spec<TT>& spec, Dag& dag)
-            {
-                dag.reset(spec.nr_in, spec.nr_steps);
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.nr_in + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver_var_value(_solver,
-                                        get_sel_var(spec, i, j, k)))
-                            {
-                                dag.set_vertex(i, j, k);
-                                break;
-                            }
-
-                        }
-                    }
-                }
-            }
-    };
-
-    /***************************************************************************
-        Implements a simple SAT based exact synthesis algorithm. Uses only the
-        bare minimum constraints necessary for the synthesis to be correct.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class simple_synthesizer : public synthesizer<TT, Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-            }
-
-    };
-
-    /***************************************************************************
-        This synthesizer adds clauses that prevent the synthesis of trivial
-        operators. Note that this doesn't hurt our implementation, since we
-        already detect and remove trivial functions from the synthesis spec.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class nontriv_synthesizer : public simple_synthesizer<TT, Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-            }
-
-            /*******************************************************************
-                Add clauses that prevent trivial variable projection and
-                constant operators from being synthesized.
-            *******************************************************************/
-            virtual void 
-            create_nontriv_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[3];
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 0);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 0);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 0);
-                    solver_add_clause(this->_solver, pLits, pLits + 3);
-
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 0);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 1);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                    solver_add_clause(this->_solver, pLits, pLits + 3);
-
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 1);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 0);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                    solver_add_clause(this->_solver, pLits, pLits + 3);
-                }
-            }
-    };
-
-    /***************************************************************************
-        This synthesizer extends the nontriv_synthesizer and adds clauses which
-        ensure that every step is used at least once.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class alonce_synthesizer : public nontriv_synthesizer<TT, Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-            }
-
-            /*******************************************************************
-              Add clauses which ensure that every step is used at least once.
-            *******************************************************************/
-            virtual void 
-            create_alonce_clauses(const synth_spec<TT>& spec)
-            {
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    auto ctr = 0;
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        abc::Vec_IntSetEntry(spec.vLits, ctr++, 
-                                abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
-                    }
-                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        for (int j = 0; j < spec.nr_in+i; j++) {
-                            abc::Vec_IntSetEntry(spec.vLits, ctr++,
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, j, spec.nr_in+i), 0));
-                        }
-                        for (int j = spec.nr_in+i+1; j < spec.nr_in+ip; j++) {
-                            abc::Vec_IntSetEntry(spec.vLits, ctr++, 
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, spec.nr_in+i, j), 0));
-                        }
-                    }
-                    solver_add_clause(this->_solver, 
-                            abc::Vec_IntArray(spec.vLits),
-                            abc::Vec_IntArray(spec.vLits) + ctr);
-                }
-            }
-    };
-
-    /***************************************************************************
-        Extends the alonce_synthesizer and adds clauses which ensure that no
-        operand is ever re-applied (i.e. fully contained in another).
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class noreapply_synthesizer : public alonce_synthesizer<TT,Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-            }
-
-            /*******************************************************************
-                Add clauses which ensure that operands are never re-applied. In
-                other words, (Sijk --> ~Si'ji) & (Sijk --> ~Si'ki), 
-                for all (i < i').
-            *******************************************************************/
-            virtual void 
-            create_noreapply_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[2];
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int ip = i+1; ip < spec.nr_steps; ip++) {
-                        for (int k = 1; k < spec.nr_in+i; k++) {
-                            for (int j = 0; j < k; j++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,j,spec.nr_in+i),1);
-                                solver_add_clause(this->_solver,pLits,pLits+2);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,k,spec.nr_in+i),1);
-                                solver_add_clause(this->_solver,pLits,pLits+2);
-                            }
-                        }
-                    }
-                }
-            }
-    };
-
-    /***************************************************************************
-        Extends the noreapply_synthesizer and adds clauses which ensure that
-        steps occur in co-lexicographic order.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class colex_synthesizer : public noreapply_synthesizer<TT,Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-            }
-
-            /*******************************************************************
-                Add clauses which ensure that steps occur in co-lexicographic
-                order. In other words, we require steps operands to be ordered
-                tuples.
-            *******************************************************************/
-            virtual void 
-            create_colex_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[2];
-
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 2; k < spec.nr_in+i; k++) {
-                        for (int j = 1; j < k; j++) {
-                            for (int jp = 0; jp < j; jp++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i+1, jp, k), 1);
-                                solver_add_clause(this->_solver,pLits,pLits+2);
-                            }
-                        }
-                        for (int j = 0; j < k; j++) {
-                            for (int kp = 1; kp < k; kp++) {
-                                for (int jp = 0; jp < kp; jp++) {
-                                    pLits[0] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i, j, k), 1);
-                                    pLits[1] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i+1, jp, kp),1);
-                                    solver_add_clause(
-                                            this->_solver, pLits, pLits+2);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-    };
-
-    /***************************************************************************
-        Extends the colex_synthesizer and adds clauses which ensure that
-        step operators also occur in co-lexicographic order.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class colex_func_synthesizer : public colex_synthesizer<TT,Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_colex_func_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_colex_func_clauses(spec);
-            }
-
-            /*******************************************************************
-                Ensure that Boolean operators are co-lexicographically ordered:
-                (S_ijk == S_(i+1)jk) ==> f_i <= f_(i+1)
-            *******************************************************************/
-            virtual void 
-            create_colex_func_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[6];
-
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 1; k < spec.nr_in+i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            pLits[0] = 
-                                abc::Abc_Var2Lit(get_sel_var(spec, i, j, k), 1);
-                            pLits[1] = 
-                                abc::Abc_Var2Lit(get_sel_var(spec, i+1, j, k), 1);
-
-                            pLits[2] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+4);
-
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 1);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+5);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+5);
-
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 1);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 0, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                        }
-                    }
-                }
-            }
-    };
-
-    /***************************************************************************
-        Extends the colex_synthesizer and adds clauses which ensure that
-        symmetric variables occur in order.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class symmetric_synthesizer : public colex_synthesizer<TT, Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                if (spec.verbosity) {
-                    printf("adding symmetric clauses!\n");
-                }
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_symvar_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_symvar_clauses(spec);
-            }
-            
-            synth_result 
-            find_chain(
-                    synth_spec<TT>& spec, 
-                    chain<TT,2>& chain, 
-                    int nr_steps)
-            {
-                assert(spec.nr_in <= 6);
-                assert(spec.nr_out <= 64);
-
-                spec_preprocess(spec);
-
-                // The special case when the Boolean chain to be synthesized
-                // consists entirely of trivial functions.
-                if (spec.nr_triv == spec.nr_out) {
-                    chain.reset(spec.nr_in, spec.nr_out, 0);
-                    for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, (spec.triv_functions[h] << 1) +
-                                ((spec.out_inv >> h) & 1));
-                    }
-                    return success;
-                }
-                
-                spec.nr_steps = nr_steps;
-
-                auto result = chain_exists(this, spec);
-                if (result == success) {
-                    this->chain_extract(spec, chain);
-                }
-                return result;
-            }
-
-            /*******************************************************************
-                Ensure that symmetric variables occur in order.
-            *******************************************************************/
-            virtual void 
-            create_symvar_clauses(const synth_spec<TT>& spec)
-            {
-                for (int q = 1; q < spec.nr_in; q++) {
-                    for (int p = 0; p < q; p++) {
-                        auto symm = true;
-                        for (int i = 0; i < spec.nr_out; i++) {
-                            auto outfunc = spec.functions[i];
-                            if (!(swap(*outfunc, p, q) == *outfunc)) {
-                                symm = false;
-                                break;
-                            }
-                        }
-                        if (!symm) {
-                            continue;
-                        }
-                        if (spec.verbosity) {
-                            printf("  variables x_%d and x_%d are symmetric\n",
-                                    p+1, q+1);
-                        }
-                        for (int i = 0; i < spec.nr_steps; i++) {
-                            for (int j = 0; j < q; j++) {
-                                if (j == p) continue;
-
-                                auto slit = 
-                                    abc::Abc_Var2Lit(get_sel_var(spec, i, j, q), 1);
-                                abc::Vec_IntSetEntry(spec.vLits, 0, slit);
-
-                                int ctr = 1;
-                                for (int ip = 0; ip < i; ip++) {
-                                    for (int kp = 1; kp < spec.nr_in+ip; kp++) {
-                                        for (int jp = 0; jp < kp; jp++) {
-                                            if (jp == p || kp == p) {
-                                                slit = abc::Abc_Var2Lit(
-                                                            get_sel_var(spec, 
-                                                            ip, jp, kp), 0);
-                                                abc::Vec_IntSetEntry(spec.vLits, 
-                                                        ctr++, slit);
-                                                solver_add_clause(
-                                                    this->_solver, 
-                                                    abc::Vec_IntArray(spec.vLits),
-                                                    abc::Vec_IntArray(spec.vLits) +
-                                                    ctr);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-    };
-
-    /***************************************************************************
-        Extends the colex_func_synthesizer and adds clauses that constrain the 
-        synthesized Boolbean chain to specific graph topologies.
-    ***************************************************************************/
-    template<typename TT, typename Solver>
-    class fence_synthesizer : public symmetric_synthesizer<TT, Solver>
-    {
-        public:
-            virtual void 
-            add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_main_clauses(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_symvar_clauses(spec);
-            }
-
-            virtual void 
-            cegar_add_clauses(synth_spec<TT>& spec)
-            {
-                this->create_variables(spec);
-                this->create_output_clauses(spec);
-                this->create_op_clauses(spec);
-                this->create_nontriv_clauses(spec);
-                this->create_alonce_clauses(spec);
-                this->create_noreapply_clauses(spec);
-                this->create_colex_clauses(spec);
-                this->create_symvar_clauses(spec);
-            }
-
-            virtual void 
-            create_variables(synth_spec<TT>& spec)
-            {
-                spec.nr_op_vars = spec.nr_steps * 3;
-                spec.nr_out_vars = spec.nr_nontriv * spec.nr_steps;
-                spec.nr_sim_vars = spec.nr_steps * spec.tt_size;
-                spec.nr_sel_vars = 0;
-                // For the other steps, ensure that they are constraint to
-                // the proper level.
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    // Determine the level of this step.
-                    auto level = spec.get_level(i + spec.nr_in);
-                    assert(level > 0);
-                    for (auto k = spec.first_step_on_level(level-1); 
-                            k < spec.first_step_on_level(level); k++) {
-                        for (int j = 0; j < k; j++) {
-                            spec.selection_vars[i][j][k] = spec.nr_sel_vars++;
-                        }
-                    }
-                }
-                spec.sel_offset = 0;
-                spec.steps_offset = spec.nr_sel_vars;
-                spec.out_offset = spec.nr_sel_vars + spec.nr_op_vars;
-                spec.sim_offset = spec.nr_sel_vars + spec.nr_op_vars + 
-                    spec.nr_out_vars;
-                spec.fence_offset = spec.nr_sel_vars + spec.nr_op_vars + 
-                    spec.nr_out_vars + spec.nr_sim_vars;
-
-                solver_set_nr_vars(this->_solver, spec.nr_op_vars + 
-                        spec.nr_out_vars + spec.nr_sim_vars + spec.nr_sel_vars);
-
-                // TODO: compute better upper bound on number of literals
-                abc::Vec_IntGrowResize(spec.vLits, spec.nr_sel_vars);
-            }
-
-            virtual bool 
-            create_tt_clauses(const synth_spec<TT>& spec, int t)
-            {
-                int pLits[2];
-
-                auto ret = true;
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    auto level = spec.get_level(i + spec.nr_in);
-                    assert(level > 0);
-                    for (auto k = spec.first_step_on_level(level-1); 
-                            k < spec.first_step_on_level(level); k++) {
-                        for (int j = 0; j < k; j++) {
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 0, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 1, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 0, 1, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 0, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 0, 1);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 1, 0);
-                            ret &= add_simulation_clause(spec, i, j, k, t, 1, 1, 1);
-                        }
-                    }
-
-                    // If an output has selected this particular operand, we
-                    // need to ensure that this operand's truth table satisfies
-                    // the specified output function.
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        auto outbit = kitty::get_bit(
-                                *spec.functions[spec.synth_functions[h]], t+1);
-                        if ((spec.out_inv >> spec.synth_functions[h]) & 1) {
-                            outbit = 1 - outbit;
-                        }
-                        pLits[0] = abc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
-                        pLits[1] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), 
-                                1 - outbit);
-                        ret &= solver_add_clause(this->_solver,pLits,pLits+2);
-                        if (spec.verbosity > 1) {
-                            printf("  (g_%d_%d --> %sx_%d_%d)\n", h+1, 
-                                    spec.nr_in+i+1, (1 - outbit) ?  "!" : "",
-                                    spec.nr_in+i+1, t+1);
-                        }
-                    }
-                }
-
-                return ret;
-            }
-
-            virtual void
-            create_op_clauses(const synth_spec<TT>& spec)
-            {
-                for (int i = 0; i < spec.nr_steps; i++)
-                {
-                    auto level = spec.get_level(i + spec.nr_in);
-                    assert(level > 0);
-                    int ctr = 0;
-                    for (auto k = spec.first_step_on_level(level-1); 
-                            k < spec.first_step_on_level(level); k++) {
-                        for (int j = 0; j < k; j++) {
-                            abc::Vec_IntSetEntry(spec.vLits, ctr++, 
-                                    abc::Abc_Var2Lit(spec.selection_vars[i][j][k], 0));
-                        }
-                    }
-                    solver_add_clause(this->_solver, abc::Vec_IntArray(spec.vLits), 
-                            abc::Vec_IntArray(spec.vLits) + ctr);
-                }
-            }
-
-            virtual void 
-            create_alonce_clauses(const synth_spec<TT>& spec)
-            {
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    auto ctr = 0;
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        abc::Vec_IntSetEntry(spec.vLits, ctr++, 
-                                abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
-                    }
-                    const auto level = spec.get_level(i + spec.nr_in);
-                    const auto idx = spec.nr_in+i;
-                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        auto levelp = spec.get_level(ip + spec.nr_in);
-                        assert(levelp >= level);
-                        if (levelp == level) {
-                            continue;
-                        }
-                        for (auto k = spec.first_step_on_level(levelp-1); 
-                                k < spec.first_step_on_level(levelp); k++) {
-                            for (int j = 0; j < k; j++) {
-                                if (j == idx || k == idx) {
-                                    abc::Vec_IntSetEntry(spec.vLits, ctr++, 
-                                            abc::Abc_Var2Lit(spec.selection_vars[ip][j][k], 0));
-                                }
-                            }
-                        }
-                    }
-                    solver_add_clause(this->_solver, abc::Vec_IntArray(spec.vLits),
-                            abc::Vec_IntArray(spec.vLits) + ctr);
-                }
-            }
-
-            virtual bool 
-            add_simulation_clause(
-                const synth_spec<TT>& spec, int i, int j, int k, int t, int a,
-                int b, int c)
-            {
-                int pLits[5], ctr = 0;
-
-                if (j < spec.nr_in) {
-                    if (( ( ( t + 1 ) & ( 1 << j ) ) ? 1 : 0 ) != b) {
-                        return true;
-                    }
-                } else {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_sim_var(spec, j - spec.nr_in, t), b);
-                }
-
-                if (k < spec.nr_in) {
-                    if (( ( ( t + 1 ) & ( 1 << k ) ) ? 1 : 0 ) != c)
-                        return true;
-                } else {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_sim_var(spec, k - spec.nr_in, t), c);
-                }
-
-                pLits[ctr++] = abc::Abc_Var2Lit(spec.selection_vars[i][j][k], 1);
-                pLits[ctr++] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), a);
-
-                if (b | c) {
-                    pLits[ctr++] = 
-                        abc::Abc_Var2Lit(get_op_var(spec, i, c, b), 1 - a);
-                }
-
-                return solver_add_clause(this->_solver, pLits, pLits + ctr);
-            }
-
-            virtual void 
-            create_noreapply_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[2];
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    const auto level = spec.get_level(i + spec.nr_in);
-                    const auto idx = spec.nr_in+i;
-
-                    for (int ip = i+1; ip < spec.nr_steps; ip++) {
-                        const auto levelp = spec.get_level(ip + spec.nr_in);
-                        if (levelp == level) { 
-                            // A node cannot have a node on the same level in
-                            // its fanin.
-                            continue;
-                        }
-
-                        for (auto k = spec.first_step_on_level(level-1); 
-                                k < spec.first_step_on_level(level); k++) {
-                            for (int j = 0; j < k; j++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        spec.selection_vars[i][j][k], 1);
-
-                                // Note that it's possible for node ip to never have
-                                // i as its second fanin.
-                                for (auto kp = spec.first_step_on_level(levelp-1); 
-                                        kp < spec.first_step_on_level(levelp); kp++) {
-                                    if (kp == idx) {
-                                        pLits[1] = abc::Abc_Var2Lit(
-                                                spec.selection_vars[ip][j][kp],1);
-                                        solver_add_clause(this->_solver,
-                                                pLits, pLits+2);
-                                        pLits[1] = abc::Abc_Var2Lit(
-                                                spec.selection_vars[ip][k][kp], 1);
-                                        solver_add_clause(this->_solver,
-                                                pLits, pLits+2);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            virtual void 
-            chain_extract(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                int op_inputs[2];
-
-                chain.reset(spec.nr_in, spec.nr_out, spec.nr_steps);
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    kitty::static_truth_table<2> op;
-                    if (solver_var_value(this->_solver, 
-                                get_op_var(spec, i, 0, 1 )))
-                        kitty::set_bit(op, 1); 
-                    if (solver_var_value(this->_solver, 
-                                get_op_var(spec, i, 1, 0)))
-                        kitty::set_bit(op, 2); 
-                    if (solver_var_value(this->_solver, 
-                                get_op_var(spec, i, 1, 1)))
-                        kitty::set_bit(op, 3); 
-
-                    if (spec.verbosity) {
-                        printf("  step x_%d performs operation\n  ", i+spec.nr_in+1);
-                        kitty::print_binary(op, std::cout);
-                        printf("\n");
-                    }
-
-                    auto level = spec.get_level(i + spec.nr_in);
-                    assert(level > 0);
-
-                    for (auto k = spec.first_step_on_level(level-1); 
-                            k < spec.first_step_on_level(level); k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver_var_value(this->_solver,
-                                        spec.selection_vars[i][j][k]))
-                            {
-                                if (spec.verbosity) {
-                                    printf("  with operands x_%d and x_%d", j+1, k+1);
-                                }
-                                op_inputs[0] = j;
-                                op_inputs[1] = k;
-                                chain.set_step(i, op, op_inputs);
-                                break;
-                            }
-
-                        }
-                    }
-                    if (spec.verbosity) {
-                        printf("\n");
-                    }
-                }
-
-                auto triv_count = 0, nontriv_count = 0;
-                for (int h = 0; h < spec.nr_out; h++) {
-                    if ((spec.triv_flag >> h) & 1) {
-                        chain.set_out(h, (spec.triv_functions[triv_count++] << 1) +
-                                ((spec.out_inv >> h) & 1));
-                        continue;
-                    }
-                    for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(this->_solver, 
-                                    get_out_var(spec, nontriv_count, i))) {
-                            chain.set_out(h, ((i + spec.nr_in + 1) << 1) +
-                                    ((spec.out_inv >> h) & 1));
-                            nontriv_count++;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            virtual void 
-            create_colex_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[2];
-
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    const auto level = spec.get_level(i + spec.nr_in);
-                    const auto levelp = spec.get_level(i + 1 + spec.nr_in);
-                    for (auto k = spec.first_step_on_level(level-1); 
-                            k < spec.first_step_on_level(level); k++) {
-                        if (k < 2) continue;
-                        for (auto kp = spec.first_step_on_level(levelp-1); 
-                                kp < spec.first_step_on_level(levelp); kp++) {
-                            if (kp != k) {
-                                continue;
-                            }
-                            for (int j = 1; j < k; j++) {
-                                for (int jp = 0; jp < j; jp++) {
-                                    pLits[0] = abc::Abc_Var2Lit(spec.selection_vars[i][j][k], 1);
-                                    pLits[1] = abc::Abc_Var2Lit(
-                                            spec.selection_vars[i+1][jp][k], 1);
-                                    solver_add_clause(
-                                            this->_solver, pLits, pLits+2);
-                                }
-                            }
-                        }
-                        const auto min_kp = spec.first_step_on_level(levelp-1);
-                        const auto max_kp = spec.first_step_on_level(levelp);
-                        for (int j = 0; j < k; j++) {
-                            for (int kp = 1; kp < k; kp++) {
-                                if (kp < min_kp || kp >= max_kp) {
-                                    // Node ip would never select these j and kp
-                                    // anyway.
-                                    continue;
-                                }
-                                for (int jp = 0; jp < kp; jp++) {
-                                    pLits[0] = abc::Abc_Var2Lit(
-                                            spec.selection_vars[i][j][k], 1);
-                                    pLits[1] = abc::Abc_Var2Lit(
-                                            spec.selection_vars[i+1][jp][kp],1);
-                                    solver_add_clause(
-                                            this->_solver, pLits, pLits+2);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            virtual void 
-            create_colex_func_clauses(const synth_spec<TT>& spec)
-            {
-                int pLits[6];
-
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 1; k < spec.nr_in+i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            pLits[0] = abc::Abc_Var2Lit(spec.selection_vars[i][j][k], 1);
-                            pLits[1] = abc::Abc_Var2Lit(spec.selection_vars[i+1][j][k], 1);
-
-                            pLits[2] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+4);
-
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 1);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+5);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+5);
-
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 1);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 0, 1), 0);
-                            solver_add_clause(this->_solver, pLits, pLits+6);
-                        }
-                    }
-                }
-            }
-
-            virtual void 
-            create_symvar_clauses(const synth_spec<TT>& spec)
-            {
-                for (int q = 1; q < spec.nr_in; q++) {
-                    for (int p = 0; p < q; p++) {
-                        auto symm = true;
-                        for (int i = 0; i < spec.nr_out; i++) {
-                            auto outfunc = spec.functions[i];
-                            if (!(swap(*outfunc, p, q) == *outfunc)) {
-                                symm = false;
-                                break;
-                            }
-                        }
-                        if (!symm) {
-                            continue;
-                        }
-                        if (spec.verbosity) {
-                            printf("  variables x_%d and x_%d are symmetric\n",
-                                    p+1, q+1);
-                        }
-                        for (int i = 0; i < spec.nr_steps; i++) {
-                            const auto level = spec.get_level(i+spec.nr_in);
-                            if (level > 1) {
-                                // Any node on level 2 or higher could never
-                                // refer to variable q as its second input.
-                                continue;
-                            }
-                            for (int j = 0; j < q; j++) {
-                                if (j == p) continue;
-
-                                auto slit = abc::Abc_Var2Lit(spec.selection_vars[i][j][q], 1);
-                                abc::Vec_IntSetEntry(spec.vLits, 0, slit);
-
-                                int ctr = 1;
-                                for (int ip = 0; ip < i; ip++) {
-                                    const auto levelp = spec.get_level(ip+spec.nr_in);
-                                    for (auto kp = spec.first_step_on_level(levelp-1); 
-                                            kp < spec.first_step_on_level(levelp); kp++) {
-                                        for (int jp = 0; jp < kp; jp++) {
-                                            if (jp == p || kp == p) {
-                                                slit = abc::Abc_Var2Lit(
-                                                    spec.selection_vars[ip][jp][kp], 0);
-                                                abc::Vec_IntSetEntry(spec.vLits, ctr++, slit);
-                                                solver_add_clause(
-                                                    this->_solver,
-                                                    abc::Vec_IntArray(spec.vLits),
-                                                    abc::Vec_IntArray(spec.vLits)
-                                                    + ctr);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            virtual synth_result 
-            synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                assert(spec.nr_in <= 6);
-                assert(spec.nr_out <= 64);
-
-                spec_preprocess(spec);
-
-                // The special case when the Boolean chain to be synthesized
-                // consists entirely of trivial functions.
-                if (spec.nr_triv == spec.nr_out) {
-                    chain.reset(spec.nr_in, spec.nr_out, 0);
-                    for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, (spec.triv_functions[h] << 1) +
-                                ((spec.out_inv >> h) & 1));
-                    }
-                    return success;
-                }
-
-                // As the topological synthesizer decomposes the synthesis
-                // problem, to fairly count the total number of conflicts we
-                // should keep track of all conflicts in existence checks.
-                int total_conflicts = 0;
-                fence f;
-                po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
-                int old_nnodes = 1;
-                while (true) {
-                    g.next_fence(f);
-                    spec.nr_steps = f.nr_nodes();
-                    spec.update_level_map(f);
-
-                    if (spec.nr_steps > old_nnodes) {
-                        // Reset conflict count, since this is where other
-                        // synthesizers reset it.
-                        total_conflicts = 0;
-                        old_nnodes = spec.nr_steps;
-                    }
-
-                    if (spec.verbosity) {
-                        printf("  next fence:\n");
-                        print_fence(f);
-                        printf("\n");
-                        printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(), 
-                                f.nr_levels());
-                        for (int i = 0; i < f.nr_levels(); i++) {
-                            printf("f[%d] = %d\n", i, f[i]);
-                        }
-                    }
-                    // Add the clauses that encode the main constraints, but not
-                    // yet any DAG structure.
-                    auto status = chain_exists(this, spec);
-                    if (status == success) {
-                        this->chain_extract(spec, chain);
-                        return success;
-                    } else if (status == failure) {
-                        total_conflicts += solver_nr_conflicts(this->_solver);
-                        if (spec.conflict_limit &&
-                                total_conflicts > spec.conflict_limit) {
-                            return timeout;
-                        }
-                        continue;
-                    } else {
-                        return timeout;
-                    }
-                }
-            }
-
-            virtual synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<TT,2>& chain)
-            {
-                assert(spec.nr_in <= 6);
-                assert(spec.nr_out <= 64);
-
-                spec_preprocess(spec);
-
-                // The special case when the Boolean chain to be synthesized
-                // consists entirely of trivial functions.
-                if (spec.nr_triv == spec.nr_out) {
-                    chain.reset(spec.nr_in, spec.nr_out, 0);
-                    for (int h = 0; h < spec.nr_out; h++) {
-                        chain.set_out(h, (spec.triv_functions[h] << 1) +
-                                ((spec.out_inv >> h) & 1));
-                    }
-                    return success;
-                }
-
-                spec.nr_rand_tt_assigns = 2*spec.nr_in;
-
-                fence f;
-                po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
-                int total_conflicts = 0;
-                int old_nnodes = 1;
-                while (true) {
-                    g.next_fence(f);
-                    spec.nr_steps = f.nr_nodes();
-                    spec.update_level_map(f);
-
-                    if (spec.nr_steps > old_nnodes) {
-                        // Reset conflict count, since this is where other
-                        // synthesizers reset it.
-                        total_conflicts = 0;
-                        old_nnodes = spec.nr_steps;
-                    }
-
-                    if (spec.verbosity) {
-                        printf("  next fence:\n");
-                        print_fence(f);
-                        printf("\n");
-                        printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(), 
-                                f.nr_levels());
-                        for (int i = 0; i < f.nr_levels(); i++) {
-                            printf("f[%d] = %d\n", i, f[i]);
-                        }
-                    }
-                    auto status = cegar_chain_exists(this, spec, chain);
-                    if (status == success) {
-                        return success;
-                    } else if (status == failure) {
-                        total_conflicts += solver_nr_conflicts(this->_solver);
-                        if (spec.conflict_limit &&
-                                total_conflicts > spec.conflict_limit) {
-                            return timeout;
-                        }
-                        continue;
-                    } else {
-                        return timeout;
-                    }
-                }
-            }
-    };
 
     /***************************************************************************
         The following are constructor functions that allocate new synthesizer
         objects. This is the preferred way of instantiating new synthesizers.
     ***************************************************************************/
-    template<typename S>
-    std::unique_ptr<S> 
-    new_synth()
+    template<int FI=2, typename E=knuth_encoder<FI>, typename S=sat_solver*>
+    auto
+    new_std_synth()
     {
-        return std::make_unique<S>();
+        return std::make_unique<std_synthesizer<FI, E, S>>();
     }
 
-    template<template<class,class> class S, typename Solver = sat_solver*, class TT>
-    std::unique_ptr<S<TT, Solver>> 
-    new_synth(synth_spec<TT>& spec)
+    template<int FI=2, typename E=fence_encoder<FI>, typename S=sat_solver*>
+    auto
+    new_fence_synth()
     {
-        return std::make_unique<S<TT,Solver>>();
+        return std::make_unique<fence_synthesizer<FI, E, S>>();
     }
 
-    template<typename TT, typename Solver = sat_solver*>
-    std::unique_ptr<synthesizer<TT, Solver>>
-    new_synth(synth_type type)
+    template<int FI=2, typename E=dag_encoder<dag<FI>>, typename S=sat_solver*>
+    auto
+    new_dag_synth()
     {
-        switch (type) {
-            case SIMPLE:
-                return std::make_unique<simple_synthesizer<TT, Solver>>();
-            case NONTRIV:
-                return std::make_unique<nontriv_synthesizer<TT, Solver>>();
-            case ALONCE:
-                return std::make_unique<alonce_synthesizer<TT, Solver>>();
-            case NOREAPPLY:
-                return std::make_unique<noreapply_synthesizer<TT, Solver>>();
-            case COLEX:
-                return std::make_unique<colex_synthesizer<TT, Solver>>();
-            case COLEX_FUNC:
-                return std::make_unique<colex_func_synthesizer<TT, Solver>>();
-            case SYMMETRIC:
-                return std::make_unique<symmetric_synthesizer<TT, Solver>>();
-            case FENCE:
-                return std::make_unique<fence_synthesizer<TT, Solver>>();
-            default:
-                return nullptr;
-        }
+        return std::make_unique<dag_synthesizer<FI, E, S>>();
     }
 
-    template<typename Solver = sat_solver*, typename TT>
-    std::unique_ptr<synthesizer<TT, Solver>>
-    new_synth(synth_spec<TT>& spec, synth_type type)
-    {
-        switch (type) {
-            case SIMPLE:
-                return std::make_unique<simple_synthesizer<TT, Solver>>();
-            case NONTRIV:
-                return std::make_unique<nontriv_synthesizer<TT, Solver>>();
-            case ALONCE:
-                return std::make_unique<alonce_synthesizer<TT, Solver>>();
-            case NOREAPPLY:
-                return std::make_unique<noreapply_synthesizer<TT, Solver>>();
-            case COLEX:
-                return std::make_unique<colex_synthesizer<TT, Solver>>();
-            case COLEX_FUNC:
-                return std::make_unique<colex_func_synthesizer<TT, Solver>>();
-            case SYMMETRIC:
-                return std::make_unique<symmetric_synthesizer<TT, Solver>>();
-            case FENCE:
-                return std::make_unique<fence_synthesizer<TT, Solver>>();
-            default:
-                return nullptr;
-        }
-    }
-
+    /*
     template<typename TT, typename Solver, typename Generator>
-    void 
+    void
     fence_synthesize_parallel(
-            const synth_spec<TT>& main_spec, chain<TT>& chain, 
+            const synth_spec<TT>& main_spec, chain<2>& chain, 
             synth_result& result, bool& stop, Generator& gen, 
             std::mutex& gen_mutex)
     {
@@ -2232,7 +469,7 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                chain.set_output(h, (spec.triv_functions[h] << 1) +
                         ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
@@ -2244,7 +481,7 @@ namespace percy
             return;
         }
 
-        auto synth = new_synth<fence_synthesizer<TT, Solver>>();
+        auto synth = new_fence_synth();
 
         // As the topological synthesizer decomposes the synthesis problem,
         // to fairly count the total number of conflicts we should keep track
@@ -2288,7 +525,7 @@ namespace percy
             // yet any DAG structure.
             auto status = chain_exists(synth.get(), spec);
             if (status == success) {
-                synth->chain_extract(spec, chain);
+                synth->extract_chain(spec, chain);
                 std::lock_guard<std::mutex> gen_lock(gen_mutex);
                 stop = true;
                 if (spec.verbosity > 2) {
@@ -2358,7 +595,7 @@ namespace percy
         if (spec.nr_triv == spec.nr_out) {
             chain.reset(spec.nr_in, spec.nr_out, 0);
             for (int h = 0; h < spec.nr_out; h++) {
-                chain.set_out(h, (spec.triv_functions[h] << 1) +
+                chain.set_output(h, (spec.triv_functions[h] << 1) +
                         ((spec.out_inv >> h) & 1));
             }
             std::lock_guard<std::mutex> gen_lock(gen_mutex);
@@ -2558,24 +795,27 @@ namespace percy
             return timeout;
         }
     }
+    */
 
     /***************************************************************************
         Finds the smallest possible DAG that can implement the specified
         function.
     ***************************************************************************/
-    template<typename TT>
-    synth_result find_dag(const TT& f, dag<2>& g, int nr_vars)
+    template<typename TT, int FI=2>
+    synth_result find_dag(const TT& f, dag<FI>& g, int nr_vars)
     {
-        chain<TT> chain;
+        chain<FI> chain;
         rec_dag_generator gen;
-        dag_synthesizer<TT, sat_solver*> synth;
+        dag_synthesizer<FI> synth;
+
+        synth_spec<TT> spec(nr_vars, 1);
+        spec.functions[0] = &f;
 
         int nr_vertices = 1;
         while (true) {
             gen.reset(nr_vars, nr_vertices);
             g.reset(nr_vars, nr_vertices);
-            synth.reset(nr_vars, nr_vertices);
-            const auto result = gen.find_dag(f, g, chain, synth);
+            const auto result = gen.find_dag(spec, g, chain, synth);
             if (result == success) {
                 return success;
             }
@@ -2588,129 +828,20 @@ namespace percy
         Finds a DAG of the specified size that can implement the given
         function (if one exists).
     ***************************************************************************/
-    template<typename TT>
+    template<typename TT, int FI=2>
     synth_result 
-    find_dag(const TT& f, dag<2>& g, int nr_vars, int nr_vertices)
+    find_dag(const TT& f, dag<FI>& g, int nr_vars, int nr_vertices)
     {
-        chain<TT> chain;
+        chain<FI> chain;
         rec_dag_generator gen;
-        dag_synthesizer<TT, sat_solver*> synth;
+        dag_synthesizer<FI> synth;
 
         gen.reset(nr_vars, nr_vertices);
         g.reset(nr_vars, nr_vertices);
-        synth.reset(nr_vars, nr_vertices);
         return gen.find_dag(f, g, chain, synth);
     }
 
 
-    /***************************************************************************
-        A parallel version of the find_dag function.
-    ***************************************************************************/
-    template<typename TT>
-    synth_result 
-    pfind_dag(
-            const TT& function, 
-            dag<2>& g, 
-            int nr_vars, 
-            int nr_threads)
-    {
-        int nr_vertices = 1;
-        while (true) {
-            const auto status = pfind_dag<TT>(
-                    function, g, nr_vars, nr_vertices, nr_threads);
-            if (status == success) {
-                return success;
-            }
-            nr_vertices++;
-        }
-        
-        return failure;
-    }
-
-    template<typename TT>
-    synth_result 
-    pfind_dag(
-            const TT& f, 
-            dag<2>& g, 
-            int nr_vars, 
-            int nr_vertices, 
-            int nr_threads)
-    {
-        vector<std::thread> threads;
-        
-        int nr_branches = 0;
-        vector<pair<int,int>> starting_points;
-        for (int k = 1; k < nr_vars; k++) {
-            for (int j = 0; j < k; j++) {
-                ++nr_branches;
-                starting_points.push_back(std::make_pair(j, k));
-            }
-        }
-        if (nr_branches > nr_threads) {
-            printf("Error: unable to distribute %d branches over %d "
-                    "threads\n", nr_branches, nr_threads);
-            return failure;
-        }
-        
-        auto solv = new synth_result[starting_points.size()];
-        vector<dag<2>> dags(starting_points.size());
-        std::mutex vmutex;
-        std::mutex found_mutex;
-        bool found = false;
-        bool* found_ptr = &found;
-
-        for (int i = 0; i < starting_points.size(); i++) {
-            const auto& sp = starting_points[i];
-            threads.push_back(
-                std::thread(
-                    [i, &f, &dags, &vmutex, solv, &sp, nr_vars,
-                    nr_vertices, &found_mutex, found_ptr] {
-                    dag<2> local_g;
-                    chain<TT> chain;
-                    rec_dag_generator gen;
-                    dag_synthesizer<TT, sat_solver*> synth;
-
-                    gen.reset(nr_vars, nr_vertices);
-                    local_g.reset(nr_vars, nr_vertices);
-                    synth.reset(nr_vars, nr_vertices);
-                    gen.add_selection(sp.first, sp.second);
-                    const auto status = gen.pfind_dag(f, local_g, chain, 
-                            synth, found_ptr, found_mutex);
-                    {
-                        std::lock_guard<std::mutex> vlock(vmutex);
-                        solv[i] = status;
-                        if (status == success) {
-                            dags[i] = local_g;
-                        }
-                    }
-                }
-            ));
-        }
-
-        for (auto& t : threads) {
-            t.join();
-        }
-
-        auto status = failure;
-        int nr_found = 0;
-        for (int i = 0; i < starting_points.size(); i++) {
-            if (solv[i] == success) {
-                const auto& local_g = dags[i];
-                g.reset(nr_vars, nr_vertices);
-                for (int i = 0; i < nr_vertices; i++ ){
-                    const auto& vertex = local_g.get_vertex(i);
-                    g.set_vertex(i, vertex.first, vertex.second);
-                }
-                status = success;
-                ++nr_found;
-            }
-        }
-        assert(nr_found <= 1);
-
-        delete[] solv;
-
-        return status;
-    }
 
     template<typename TT>
     synth_result 
@@ -2720,14 +851,16 @@ namespace percy
             int nr_vars,
             bool verbose=false)
     {
+        synth_spec<TT> spec(nr_vars, 1);
+        spec.functions[0] = &function;
+
         int nr_vertices = 1;
         while (true) {
             if (verbose) {
                 fprintf(stderr, "Trying with %d vertices\n", nr_vertices);
                 fflush(stderr);
             }
-            const auto status = qpfind_dag<TT>(
-                    function, g, nr_vars, nr_vertices);
+            const auto status = qpfind_dag<TT>(spec, g, nr_vars, nr_vertices);
             if (status == success) {
                 return success;
             }
@@ -2737,10 +870,10 @@ namespace percy
         return failure;
     }
 
-    template<typename TT>
+    template<typename TT, int FI=2>
     synth_result 
     qpfind_dag(
-            const TT& f, 
+            const synth_spec<TT>& spec, 
             dag<2>& g, 
             int nr_vars, 
             int nr_vertices)
@@ -2761,12 +894,11 @@ namespace percy
         g.reset(nr_vars, nr_vertices);
         for (int i = 0; i < nr_threads; i++) {
             threads.push_back(
-                std::thread([&f, pfinished, pfound, &found_mutex, &g, 
+                std::thread([&spec, pfinished, pfound, &found_mutex, &g, 
                             &q, nr_vars, nr_vertices] {
                     dag<2> local_dag;
-                    chain<TT> chain;
-                    dag_synthesizer<TT, sat_solver*> synth;
-                    synth.reset(nr_vars, nr_vertices);
+                    chain<FI> chain;
+                    dag_synthesizer<FI> synth;
 
                     while (!(*pfound)) {
                         if (!q.try_dequeue(local_dag)) {
@@ -2780,7 +912,7 @@ namespace percy
                             }
                         }
                         const auto status = 
-                            synth.synthesize(f, local_dag, chain);
+                            synth.synthesize(spec, local_dag, chain);
 
                         if (status == success) {
                             std::lock_guard<std::mutex> vlock(found_mutex);
@@ -2806,15 +938,14 @@ namespace percy
         // for another thread (if no solution was found yet.)
         if (!found) {
             dag<2> local_dag;
-            chain<TT> chain;
-            dag_synthesizer<TT, sat_solver*> synth;
-            synth.reset(nr_vars, nr_vertices);
+            chain<FI> chain;
+            dag_synthesizer<FI> synth;
 
             while (!found) {
                 if (!q.try_dequeue(local_dag)) {
                     break;
                 }
-                const auto status = synth.synthesize(f, local_dag, chain);
+                const auto status = synth.synthesize(spec, local_dag, chain);
 
                 if (status == success) {
                     std::lock_guard<std::mutex> vlock(found_mutex);
@@ -2858,12 +989,12 @@ namespace percy
         return failure;
     }
 
-    template<typename TT, class Dag=dag<2>>
+    template<typename TT, int FI=2>
     synth_result 
     qpfence_synth(
             synth_stats* stats,
             const TT& f, 
-            Dag& g, 
+            dag<FI>& g, 
             int nr_vars, 
             int nr_vertices,
             int conflict_limit)
@@ -2890,20 +1021,16 @@ namespace percy
             threads.push_back(
                 std::thread([&f, pfinished, pfound, &found_mutex, &g, &q, 
                     nr_vars, nr_vertices, &first_synth_time, conflict_limit] {
-                    chain<TT> chain;
+                    chain<FI> chain;
                     fence local_fence;
-                    synth_spec<TT> local_spec;
-                    fence_synthesizer<TT, sat_solver*> synth;
+                    fence_synthesizer<FI> synth;
 
-                    local_spec.nr_in = nr_vars;
-                    local_spec.nr_out = 1;
+                    synth_spec<TT> local_spec(nr_vars, 1);
                     local_spec.verbosity = 0;
                     local_spec.nr_steps = nr_vertices;
                     local_spec.functions[0] = &f;
-                    local_spec.nr_rand_tt_assigns = 2 * local_spec.nr_in;
+                    local_spec.nr_rand_tt_assigns = 2 * local_spec.get_nr_in();
                     local_spec.conflict_limit = conflict_limit;
-
-                    spec_preprocess(local_spec);
 
                     while (!(*pfound)) {
                         if (!q.try_dequeue(local_fence)) {
@@ -2917,9 +1044,8 @@ namespace percy
                             }
                         }
 
-                        local_spec.update_level_map(local_fence);
-                        auto status = pcegar_chain_exists(&synth, 
-                                local_spec, chain, pfound);
+                        auto status = synth.cegar_synthesize(local_spec,
+                                local_fence, chain);
 
                         if (status == success) {
                             std::lock_guard<std::mutex> vlock(found_mutex);
@@ -2940,20 +1066,16 @@ namespace percy
         // After the generating thread has finished, we have room to spare
         // for another thread (if no solution was found yet.)
         {
-            chain<TT> chain;
+            chain<FI> chain;
             fence local_fence;
-            synth_spec<TT> local_spec;
-            fence_synthesizer<TT, sat_solver*> synth;
+            fence_synthesizer<FI> synth;
 
-            local_spec.nr_in = nr_vars;
-            local_spec.nr_out = 1;
+            synth_spec<TT> local_spec(nr_vars, 1);
             local_spec.verbosity = 0;
             local_spec.nr_steps = nr_vertices;
             local_spec.functions[0] = &f;
-            local_spec.nr_rand_tt_assigns = 2 * local_spec.nr_in;
+            local_spec.nr_rand_tt_assigns = 2 * local_spec.get_nr_in();
             local_spec.conflict_limit = conflict_limit;
-
-            spec_preprocess(local_spec);
 
             while (!(found)) {
                 if (!q.try_dequeue(local_fence)) {
@@ -2967,9 +1089,8 @@ namespace percy
                     }
                 }
 
-                local_spec.update_level_map(local_fence);
-                auto status = pcegar_chain_exists(&synth, local_spec,
-                        chain, pfound);
+                auto status = synth.cegar_synthesize(local_spec, local_fence,
+                        chain);
 
                 if (status == success) {
                     std::lock_guard<std::mutex> vlock(found_mutex);
@@ -3020,7 +1141,7 @@ namespace percy
         vector<std::thread> threads;
 
         int nr_branches = 0;
-        vector<pair<int,int>> starting_points;
+        vector<std::pair<int,int>> starting_points;
         for (int k = 1; k < nr_vars; k++) {
             for (int j = 0; j < k; j++) {
                 ++nr_branches;
@@ -3082,7 +1203,7 @@ namespace percy
         // First estimate the number of solutions down each branch by looking
         // at DAGs with small numbers of vertices.
         int nr_branches = 0;
-        vector<pair<int,int>> starting_points;
+        vector<std::pair<int,int>> starting_points;
         for (int k = 1; k < nr_vars; k++) {
             for (int j = 0; j < k; j++) {
                 ++nr_branches;

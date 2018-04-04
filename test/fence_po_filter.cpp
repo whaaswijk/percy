@@ -1,7 +1,6 @@
 #include <percy/fence.hpp>
 #include <cassert>
 #include <cstdio>
-#include <boost/math/special_functions/binomial.hpp>
 
 using namespace percy;
 

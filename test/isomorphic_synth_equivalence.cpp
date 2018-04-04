@@ -5,22 +5,25 @@
 using namespace percy;
 using kitty::static_truth_table;
 
-template<int nrin>
+/*
+template<int nr_in>
 void check_equivalence(bool full_coverage)
 {
-    printf("Checking synthesis equivalence for %d-input functions\n", nrin);
+    printf("Checking synthesis equivalence for %d-input functions\n", nr_in);
 
     dag<2> g;
-    vector<int> perm(nrin);
-    static_truth_table<nrin> tt;
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    vector<int> perm(nr_in);
+    static_truth_table<nr_in> tt;
+    chain<2> c1;
+    chain<2> c2;
     unbounded_dag_generator<sat_solver*> ugen;
     nonisomorphic_dag_generator<sat_solver*> igen;
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth;
+    dag_synthesizer<> synth;
+
+    synth_spec<static_truth_table<nr_in> spec(nr_in, 1);
 
     // don't run too many tests.
-    auto max_tests = (1ul << (1ul << nrin));
+    auto max_tests = (1ul << (1ul << nr_in));
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
@@ -33,19 +36,18 @@ void check_equivalence(bool full_coverage)
             continue;
         }
 
-        ugen.reset(nrin);
+        ugen.reset(nr_in);
         while (ugen.next_dag(g)) {
-            synth.reset(nrin, g.get_nr_vertices());
             auto result = synth.synthesize(tt, g, c1);
             if (result == success) {
                 break;
             }
         }
 
-        igen.reset(nrin);
+        igen.reset(nr_in);
         while (igen.next_dag(g)) {
             assert(g.get_nr_vertices() <= c1.nr_steps());
-            synth.reset(nrin, g.get_nr_vertices());
+            synth.reset(nr_in, g.get_nr_vertices());
             auto result = synth.perm_synthesize(tt, g, c2, perm);
             if (result == success) {
                 break;
@@ -60,18 +62,19 @@ void check_equivalence(bool full_coverage)
         assert(*sim_tts1[0] == *sim_tts2[0]);
     } 
 }
+*/
 
-template<int nrin>
+template<int nr_in>
 auto
 get_npn_classes()
 {
-    std::unordered_set<static_truth_table<nrin>, kitty::hash<static_truth_table<nrin>>> classes;
-    static_truth_table<1 << nrin> map;
+    std::unordered_set<static_truth_table<nr_in>, kitty::hash<static_truth_table<nr_in>>> classes;
+    static_truth_table<1 << nr_in> map;
     std::transform(map.cbegin(), map.cend(), map.begin(), 
             []( auto w ) { return ~w; } );
 
     int64_t index = 0;
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
     while (index != -1) {
         kitty::create_from_words(tt, &index, &index + 1);
         const auto res = kitty::exact_npn_canonization(
@@ -89,42 +92,44 @@ get_npn_classes()
     return classes;
 }
 
-template<int nrin>
+/*
+template<int nr_in>
 void check_npn_equivalence()
 {
-    auto npn_set = get_npn_classes<nrin>();
+    auto npn_set = get_npn_classes<nr_in>();
 
     dag<2> g;
-    vector<int> perm(nrin);
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    vector<int> perm(nr_in);
+    chain<static_truth_table<nr_in>> c1;
+    chain<static_truth_table<nr_in>> c2;
     unbounded_dag_generator<sat_solver*> ugen;
     nonisomorphic_dag_generator<sat_solver*> igen;
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth;
+    dag_synthesizer<static_truth_table<nr_in>,sat_solver*> synth;
 
     int i = 0;
     for (auto& npn_tt : npn_set) {
         printf("i = %d\n", ++i);
-        static_truth_table<nrin> tt = npn_tt;
+        static_truth_table<nr_in> tt = npn_tt;
 
         // We skip the trivial functions
         if (is_trivial(tt)) {
             continue;
         }
+
+        spec.functions[0] = &tt;
         
-        ugen.reset(nrin);
+        ugen.reset(nr_in);
         while (ugen.next_dag(g)) {
-            synth.reset(nrin, g.get_nr_vertices());
-            auto result = synth.synthesize(tt, g, c1);
+            synth.reset(nr_in, g.get_nr_vertices());
+            auto result = synth.synthesize(spec, g, c1);
             if (result == success) {
                 break;
             }
         }
 
-        igen.reset(nrin);
+        igen.reset(nr_in);
         while (igen.next_dag(g)) {
-            synth.reset(nrin, g.get_nr_vertices());
-            auto result = synth.perm_synthesize(tt, g, c2, perm);
+            auto result = synth.perm_synthesize(spec, g, c2, perm);
             if (result == success) {
                 break;
             }
@@ -135,9 +140,10 @@ void check_npn_equivalence()
         auto sim_tts1 = c1.simulate();
         auto sim_tts2 = c2.simulate();
         assert(c1_nr_steps == c2_nr_steps);
-        assert(*sim_tts1[0] == *sim_tts2[0]);
+        assert(sim_tts1[0] == sim_tts2[0]);
     }
 }
+*/
 
 int main(int argc, char **argv)
 {
@@ -151,12 +157,12 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    check_equivalence<2>(full_coverage);
-    check_equivalence<3>(full_coverage);
+//    check_equivalence<2>(full_coverage);
+//    check_equivalence<3>(full_coverage);
 
     if (full_coverage) {
-        check_equivalence<5>(full_coverage);
-        check_npn_equivalence<4>();
+ //       check_equivalence<5>(full_coverage);
+//        check_npn_equivalence<4>();
     }
 
     return 0;

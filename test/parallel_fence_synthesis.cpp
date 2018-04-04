@@ -9,30 +9,35 @@ using namespace percy;
     Tests if parallel fence based synthesis works correctly.
 *******************************************************************************/
 
-template<int nrin>
+template<int nr_in>
 void check_equivalence()
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_stats stats;
-    synth_spec<static_truth_table<nrin>> spec;
-    auto synth1 = new_synth<static_truth_table<nrin>,sat_solver*>(SYMMETRIC);
-    dag_synthesizer<static_truth_table<nrin>,sat_solver*> synth2;
+    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec.add_nontriv_clauses = true;
+    spec.add_alonce_clauses = true;
+    spec.add_noreapply_clauses = true;
+    spec.add_colex_clauses = true;
+    spec.add_colex_func_clauses = true;
+    spec.add_symvar_clauses = true;
 
-    spec.nr_in = nrin;
-    spec.nr_out = 1;
+    auto synth1 = new_std_synth();
+    auto synth2 = new_dag_synth();
+
     spec.verbosity = 0;
 
     // don't run too many tests.
-    auto max_tests = (1 << (1 << nrin));
+    auto max_tests = (1 << (1 << nr_in));
     max_tests = std::min(max_tests, MAX_TESTS);
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
 
-    chain<static_truth_table<nrin>> c1;
-    chain<static_truth_table<nrin>> c2;
+    chain<2> c1;
+    chain<2> c2;
 
-    printf("Testing %d-input equivalence\n", nrin);
+    printf("Testing %d-input equivalence\n", nr_in);
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -44,18 +49,18 @@ void check_equivalence()
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate();
-        auto c1_nr_steps = c1.nr_steps();
+        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto c1_nr_steps = c1.get_nr_vertices();
 
-        auto res2 = qpfence_synth(&stats, tt, g, nrin, 0);
+        auto res2 = qpfence_synth(&stats, tt, g, nr_in, 0);
         assert(res2 == success);
         // Make sure that the found DAG is indeed valid for this function.
-        synth2.reset(nrin, g.get_nr_vertices());
-        synth2.synthesize(tt, g, c2);
-        auto sim_tts2 = c2.simulate();
-        auto c2_nr_steps = c2.nr_steps();
+        auto verify_res = synth2->synthesize(spec, g, c2);
+        assert(verify_res == success);
+        auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
+        auto c2_nr_steps = c2.get_nr_vertices();
 
-        assert(*sim_tts1[0] == *sim_tts2[0]);
+        assert(sim_tts1[0] == sim_tts2[0]);
         assert(c1_nr_steps == c2_nr_steps);
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);

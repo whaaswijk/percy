@@ -81,6 +81,11 @@ namespace percy
             {
                 return _fence[index];
             }
+
+            int at(const int index) const
+            {
+                return _fence[index];
+            }
     };
 
     class fence_generator
@@ -395,7 +400,7 @@ namespace percy
             }
     };
 
-    void print_fence(fence& f);
+    void print_fence(const fence& f);
 
 
     static inline int nr_fences(int nr_steps) {
@@ -639,11 +644,11 @@ namespace percy
         }
     }
     
-    void print_fence(fence& f)
+    void print_fence(const fence& f)
     {
         for (int i = f.nr_levels()-1; i >= 0; i--) {
             printf("  ");
-            for (int j = 0; j < f[i]; j++) {
+            for (int j = 0; j < f.at(i); j++) {
                 printf("\u25CB ");
             }
             printf("\n");

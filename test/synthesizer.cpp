@@ -15,11 +15,11 @@ int main(void)
     
     {
         synth_spec<static_truth_table<2>> spec;
-        spec.nr_in = 2;
-        spec.nr_out = 1;
+        spec.set_nr_in(2);
+        spec.set_nr_out(1);
         spec.verbosity = 1;
-        auto synth = new_synth(spec, SIMPLE);
-        chain<static_truth_table<2>> c;
+        auto synth = new_std_synth();
+        chain<2> c;
 
         static_truth_table<2> tti;
         static_truth_table<2> ttj;
@@ -27,13 +27,13 @@ int main(void)
         for (int i = 0; i < 16; i++) {
             kitty::create_from_words(tti, &i, &i+1);
             spec.functions[0] = &tti;
-            synth->synthesize(spec, c);
-            auto sim_fs = c.simulate();
-            assert(c.nr_steps() <= 1);
-            assert(*sim_fs[0] == tti);
+            synth->synthesize<static_truth_table<2>>(spec, c);
+            auto sim_fs = c.simulate<static_truth_table<2>>();
+            assert(c.get_nr_vertices() <= 1);
+            assert(sim_fs[0] == tti);
         }
 
-        spec.nr_out = 2;
+        spec.set_nr_out(2);
         for (int i = 0; i < 16; i++) {
             kitty::create_from_words(tti, &i, &i+1);
             spec.functions[0] = &tti;
@@ -42,22 +42,20 @@ int main(void)
                 spec.functions[1] = &ttj;
                 auto result = synth->synthesize(spec, c);
                 assert(result == success);
-                auto sim_fs = c.simulate();
-                assert(c.nr_steps() <= 2);
-                assert(*sim_fs[0] == tti);
-                assert(*sim_fs[1] == ttj);
+                auto sim_fs = c.simulate<static_truth_table<2>>();
+                assert(c.get_nr_vertices() <= 2);
+                assert(sim_fs[0] == tti);
+                assert(sim_fs[1] == ttj);
             }
         }
     }
     
     // Synthesize a full adder
     {
-        synth_spec<static_truth_table<3>> spec;
-        spec.nr_in = 3;
-        spec.nr_out = 2;
+        synth_spec<static_truth_table<3>> spec(3, 2);
         spec.verbosity = 1;
-        auto synth = new_synth(spec, SIMPLE);
-        chain<static_truth_table<3>> c;
+        auto synth = new_std_synth();
+        chain<2> c;
 
         static_truth_table<3> x, y, z;
 
@@ -71,9 +69,9 @@ int main(void)
         spec.functions[1] = &carry;
         auto result = synth->synthesize(spec, c);
         assert(result == success);
-        auto sim_fs = c.simulate();
-        assert(*sim_fs[0] == sum);
-        assert(*sim_fs[1] == carry);
+        auto sim_fs = c.simulate<static_truth_table<3>>();
+        assert(sim_fs[0] == sum);
+        assert(sim_fs[1] == carry);
         /*
         {
             std::ofstream dotfile("full_adder.dot");
@@ -101,7 +99,7 @@ int main(void)
       const std::string g2_tt = "0000" "0000" "1111" "0100";
       const std::string g1_tt = "0000" "1111" "0000" "1010";
 
-      chain<static_truth_table<4>> c;
+      chain<2> c;
 
       /* enumerate mutants *
       for ( auto i = 4u; i < g1_tt.size(); ++i )
@@ -145,10 +143,10 @@ int main(void)
 
         synth.synthesize(spec, c);
         auto sim_fs = c.simulate();
-        assert( *sim_fs[0] == s2_next );
-        assert( *sim_fs[1] == s1_next );
-        assert( *sim_fs[2] == g2 );
-        assert( *sim_fs[3] == g1 );
+        assert( sim_fs[0] == s2_next );
+        assert( sim_fs[1] == s1_next );
+        assert( sim_fs[2] == g2 );
+        assert( sim_fs[3] == g1 );
       }
       */
     }

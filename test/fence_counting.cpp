@@ -1,7 +1,6 @@
 #include <percy/percy.hpp>
 #include <cassert>
 #include <cstdio>
-#include <boost/math/special_functions/binomial.hpp>
 
 using namespace percy;
 
@@ -26,17 +25,15 @@ int main(void)
                 print_fence(f);
                 printf("\n");
             }
-            const auto expected_fences = 
-                boost::math::binomial_coefficient<double>(k-1, l-1);
-            assert(nfences == (unsigned)expected_fences);
+            const auto expected_fences = binomial_coeff(k-1, l-1);
+            assert(nfences == expected_fences);
             total_expected_fences += nfences;
         }
         auto nfences = 0u;
         family_generator g(k);
         auto expected_fences = 0u;
-        for (unsigned l = 1; l <= k; l++) {
-            expected_fences += 
-                boost::math::binomial_coefficient<double>(k-1, l-1);
+        for (int l = 1; l <= k; l++) {
+            expected_fences += binomial_coeff(k-1, l-1);
         }
         while (g.next_fence(f)) {
             nfences++;
@@ -71,9 +68,8 @@ int main(void)
                 printf("\n");
             }
 
-            const auto expected_fences = 
-                boost::math::binomial_coefficient<double>(k-1, l-1);
-            assert(nfences == (unsigned)expected_fences);
+            const auto expected_fences = binomial_coeff(k-1, l-1);
+            assert(nfences == expected_fences);
             total_nr_fences += nfences;
         }
         auto fences = generate_fences(k, false);

@@ -48,6 +48,9 @@ namespace percy
 	int solver_add_clause(S, lit* begin, lit* end);
 
 	template<typename S>
+	synth_result solver_solve(S, int conflict_limit=0);
+	
+    template<typename S>
 	synth_result solver_solve(S, lit* begin, lit* end, int conflict_limit=0);
 
 	template<typename S>
@@ -119,6 +122,20 @@ namespace percy
 	inline int solver_var_value<sat_solver*>(sat_solver* s, int var) 
     {
 		return sat_solver_var_value(s, var);
+	}
+
+    template<>
+	inline synth_result 
+    solver_solve<sat_solver*>(sat_solver* s, int cl) 
+    {
+		auto res = sat_solver_solve(s, 0, 0, cl, 0, 0, 0);
+        if (res == 1) {
+            return success;
+        } else if (res == -1) {
+            return failure;
+        } else {
+            return timeout;
+        }
 	}
 
 	template<>
@@ -207,6 +224,22 @@ namespace percy
 	inline int solver_var_value(Glucose::Solver* s, int var) 
     {
 		return s->modelValue(var) == l_True;
+	}
+
+    template<>
+	inline synth_result 
+    solver_solve(Glucose::Solver* s, int cl) 
+    {
+        Glucose::vec<Glucose::Lit> litvec;
+        s->setConfBudget(cl);
+		auto res = s->solveLimited(litvec);
+        if (res == l_True) {
+            return success;
+        } else if (res == l_False) {
+            return failure;
+        } else {
+            return timeout;
+        }
 	}
 
 	template<>

@@ -30,7 +30,7 @@ void check_overhead(int conflict_limit)
     max_tests = std::min(max_tests, MAX_TESTS);
     static_truth_table<nrin> tt;
 
-    chain<static_truth_table<nrin>> chain;
+    chain<2> chain;
 
     printf("Testing %d-input overhead\n", nrin);
 

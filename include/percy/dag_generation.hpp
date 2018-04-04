@@ -13,11 +13,12 @@ extern "C"
 #include <mutex>
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
+#include "synthesizers.hpp"
 
 namespace percy
 {
     template<typename TT, typename Solver>
-    class dag_synthesizer
+    class old_dag_synthesizer
     {
         private:
             Solver _solver;
@@ -29,12 +30,12 @@ namespace percy
             int _verbosity = 0;
 
         public:
-            dag_synthesizer()
+            old_dag_synthesizer()
             {
                 solver_alloc(&_solver);
             }
 
-            ~dag_synthesizer()
+            ~old_dag_synthesizer()
             {
                 solver_dealloc(&_solver);
             }
@@ -195,7 +196,7 @@ namespace percy
             }
 
             void 
-            dag_chain_extract(const dag<2>& dag, chain<TT>& chain, bool invert)
+            dag_chain_extract(const dag<2>& dag, chain<2>& chain, bool invert)
             {
                 int op_inputs[2];
 
@@ -223,21 +224,21 @@ namespace percy
                     }
                     op_inputs[0] = vertex.first;
                     op_inputs[1] = vertex.second;
-                    chain.set_step(i, op, op_inputs);
+                    chain.set_step(i, op_inputs, op);
 
                     if (_verbosity) {
                         printf("\n");
                     }
                 }
 
-                chain.set_out(0, ((_nr_in + _nr_steps) << 1));
+                chain.set_output(0, ((_nr_in + _nr_steps) << 1));
                 if (invert) {
                     chain.invert();
                 }
             }
 
             synth_result 
-            synthesize(const TT& spec, const dag<2>& dag, chain<TT>& chain)
+            synthesize(const TT& spec, const dag<2>& dag, chain<2>& chain)
             {
                 TT local_spec = spec;
 
@@ -263,8 +264,8 @@ namespace percy
             perm_synthesize(
                     const TT& spec, 
                     dag<2>& dag, 
-                    chain<TT>& chain, 
-                    vector<int>& perm)
+                    chain<2>& chain, 
+                    std::vector<int>& perm)
             {
                 const auto num_vars = spec.num_vars();
                 assert(num_vars <= 6 && perm.size() == num_vars);
@@ -784,7 +785,7 @@ namespace percy
         private:
             int _nr_vars;
             unbounded_dag_generator<Solver> _gen;
-            vector<dag<2>> _dags;
+            std::vector<dag<2>> _dags;
 
         public:
             nonisomorphic_dag_generator()
@@ -1231,10 +1232,10 @@ namespace percy
 
             template<typename TT>
             void search_dags(
-                    const TT& f, 
+                    const synth_spec<TT>& spec, 
                     dag<2>& g, 
-                    dag_synthesizer<TT,sat_solver*>& synth,
-                    chain<TT>& chain)
+                    dag_synthesizer<2>& synth,
+                    chain<2>& chain)
             {
                 // We can terminate early if a solution has already been found.
                 if (_nr_solutions > 0) {
@@ -1245,7 +1246,7 @@ namespace percy
                         const auto k = _ks[i];
                         g.set_vertex(i-1, j, k);
                     }
-                    const auto result = synth.synthesize(f, g, chain);
+                    const auto result = synth.synthesize(spec, g, chain);
                     if (result == success) {
                         ++_nr_solutions;
                         if (_verbosity) {
@@ -1304,7 +1305,7 @@ namespace percy
 
                         ++_level;
                         _js[_level] = j;
-                        search_dags(f, g, synth, chain);
+                        search_dags(spec, g, synth, chain);
                     }
                     for (int k = start_k+1; (k < _nr_vars+_level && 
                             !_nr_solutions); k++) {
@@ -1335,7 +1336,7 @@ namespace percy
                             _js[_level] = j;
                             _ks[_level] = k;
 
-                            search_dags(f, g, synth, chain);
+                            search_dags(spec, g, synth, chain);
                         }
                     }
 
@@ -1345,10 +1346,10 @@ namespace percy
 
             template<typename TT>
             void psearch_dags(
-                    const TT& f, 
+                    const synth_spec<TT>& spec, 
                     dag<2>& g, 
-                    dag_synthesizer<TT,sat_solver*>& synth,
-                    chain<TT>& chain,
+                    dag_synthesizer<2>& synth,
+                    chain<2>& chain,
                     bool *found,
                     std::mutex& m)
             {
@@ -1361,7 +1362,7 @@ namespace percy
                         const auto k = _ks[i];
                         g.set_vertex(i-1, j, k);
                     }
-                    const auto result = synth.synthesize(f, g, chain);
+                    const auto result = synth.synthesize(spec, g, chain);
                     if (result == success && !(*found)) {
                         std::lock_guard<std::mutex> gen_lock(m);
                         if (!(*found)) {
@@ -1424,7 +1425,7 @@ namespace percy
 
                         ++_level;
                         _js[_level] = j;
-                        psearch_dags(f, g, synth, chain, found, m);
+                        psearch_dags(spec, g, synth, chain, found, m);
                     }
                     for (int k = start_k+1; (k < _nr_vars+_level && 
                             !(*found)); k++) {
@@ -1455,7 +1456,7 @@ namespace percy
                             _js[_level] = j;
                             _ks[_level] = k;
 
-                            psearch_dags(f, g, synth, chain, found, m);
+                            psearch_dags(spec, g, synth, chain, found, m);
                         }
                     }
 
@@ -1622,7 +1623,8 @@ namespace percy
                 ++_covered_steps[k];
             }
 
-            vector<dag<2>> gen_dags()
+            std::vector<dag<2>> 
+            gen_dags()
             {
                 assert(_initialized);
                 dag<2> g;
@@ -1656,8 +1658,8 @@ namespace percy
             find_dag(
                     const TT& f, 
                     dag<2>& g, 
-                    chain<TT>& chain, 
-                    dag_synthesizer<TT, Solver>& synth)
+                    chain<2>& chain, 
+                    dag_synthesizer<2, Solver>& synth)
             {
                 assert(_initialized);
 
@@ -1678,8 +1680,8 @@ namespace percy
             pfind_dag(
                     const TT& f, 
                     dag<2>& g, 
-                    chain<TT>& chain, 
-                    dag_synthesizer<TT, Solver>& synth,
+                    chain<2>& chain, 
+                    dag_synthesizer<2, Solver>& synth,
                     bool *found,
                     std::mutex& m)
             {
@@ -1709,7 +1711,8 @@ namespace percy
                 qpsearch_dags(g, q, found);
             }
 
-            uint64_t count_non_isomorphic_dags()
+            uint64_t 
+            count_non_isomorphic_dags()
             {
                 assert(_initialized);
                 dag<2> g;
@@ -1741,11 +1744,12 @@ namespace percy
                 return uint64_t(dags.size());
             }
 
-            vector<dag<2>> gen_non_isomorphic_dags()
+            vector<dag<2>> 
+            gen_non_isomorphic_dags()
             {
                 assert(_initialized);
                 dag<2> g;
-                vector<dag<2>> dags;
+                std::vector<dag<2>> dags;
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
 

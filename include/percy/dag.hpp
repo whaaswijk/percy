@@ -2,29 +2,31 @@
 
 #include <nauty.h>
 #include <vector>
-#include <unordered_map>
 #include <ostream>
 #include <set>
 #include <array>
 
-using std::pair;
-using std::unordered_map;
-
 namespace percy
 {
+    template<typename Dag>
+    using fanin = typename Dag::fanin;
+    
+    template<typename Dag>
+    using vertex = typename Dag::vertex;
 
-    template<int NrFanin=2>
+    template<int FI>
     class dag
     {
         public:
             using fanin = int;
-            using vertex = std::array<fanin, NrFanin>;
+            using vertex = std::array<fanin, FI>;
+            static const int NrFanin = FI;
 
-        private:
+        protected:
             int nr_inputs;
             std::size_t nr_vertices;
 
-            std::vector<std::array<fanin, NrFanin>> vertices;
+            std::vector<std::array<fanin, FI>> vertices;
 
             void 
             copy_dag(const dag& dag)
@@ -33,7 +35,7 @@ namespace percy
                 vertices.resize(dag.get_nr_vertices());
 
                 for (std::size_t i = 0; i < nr_vertices; i++) {
-                    for (int j = 0; j < NrFanin; j++) {
+                    for (int j = 0; j < FI; j++) {
                         vertices[i][j] = dag.vertices[i][j];
                     }
                 }
@@ -81,7 +83,7 @@ namespace percy
                     return false;
                 }
                 for (int i = 0; i < nr_vertices; i++) {
-                    for (int j = 0; j < NrFanin; j++) {
+                    for (int j = 0; j < FI; j++) {
                         if (vertices[i][j] != g.vertices[i][j]) {
                             return false;
                         }
@@ -108,7 +110,7 @@ namespace percy
             foreach_vertex(Fn&& fn)
             {
                 for (std::size_t i = 0; i < nr_vertices; i++) {
-                    fn(i);
+                    fn(vertices[i], i);
                 }
             }
 
@@ -116,8 +118,8 @@ namespace percy
             void 
             foreach_fanin(vertex v, Fn&& fn)
             {
-                for (auto i = 0; i < NrFanin; i++) {
-                    fn(v[i]);
+                for (auto i = 0; i < FI; i++) {
+                    fn(v[i], i);
                 }
             }
 
@@ -129,13 +131,11 @@ namespace percy
                 vertices.resize(nr_vertices);
 
                 for (int i = 0; i < nr_vertices; i++) {
-                    for (int j = 0; j < NrFanin; j++) {
+                    for (int j = 0; j < FI; j++) {
                         vertices[i][j] = -1;
                     }
                 }
             }
-
-            void set_nr_inputs(int n) { nr_inputs = n; }
 
             int get_nr_vertices() const { return nr_vertices; }
             int get_nr_inputs() const { return nr_inputs; }
@@ -144,17 +144,16 @@ namespace percy
             set_vertex(int v_idx, const fanin* const fanins)
             {
                 assert(v_idx < nr_vertices);
-                for (int i = 0; i < NrFanin; i++) {
+                for (int i = 0; i < FI; i++) {
                     vertices[v_idx][i] = fanins[i];
                 }
             }
 
             void 
-            set_vertex(int v_idx, const std::vector<int>& fanins)
+            set_vertex(int v_idx, const std::array<fanin, FI>& fanins)
             {
                 assert(v_idx < nr_vertices);
-                assert(fanins.size() >= NrFanin);
-                for (int i = 0; i < NrFanin; i++) {
+                for (int i = 0; i < FI; i++) {
                     vertices[v_idx][i] = fanins[i];
                 }
             }
@@ -163,7 +162,7 @@ namespace percy
             add_vertex(const fanin* const fanins)
             {
                 vertex newv;
-                for (int i = 0; i < NrFanin; i++) {
+                for (int i = 0; i < FI; i++) {
                     newv[i] = fanins[i];
                 }
                 vertices.push_back(newv);
@@ -173,10 +172,10 @@ namespace percy
             void 
             add_vertex(const std::vector<fanin>& fanins)
             {
-                assert(fanins.size() >= NrFanin);
+                assert(fanins.size() >= FI);
                 
                 vertex newv;
-                for (int i = 0; i < NrFanin; i++) {
+                for (int i = 0; i < FI; i++) {
                     newv[i] = fanins[i];
                 }
                 vertices.push_back(newv);
@@ -195,7 +194,7 @@ namespace percy
     template<>
     class dag<2>
     {
-        private:
+        protected:
             int nr_inputs;
             int nr_vertices;
             int* _js;
@@ -204,6 +203,7 @@ namespace percy
         public:
             using fanin = int;
             using vertex = std::pair<int,int>;
+            static const int NrFanin = 2;
 
             dag() : _js(nullptr), _ks(nullptr)
             {
@@ -225,12 +225,7 @@ namespace percy
 
             dag(const dag& dag) : _js(nullptr), _ks(nullptr)
             {
-                reset(dag.nr_inputs, dag.nr_vertices);
-
-                for (int i = 0; i < nr_vertices; i++) {
-                    _js[i] = dag._js[i];
-                    _ks[i] = dag._ks[i];
-                }
+                copy_dag(dag);
             }
 
             ~dag()
@@ -243,13 +238,20 @@ namespace percy
                 }
             }
 
-            dag& operator=(const dag& dag) 
+            void 
+            copy_dag(const dag& dag)
             {
                 reset(dag.nr_inputs, dag.nr_vertices);
+                
                 for (int i = 0; i < nr_vertices; i++) {
                     _js[i] = dag._js[i];
                     _ks[i] = dag._ks[i];
                 }
+            }
+
+            dag& operator=(const dag& dag) 
+            {
+                copy_dag(dag);
                 return *this;
             }
 
@@ -284,19 +286,35 @@ namespace percy
                 _ks = new int[nr_vertices];
             }
 
-            void set_nr_inputs(int n) { nr_inputs = n; }
 
             int get_nr_vertices() const { return nr_vertices; }
             int get_nr_inputs() const { return nr_inputs; }
 
-            void set_vertex(int v_idx, fanin fanin1, fanin fanin2)
+            void 
+            set_vertex(int v_idx, fanin fanin1, fanin fanin2)
             {
                 assert(v_idx < nr_vertices);
                 _js[v_idx] = fanin1;
                 _ks[v_idx] = fanin2;
             }
 
-            const pair<int,int> get_vertex(int v_idx) const
+            void 
+            set_vertex(int v_idx, const fanin* const fanins)
+            {
+                assert(v_idx < nr_vertices);
+                _js[v_idx] = fanins[0];
+                _ks[v_idx] = fanins[1];
+            }
+
+            void 
+            set_vertex(int v_idx, const std::array<fanin, 2>& fanins)
+            {
+                assert(v_idx < nr_vertices);
+                _js[v_idx] = fanins[0];
+                _ks[v_idx] = fanins[1];
+            }
+
+            const std::pair<int,int> get_vertex(int v_idx) const
             {
                 return std::make_pair(_js[v_idx], _ks[v_idx]);
             }
@@ -315,7 +333,7 @@ namespace percy
             foreach_vertex(Fn&& fn)
             {
                 for (std::size_t i = 0; i < nr_vertices; i++) {
-                    fn(i);
+                    fn(std::make_pair(_js[i], _ks[i]), i);
                 }
             }
 
@@ -323,8 +341,8 @@ namespace percy
             void 
             foreach_fanin(vertex v, Fn&& fn)
             {
-                fn(v.first);
-                fn(v.second);
+                fn(v.first, 0);
+                fn(v.second, 1);
             }
 
             // Swaps input variable pos with variable pos+1.
@@ -437,8 +455,8 @@ namespace percy
                 assert(nr_vertices == g.nr_vertices && 
                         nr_inputs == g.nr_inputs);
 
-                std::multiset<pair<int,int>> g1_vertices;
-                std::multiset<pair<int,int>> g2_vertices;
+                std::multiset<std::pair<int,int>> g1_vertices;
+                std::multiset<std::pair<int,int>> g2_vertices;
 
                 dag cpy(g);
                 const auto& swaps = kitty::detail::swaps[nr_inputs - 2u];
@@ -486,3 +504,4 @@ namespace percy
     using ternary_dag = dag<3>;
 
 }
+

@@ -17,12 +17,10 @@ using namespace abc;
 template<int NrIn>
 void check_equivalence(bool full_coverage)
 {
-    synth_spec<static_truth_table<NrIn>> spec;
-    auto synth = new_synth<static_truth_table<NrIn>,sat_solver*>(SIMPLE);
+    synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
+    auto synth = new_std_synth();
 
-    spec.nr_in = NrIn;
-    spec.nr_out = 1;
-    spec.verbosity = 0;
+    spec.verbosity = 1;
 
     Abc_Start();
 
@@ -32,7 +30,7 @@ void check_equivalence(bool full_coverage)
         max_tests = std::min(max_tests, MAX_TESTS);
     }
     static_truth_table<NrIn> tt;
-    chain<static_truth_table<NrIn>> c;
+    chain<2> c;
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
         word abc_tt = 0;
@@ -48,7 +46,7 @@ void check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res = synth->synthesize(spec, c);
         assert(res == success);
-        auto chain_size = c.nr_steps();
+        auto chain_size = c.nr_vertices();
 
         auto abc_ntk = Abc_NtkFindExact(&abc_tt, NrIn, 1, -1, NULL, 0, 0, 0);
         auto abc_ntk_size = Abc_NtkNodeNum(abc_ntk);

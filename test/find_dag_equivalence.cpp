@@ -43,7 +43,7 @@ get_npn_classes()
 template<int nrin>
 void check_npn_equivalence()
 {
-    dag<2> g1, g2, g3;
+    dag<2> g1, g2;
     
     auto npn_set = get_npn_classes<nrin>();
     const auto num_cpus = std::thread::hardware_concurrency();
@@ -62,28 +62,18 @@ void check_npn_equivalence()
         auto seq_result = find_dag(tt, g1, nrin);
         auto seq_stop = std::chrono::high_resolution_clock::now();
     
-        auto par_start = std::chrono::high_resolution_clock::now();
-        auto par_result = pfind_dag<static_truth_table<nrin>>(
-                tt, g2, nrin, num_cpus);
-        auto par_stop = std::chrono::high_resolution_clock::now();
-        
         auto qpar_start = std::chrono::high_resolution_clock::now();
         auto qpar_result = qpfind_dag<static_truth_table<nrin>>(
-                tt, g3, nrin);
+                tt, g2, nrin);
         auto qpar_stop = std::chrono::high_resolution_clock::now();
 
         assert(seq_result == success);
-        assert(par_result == success);
         assert(qpar_result == success);
         assert(g1.get_nr_vertices() == g2.get_nr_vertices());
-        assert(g2.get_nr_vertices() == g3.get_nr_vertices());
 
         printf("Time elapsed: %fms (SEQ)\n", 
             std::chrono::duration<double,std::milli>(
                 seq_stop-seq_start).count());
-        printf("Time elapsed: %fms (PAR)\n", 
-            std::chrono::duration<double,std::milli>(
-                par_stop-par_start).count());
         printf("Time elapsed: %fms (QPAR)\n", 
             std::chrono::duration<double,std::milli>(
                 qpar_stop-qpar_start).count());

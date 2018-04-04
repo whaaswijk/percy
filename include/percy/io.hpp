@@ -60,13 +60,12 @@ namespace percy
         });
 
         o << "node [shape=circle];\n";
-        dag.foreach_vertex([&dag, &o] (int v_idx) {
-            const auto v = dag.get_vertex(v_idx);
+        dag.foreach_vertex([&dag, &o] (auto v, int v_idx) {
             const auto dot_idx = dag.get_nr_inputs() + v_idx + 1;
             o << "x" << dot_idx << " [label=<x<sub>" << dot_idx 
                 << "</sub>>];\n";
 
-            dag.foreach_fanin(v, [&o, dot_idx] (typename Dag::fanin f_id) {
+            dag.foreach_fanin(v, [&o, dot_idx] (auto f_id, int idx) {
                 o << "x" << f_id+1 << " -- x" << dot_idx << ";\n";
             });
 
