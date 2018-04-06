@@ -214,7 +214,6 @@ namespace percy
                     auto nr_svars_for_i = 0;
                     fanin_init<FI>(fanins, FI-1);
                     do  {
-                        print_fanin(fanins);
                         svar_map.push_back(fanins);
                         nr_svars_for_i++;
                     } while (fanin_inc<FI>(fanins, i-1));
@@ -225,8 +224,6 @@ namespace percy
 
                     nr_sel_vars += nr_svars_for_i;
                     nr_svar_map[i - spec.get_nr_in()] = nr_svars_for_i;
-                    printf("binomial_coeff(%d, %d) = %d\n", i, FI,
-                            binomial_coeff(i, FI));
                     assert(nr_svars_for_i == binomial_coeff(i, FI));
                 }
                 sel_offset = 0;

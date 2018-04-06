@@ -17,10 +17,9 @@ template<int NrIn>
 void check_equivalence(bool full_coverage)
 {
     synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
-    auto synth = new_std_synth<2, 
-         knuth_encoder<2, Glucose::Solver*>, Glucose::Solver*>();
+    auto synth = new_std_synth();
 
-    spec.verbosity = 4;
+    spec.verbosity = 0;
 
     Abc_Start();
 
