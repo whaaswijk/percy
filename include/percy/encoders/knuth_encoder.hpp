@@ -145,7 +145,7 @@ namespace percy
                 // Every output points to an operand.
                 if (spec.nr_nontriv > 1) {
                     for (int h = 0; h < spec.nr_nontriv; h++) {
-                        for (int i = 0; i < spec.nr_steps-1; i++) {
+                        for (int i = 0; i < spec.nr_steps; i++) {
                             abc::Vec_IntSetEntry(vLits, i, 
                                     abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                         }
@@ -153,6 +153,14 @@ namespace percy
                                 *solver,
                                 abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + spec.nr_steps);
+                        if (spec.verbosity > 2) {
+                            printf("creating output clause: ( ");
+                            for (int i = 0; i < spec.nr_steps; i++) {
+                                printf("%sg_%d_%d ", i > 0 ? "\\/ " : "",
+                                        h + 1, spec.get_nr_in() + i + 1);
+                            }
+                            printf(") (status = %d)\n", status);
+                        }
                     }
                 }
 

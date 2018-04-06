@@ -17,7 +17,8 @@ int main(void)
         synth_spec<static_truth_table<2>> spec;
         spec.set_nr_in(2);
         spec.set_nr_out(1);
-        spec.verbosity = 1;
+        spec.verbosity = 3;
+
         auto synth = new_std_synth();
         chain<2> c;
 
