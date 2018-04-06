@@ -23,6 +23,8 @@ namespace percy
             synth_result 
             synthesize(synth_spec<TT>& spec, chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized
@@ -91,6 +93,8 @@ namespace percy
             synth_result 
             synthesize(synth_spec<TT>& spec, const fence& f, chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized
@@ -137,6 +141,8 @@ namespace percy
             synth_result
             cegar_synthesize(synth_spec<TT>& spec, chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized
@@ -181,7 +187,7 @@ namespace percy
 
                     solver_restart(&solver);
                     if (!encoder.cegar_encode(spec, f)) {
-                        return failure;
+                        continue;
                     }
                     while (true) {
                         auto status = solver_solve(solver, spec.conflict_limit);
@@ -202,10 +208,10 @@ namespace percy
                                         first_one);
                             }
                             if (!encoder.create_tt_clauses(spec, first_one-1)) {
-                                return failure;
+                                break;
                             }
                         } else if (status == failure) {
-                            return failure;
+                            break;
                         } else {
                             return timeout;
                         }
@@ -220,6 +226,8 @@ namespace percy
                     const fence& f, 
                     chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized

@@ -22,6 +22,8 @@ namespace percy
             synth_result 
             synthesize(synth_spec<TT>& spec, chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized
@@ -63,6 +65,8 @@ namespace percy
             synth_result
             cegar_synthesize(synth_spec<TT>& spec, chain<FI>& chain)
             {
+                assert(spec.get_nr_in() >= FI);
+
                 spec.preprocess();
 
                 // The special case when the Boolean chain to be synthesized

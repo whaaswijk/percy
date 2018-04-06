@@ -62,7 +62,11 @@ void check_equivalence(bool full_coverage)
         assert(sim_tts1[0] == sim_tts2[0]);
         assert(sim_tts1[0] == sim_tts1_cegar[0]);
         assert(sim_tts1_cegar[0] == sim_tts2_cegar[0]);
+        
+        printf("(%d/%d)\r", i+1, max_tests);
+        fflush(stdout);
     }
+    printf("\n");
 }
 
 
@@ -157,11 +161,13 @@ int main(int argc, char **argv)
     check_equivalence<std_synthesizer<>, fence_synthesizer<>, 4>(full_coverage);
     //check_equivalence<STD, DAG, 4>(full_coverage);
     
+    /*
     check_equivalence<
         std_synthesizer<3>, 
         fence_synthesizer<3>, 
         2, 
         3>(full_coverage);
+    */
     //check_equivalence<STD,DAG, 2, 3>(full_coverage);
     
     check_equivalence<

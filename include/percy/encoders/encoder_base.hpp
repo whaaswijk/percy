@@ -69,6 +69,9 @@ namespace percy
             if (i < FI - 1) {
                 if (fanins[i] < fanins[i + 1] - 1) {
                     fanins[i]++;
+                    if (i > 0) {
+                        fanin_init(fanins, i - 1, i - 1);
+                    }
                     return true;
                 }
             } else {

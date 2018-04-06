@@ -225,6 +225,9 @@ namespace percy
                     auto nr_svars_for_i = 0;
                     fanin_init<FI>(fanins, FI-1);
                     do  {
+                        if (spec.verbosity > 4) {
+                            print_fanin(fanins);
+                        }
                         svar_map.push_back(fanins);
                         nr_svars_for_i++;
                     } while (fanin_inc<FI>(fanins, i-1));
