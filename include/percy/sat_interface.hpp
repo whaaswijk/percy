@@ -223,7 +223,7 @@ namespace percy
 	template<>
 	inline int solver_var_value(Glucose::Solver* s, int var) 
     {
-		return s->modelValue(var) == l_True;
+		return s->value(var) == l_True;
 	}
 
     template<>
@@ -231,7 +231,9 @@ namespace percy
     solver_solve(Glucose::Solver* s, int cl) 
     {
         Glucose::vec<Glucose::Lit> litvec;
-        s->setConfBudget(cl);
+        if (cl) {
+            s->setConfBudget(cl);
+        }
 		auto res = s->solveLimited(litvec);
         if (res == l_True) {
             return success;

@@ -40,12 +40,12 @@ main(void)
     assert(fanin_inc(fanin3, 3) == true);
     assert(fanin3[0] == 0);
     assert(fanin3[1] == 2);
-    assert(fanin3[1] == 3);
+    assert(fanin3[2] == 3);
 
     assert(fanin_inc(fanin3, 3) == true);
     assert(fanin3[0] == 1);
     assert(fanin3[1] == 2);
-    assert(fanin3[1] == 3);
+    assert(fanin3[2] == 3);
 
     assert(fanin_inc(fanin3, 3) == false);
 

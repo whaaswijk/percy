@@ -22,12 +22,12 @@ namespace percy
             int nr_nontriv; // Number of non-trivial output functions
             int nr_rand_tt_assigns;
 
-            bool add_nontriv_clauses;
-            bool add_alonce_clauses;
-            bool add_noreapply_clauses;
-            bool add_colex_clauses;
-            bool add_colex_func_clauses;
-            bool add_symvar_clauses;
+            bool add_nontriv_clauses = false;
+            bool add_alonce_clauses = false;
+            bool add_noreapply_clauses = false;
+            bool add_colex_clauses = false;
+            bool add_colex_func_clauses = false;
+            bool add_symvar_clauses = false;
 
             const TT* functions[MAX_OUT]; // The requested functions
             int triv_functions[MAX_OUT]; // Trivial outputs
@@ -35,12 +35,11 @@ namespace percy
 
             int conflict_limit;
             
-            synth_spec()
+            synth_spec() : conflict_limit(0)
             {
-                conflict_limit = 0;
             }
 
-            synth_spec(int nr_in, int nr_out)
+            synth_spec(int nr_in, int nr_out) : conflict_limit(0)
             {
                 set_nr_in(nr_in);
                 set_nr_out(nr_out);

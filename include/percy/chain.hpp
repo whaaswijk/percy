@@ -50,6 +50,7 @@ namespace percy
             void reset(int nr_in, int nr_out, int nr_steps)
             {
                 dag::reset(nr_in, nr_steps);
+                operators.resize(nr_steps);
                 outputs.resize(nr_out);
             }
 

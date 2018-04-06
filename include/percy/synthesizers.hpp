@@ -29,7 +29,7 @@ namespace percy
             synthesizer()
             {
                 solver_alloc(&solver);
-                encoder.set_solver(solver);
+                encoder.set_solver(&solver);
             }
             
             ~synthesizer()
@@ -69,13 +69,21 @@ namespace percy
                     return success;
                 }
 
-                solver_restart(&solver);
                 spec.nr_steps = 1;
                 while (true) {
+                    solver_restart(&solver);
                     if (!encoder.encode(spec)) {
+                        if (spec.verbosity > 2) {
+                            encoder.print_solver_state(spec);
+                        }
+                        spec.nr_steps++;
                         continue;
                     }
-                    auto status = solver_solve(solver, spec.conflict_limit);
+                    const auto status = 
+                        solver_solve(solver, spec.conflict_limit);
+                    if (spec.verbosity > 2) {
+                        encoder.print_solver_state(spec);
+                    }
 
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
@@ -105,11 +113,12 @@ namespace percy
                     return success;
                 }
 
-                solver_restart(&solver);
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
                 spec.nr_steps = 1;
+                solver_restart(&solver);
                 while (true) {
                     if (!encoder.cegar_encode(spec)) {
+                        spec.nr_steps++;
                         continue;
                     }
                     auto status = solver_solve(solver, spec.conflict_limit);
@@ -131,9 +140,11 @@ namespace percy
                         }
                         if (!encoder.create_tt_clauses(spec, first_one-1)) {
                             spec.nr_steps++;
+                            solver_restart(&solver);
                         }
                     } else if (status == failure) {
                         spec.nr_steps++;
+                        solver_restart(&solver);
                     } else {
                         return timeout;
                     }
@@ -173,8 +184,6 @@ namespace percy
                     }
                     return success;
                 }
-                
-                solver_restart(&solver);
 
                 // As the topological synthesizer decomposes the synthesis
                 // problem, to fairly count the total number of conflicts we
@@ -195,6 +204,7 @@ namespace percy
                         old_nnodes = spec.nr_steps;
                     }
 
+                    solver_restart(&solver);
                     if (!encoder.encode(spec, f)) {
                         continue;
                     }
@@ -243,9 +253,9 @@ namespace percy
                     return success;
                 }
                 
-                solver_restart(&solver);
-
                 spec.nr_steps = f.nr_nodes();
+
+                solver_restart(&solver);
                 if (!encoder.encode(spec, f)) {
                     return failure;
                 }
@@ -289,7 +299,6 @@ namespace percy
                     return success;
                 }
 
-                solver_restart(&solver);
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
                 fence f;
@@ -319,10 +328,11 @@ namespace percy
                         }
                     }
 
+                    solver_restart(&solver);
+                    if (!encoder.cegar_encode(spec, f)) {
+                        return failure;
+                    }
                     while (true) {
-                        if (!encoder.cegar_encode(spec, f)) {
-                            continue;
-                        }
                         auto status = solver_solve(solver, spec.conflict_limit);
                         if (status == success) {
                             encoder.extract_chain(spec, chain);
@@ -341,10 +351,10 @@ namespace percy
                                         first_one);
                             }
                             if (!encoder.create_tt_clauses(spec, first_one-1)) {
-                                break;
+                                return failure;
                             }
                         } else if (status == failure) {
-                            break;
+                            return failure;
                         } else {
                             return timeout;
                         }
@@ -372,7 +382,6 @@ namespace percy
                     return success;
                 }
 
-                solver_restart(&solver);
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
                 spec.nr_steps = f.nr_nodes();
                 if (spec.verbosity) {
@@ -386,10 +395,11 @@ namespace percy
                     }
                 }
 
+                solver_restart(&solver);
+                if (!encoder.cegar_encode(spec, f)) {
+                    return failure;
+                }
                 while (true) {
-                    if (!encoder.cegar_encode(spec, f)) {
-                        return failure;
-                    }
                     auto status = solver_solve(solver, spec.conflict_limit);
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
@@ -408,7 +418,7 @@ namespace percy
                                     first_one);
                         }
                         if (!encoder.create_tt_clauses(spec, first_one-1)) {
-                            break;
+                            return failure;
                         }
                     } else if (status == failure) {
                         return failure;

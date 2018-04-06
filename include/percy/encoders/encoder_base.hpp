@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <array>
+#include <cstdio>
 #include "../sat_interface.hpp"
 #include "../spec.hpp"
 #include "../misc.hpp"
@@ -49,31 +50,47 @@ namespace percy
     }
 
     template<long unsigned FI>
-    bool
-    fanin_inc(std::array<int, FI>& fanins, int top_idx, int max_fanin_id)
+    void
+    fanin_init(std::array<int, FI>& fanins, int max_fanin_id, int start_idx)
     {
-        if (fanins[top_idx] < max_fanin_id) {
-            fanins[top_idx]++;
-            return true;
+        fanins[start_idx] = max_fanin_id--;
+        for (int i = start_idx-1; i >= 0; i--) {
+            fanins[i] = max_fanin_id--;
         }
-        return false;
     }
 
     template<long unsigned FI>
     bool
-    fanin_inc(std::array<int, FI>& fanins, int max_fanin_id)
+    fanin_inc(std::array<int, FI>& fanins, const int max_fanin_id)
     {
-        auto top_idx = FI - 1;
+        int inc_idx = 0;
 
-        while (top_idx >= 0) {
-            if (fanin_inc<FI>(fanins, top_idx, max_fanin_id)) {
-                return true;
+        for (int i = 0; i < FI; i++) {
+            if (i < FI - 1) {
+                if (fanins[i] < fanins[i + 1] - 1) {
+                    fanins[i]++;
+                    return true;
+                }
+            } else {
+                if (fanins[i] < max_fanin_id) {
+                    fanins[i]++;
+                    fanin_init(fanins, i - 1, i - 1);
+                    return true;
+                }
             }
-            max_fanin_id--;
-            top_idx--;
         }
 
         return false;
+    }
+
+    template<long unsigned FI>
+    void
+    print_fanin(const std::array<int, FI>& fanins)
+    {
+        for (int i = 0; i < FI; i++) {
+            printf("%d ", fanins[i]);
+        }
+        printf("\n");
     }
 
 }

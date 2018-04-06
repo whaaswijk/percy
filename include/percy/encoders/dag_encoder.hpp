@@ -11,7 +11,7 @@ namespace percy
             // We only keep a reference to the solver. Since we don't own it,
             // we should never use encoders outside of the synthesizer objects
             // that own them and the solvers.
-            Solver& solver;
+            Solver* solver;
 
             int nr_op_vars;
             int nr_sim_vars;
@@ -35,7 +35,7 @@ namespace percy
             }
 
             void 
-            set_solver(Solver& s)
+            set_solver(Solver* s)
             {
                 solver = s;
             }
@@ -80,7 +80,7 @@ namespace percy
                 }
 
 
-                solver_set_nr_vars(solver, nr_op_vars + nr_sim_vars);
+                solver_set_nr_vars(*solver, nr_op_vars + nr_sim_vars);
             }
 
             bool
@@ -111,7 +111,7 @@ namespace percy
                                 get_op_var(i, opvar_idx), 1 - output));
                 }
 
-                return solver_add_clause(solver, abc::Vec_IntArray(vLits),
+                return solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                         abc::Vec_IntArray(vLits) + ctr); 
             }
 
@@ -172,7 +172,7 @@ namespace percy
                         auto outbit = kitty::get_bit(*spec.functions[0], t+1);
                         pLits[0] = abc::Abc_Var2Lit(get_sim_var(i, t), 
                                 1 - outbit);
-                        ret &= solver_add_clause(solver,pLits,pLits+1);
+                        ret &= solver_add_clause(*solver,pLits,pLits+1);
                     }
                 }
 
@@ -235,7 +235,7 @@ namespace percy
                 for (int i = 0; i < nr_vertices; i++) {
                     kitty::static_truth_table<Dag::NrFanin> op;
                     for (int j = 0; j < nr_op_vars_per_step; j++) {
-                        if (solver_var_value(solver, get_op_var(i, j))) {
+                        if (solver_var_value(*solver, get_op_var(i, j))) {
                             kitty::set_bit(op, j + 1); 
                         }
                     }

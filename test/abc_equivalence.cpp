@@ -3,8 +3,7 @@
 #include <kitty/kitty.hpp>
 
 #include "base/abc/abc.h"
-extern void Abc_Start();
-extern void Abc_Stop();
+#include "base/main/main.h"
 
 #define MAX_TESTS 256
 
@@ -18,9 +17,10 @@ template<int NrIn>
 void check_equivalence(bool full_coverage)
 {
     synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
-    auto synth = new_std_synth();
+    auto synth = new_std_synth<2, 
+         knuth_encoder<2, Glucose::Solver*>, Glucose::Solver*>();
 
-    spec.verbosity = 1;
+    spec.verbosity = 4;
 
     Abc_Start();
 
@@ -46,7 +46,7 @@ void check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res = synth->synthesize(spec, c);
         assert(res == success);
-        auto chain_size = c.nr_vertices();
+        auto chain_size = c.get_nr_vertices();
 
         auto abc_ntk = Abc_NtkFindExact(&abc_tt, NrIn, 1, -1, NULL, 0, 0, 0);
         auto abc_ntk_size = Abc_NtkNodeNum(abc_ntk);
@@ -56,7 +56,10 @@ void check_equivalence(bool full_coverage)
         }
         assert(abc_ntk_size == chain_size);
         Abc_NtkDelete(abc_ntk);
+        printf("(%d/%d)\r", i+1, max_tests);
+        fflush(stdout);
     }
+    printf("\n");
 
     Abc_Stop();
 }
@@ -78,11 +81,9 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    /* TODO fix abc integration.
     check_equivalence<2>(full_coverage);
     check_equivalence<3>(full_coverage);
     check_equivalence<4>(full_coverage);
-    */
 
     return 0;
 }
