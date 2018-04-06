@@ -48,13 +48,15 @@ void check_npn_equivalence()
     auto npn_set = get_npn_classes<nrin>();
     const auto num_cpus = std::thread::hardware_concurrency();
 
-    int i = 0;
+    int i = 1;
+    const auto total = npn_set.size();
     for (auto& npn_tt : npn_set) {
-        printf("i = %d\n", ++i);
         static_truth_table<nrin> tt = npn_tt;
 
         // We skip the trivial functions
         if (is_trivial(tt)) {
+            printf("(%d/%d)\r", i++, total);
+            fflush(stdout);
             continue;
         }
 
@@ -77,7 +79,11 @@ void check_npn_equivalence()
         printf("Time elapsed: %fms (QPAR)\n", 
             std::chrono::duration<double,std::milli>(
                 qpar_stop-qpar_start).count());
+            
+        printf("(%d/%d)\r", i++, total);
+        fflush(stdout);
     }
+    printf("\n");
 }
 
 int main(void)

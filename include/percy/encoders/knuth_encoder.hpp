@@ -272,7 +272,6 @@ namespace percy
                                 i + spec.get_nr_in() + 1, t+2);
                     }
                     */
-                    auto ctr = 0;
                     const auto nr_svars_for_i = nr_svar_map[i];
                     /*
                     if (spec.verbosity > 2) {
@@ -706,8 +705,6 @@ namespace percy
             void 
             extract_chain(synth_spec<TT>& spec, chain<FI>& chain)
             {
-                int op_inputs[2];
-
                 chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps);
 
                 auto svar_offset = 0;

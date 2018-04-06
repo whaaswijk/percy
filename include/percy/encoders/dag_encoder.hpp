@@ -15,7 +15,6 @@ namespace percy
 
             int nr_op_vars;
             int nr_sim_vars;
-            int verbosity;
             int nr_op_vars_per_step;
             int tt_size;
             int nr_vertices;
@@ -44,9 +43,10 @@ namespace percy
             get_op_var(int step_idx, int var_idx)
             {
                 assert(step_idx < nr_vertices);
-                assert(var_idx < nr_op_vars_per_step);
+                assert(var_idx > 0);
+                assert(var_idx <= nr_op_vars_per_step);
 
-                return step_idx * nr_op_vars_per_step + var_idx;
+                return step_idx * nr_op_vars_per_step + var_idx - 1;
             }
 
             int
@@ -55,12 +55,6 @@ namespace percy
                 assert(step_idx < nr_vertices);
 
                 return nr_op_vars + tt_size * step_idx + t;
-            }
-
-            void 
-            set_verbosity(int v)
-            {
-                verbosity = v;
             }
 
             template<typename TT>
@@ -74,7 +68,7 @@ namespace percy
                 nr_op_vars_per_step = ((1u << Dag::NrFanin) - 1);
                 nr_op_vars = nr_vertices * nr_op_vars_per_step;
                 nr_sim_vars = nr_vertices * tt_size;
-                if (verbosity > 1) {
+                if (spec.verbosity > 1) {
                     printf("nr_op_vars=%d\n", nr_op_vars);
                     printf("nr_sim_vars=%d\n", nr_sim_vars);
                 }
@@ -84,8 +78,12 @@ namespace percy
             }
 
             bool
-            add_simulation_clause(int t, int i, int output, int opvar_idx,
-                    auto fanins,
+            add_simulation_clause(
+                    const int t, 
+                    const int i, 
+                    const int output, 
+                    const int opvar_idx,
+                    const auto fanins,
                     const std::bitset<Dag::NrFanin>& fanin_asgn)
             {
                 int ctr = 0;
@@ -122,7 +120,6 @@ namespace percy
                 auto ret = true;
                 fanin<Dag> fanins[Dag::NrFanin];
                 std::bitset<Dag::NrFanin> fanin_asgn;
-
 
                 for (int i = 0; i < nr_vertices && ret; i++) {
                     auto v = dag.get_vertex(i);
@@ -164,7 +161,7 @@ namespace percy
                     if (i == nr_vertices-1) {
                         int pLits[2];
 
-                        if (verbosity > 1) {
+                        if (spec.verbosity > 1) {
                             printf("bit %d=%d", t+2, 
                                     kitty::get_bit(*spec.functions[0], t+1));
                             printf("\tvar=%d\n", get_sim_var(i, t));
@@ -195,8 +192,6 @@ namespace percy
             bool 
             encode(const synth_spec<TT>& spec, const Dag& dag)
             {
-                assert(spec.nr_steps <= MAX_STEPS);
-
                 bool success = true;
                 create_variables(spec, dag);
                 success &= create_main_clauses(spec, dag);
@@ -208,8 +203,6 @@ namespace percy
             bool 
             cegar_encode(const synth_spec<TT>& spec, const Dag& dag)
             {
-                assert(spec.nr_steps <= MAX_STEPS);
-
                 create_variables(spec, dag);
                 for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
                     const auto t = rand() % spec.get_tt_size();
@@ -231,12 +224,11 @@ namespace percy
 
                 chain.reset(nr_inputs, 1, nr_vertices);
 
-                auto svar_offset = 0;
                 for (int i = 0; i < nr_vertices; i++) {
                     kitty::static_truth_table<Dag::NrFanin> op;
-                    for (int j = 0; j < nr_op_vars_per_step; j++) {
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
                         if (solver_var_value(*solver, get_op_var(i, j))) {
-                            kitty::set_bit(op, j + 1); 
+                            kitty::set_bit(op, j); 
                         }
                     }
 

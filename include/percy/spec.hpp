@@ -15,7 +15,7 @@ namespace percy
 
         public:
             int nr_steps; // The number of Boolean operators to use
-            int verbosity; // Verbosity level for debugging purposes
+            int verbosity = 0; // Verbosity level for debugging purposes
             uint64_t out_inv; // Is 1 at index i if output i must be inverted
             uint64_t triv_flag; // Is 1 at index i if output i is 0/1 or proj.
             int nr_triv; // Number of trivial output functions
