@@ -223,7 +223,7 @@ namespace percy
 	template<>
 	inline int solver_var_value(Glucose::Solver* s, int var) 
     {
-		return s->value(var) == l_True;
+		return s->modelValue(var) == l_True;
 	}
 
     template<>

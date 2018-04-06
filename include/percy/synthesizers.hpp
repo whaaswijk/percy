@@ -73,20 +73,17 @@ namespace percy
                 while (true) {
                     solver_restart(&solver);
                     if (!encoder.encode(spec)) {
-                        if (spec.verbosity > 2) {
-                            encoder.print_solver_state(spec);
-                        }
                         spec.nr_steps++;
                         continue;
                     }
                     const auto status = 
                         solver_solve(solver, spec.conflict_limit);
-                    if (spec.verbosity > 2) {
-                        encoder.print_solver_state(spec);
-                    }
 
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
+                        if (spec.verbosity > 2) {
+                            encoder.print_solver_state(spec);
+                        }
                         return success;
                     } else if (status == failure) {
                         spec.nr_steps++;

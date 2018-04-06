@@ -112,8 +112,6 @@ namespace percy
                             abc::Vec_IntArray(vLits), 
                             abc::Vec_IntArray(vLits) + nr_svars_for_i);
 
-                    svar_offset += nr_svars_for_i;
-
                     if (spec.verbosity > 2) {
                         printf("creating op clause: ( ");
                         for (int j = 0; j < nr_svars_for_i; j++) {
@@ -121,7 +119,13 @@ namespace percy
                                     spec.get_nr_in() + i + 1, j + 1);
                         }
                         printf(") (status=%d)\n", status);
+                        for (int j = 0; j < nr_svars_for_i; j++) {
+                            printf("svar(%d) = %d\n", j + svar_offset,
+                                    get_sel_var(j + svar_offset));
+                        }
                     }
+
+                    svar_offset += nr_svars_for_i;
                 }
                 if (spec.verbosity > 2) {
                     printf("Nr. clauses = %d (POST)\n",
@@ -239,12 +243,13 @@ namespace percy
                 out_offset = nr_sel_vars + nr_op_vars;
                 sim_offset = nr_sel_vars + nr_op_vars + nr_out_vars;
                 
-                if (spec.verbosity > 2) {
-                    printf("nr_sel_vars=%d\n", nr_sel_vars);
-                }
-
                 total_nr_vars = nr_op_vars + nr_out_vars + nr_sim_vars +
                     nr_sel_vars;
+
+                if (spec.verbosity > 2) {
+                    printf("nr_sel_vars=%d\n", nr_sel_vars);
+                    printf("creating %d total variables\n", total_nr_vars);
+                }
 
                 solver_set_nr_vars(*solver, total_nr_vars);
             }
@@ -416,7 +421,7 @@ namespace percy
                         abc::Vec_IntArray(vLits),
                         abc::Vec_IntArray(vLits) + ctr); 
 
-                if (false && spec.verbosity > 2) {
+                if (spec.verbosity > 2) {
                     printf("creating sim. clause: (");
                     printf(" !s_%d_%d ", spec.get_nr_in() + i + 1, svar + 1);
                     printf(" \\/ %sx_%d_%d ", output ? "!" : "", 
@@ -837,15 +842,6 @@ namespace percy
 
                 for (int h = 0; h < spec.nr_nontriv; h++) {
                     for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(*solver, get_out_var(spec,h,i))) {
-                            printf("  g_%d --> x_%d\n", h + 1,
-                                    spec.get_nr_in() + i + 1);
-                        }
-                    }
-                }
-
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    for (int i = 0; i < spec.nr_steps; i++) {
                         printf("  g_%d_%d=%d\n", h + 1, 
                                 spec.get_nr_in() + i + 1,
                                 solver_var_value(
@@ -962,10 +958,10 @@ namespace percy
                 create_output_clauses(spec);
                 create_op_clauses(spec);
 
+                /*
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
-                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
