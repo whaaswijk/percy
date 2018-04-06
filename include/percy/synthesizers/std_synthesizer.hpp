@@ -78,38 +78,40 @@ namespace percy
 
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
                 spec.nr_steps = 1;
-                solver_restart(&solver);
                 while (true) {
+                    solver_restart(&solver);
                     if (!encoder.cegar_encode(spec)) {
                         spec.nr_steps++;
                         continue;
                     }
-                    auto status = solver_solve(solver, spec.conflict_limit);
-                    if (status == success) {
-                        encoder.extract_chain(spec, chain);
-                        auto sim_tts = chain.template simulate<TT>();
-                        auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
-                        auto first_one = kitty::find_first_one_bit(xor_tt);
-                        if (first_one == -1) {
-                            if (spec.verbosity) {
-                                printf("  SUCCESS\n\n"); 
+                    while (true) {
+                        auto stat = solver_solve(solver, spec.conflict_limit);
+                        if (stat == success) {
+                            encoder.extract_chain(spec, chain);
+                            auto sim_tts = chain.template simulate<TT>();
+                            auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
+                            auto first_one = kitty::find_first_one_bit(xor_tt);
+                            if (first_one == -1) {
+                                if (spec.verbosity) {
+                                    printf("  SUCCESS\n\n"); 
+                                }
+                                return success;
                             }
-                            return success;
-                        }
-                        // Add additional constraint.
-                        if (spec.verbosity) {
-                            printf("  CEGAR difference at tt index %ld\n", 
-                                    first_one);
-                        }
-                        if (!encoder.create_tt_clauses(spec, first_one-1)) {
+                            // Add additional constraint.
+                            if (spec.verbosity) {
+                                printf("  CEGAR difference at tt index %ld\n", 
+                                        first_one);
+                            }
+                            if (!encoder.create_tt_clauses(spec, first_one-1)) {
+                                spec.nr_steps++;
+                                break;
+                            }
+                        } else if (stat == failure) {
                             spec.nr_steps++;
-                            solver_restart(&solver);
+                            break;
+                        } else {
+                            return timeout;
                         }
-                    } else if (status == failure) {
-                        spec.nr_steps++;
-                        solver_restart(&solver);
-                    } else {
-                        return timeout;
                     }
                 }
             }

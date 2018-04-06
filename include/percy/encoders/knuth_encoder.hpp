@@ -199,7 +199,6 @@ namespace percy
             {
                 std::array<int, FI> fanins;
 
-
                 nr_op_vars_per_step = ((1u << FI) - 1);
                 nr_op_vars = spec.nr_steps * nr_op_vars_per_step;
                 nr_out_vars = spec.nr_nontriv * spec.nr_steps;

@@ -61,7 +61,11 @@ void check_std_equivalence(bool full_coverage)
         assert(sim_tts1[0] == sim_tts2[0]);
         assert(sim_tts1[0] == sim_tts1_cegar[0]);
         assert(sim_tts1_cegar[0] == sim_tts2_cegar[0]);
+        
+        printf("(%d/%d)\r", i+1, max_tests);
+        fflush(stdout);
     }
+    printf("\n");
 }
 
 /*******************************************************************************

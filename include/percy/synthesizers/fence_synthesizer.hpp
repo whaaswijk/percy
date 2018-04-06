@@ -269,10 +269,10 @@ namespace percy
                                     first_one);
                         }
                         if (!encoder.create_tt_clauses(spec, first_one-1)) {
-                            return failure;
+                            break;
                         }
                     } else if (status == failure) {
-                        return failure;
+                        break;
                     } else {
                         return timeout;
                     }
