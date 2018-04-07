@@ -8,6 +8,7 @@
 #include <kitty/kitty.hpp>
 #include <kitty/print.hpp>
 #include "dag.hpp"
+#include "spec.hpp"
 
 using std::vector;
 using std::unique_ptr;
@@ -88,7 +89,7 @@ namespace percy
             *******************************************************************/
             template<typename TT>
             std::vector<TT>
-            simulate() const
+            simulate(const synth_spec<TT>& spec) const
             {
                 std::vector<TT> fs(outputs.size());
                 std::vector<TT> tmps(nr_vertices);

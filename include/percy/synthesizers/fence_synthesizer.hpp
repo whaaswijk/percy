@@ -193,7 +193,7 @@ namespace percy
                         auto status = solver_solve(solver, spec.conflict_limit);
                         if (status == success) {
                             encoder.extract_chain(spec, chain);
-                            auto sim_tts = chain.template simulate<TT>();
+                            auto sim_tts = chain.template simulate(spec);
                             auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
                             auto first_one = kitty::find_first_one_bit(xor_tt);
                             if (first_one == -1) {
@@ -262,7 +262,7 @@ namespace percy
                     auto status = solver_solve(solver, spec.conflict_limit);
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
-                        auto sim_tts = chain.template simulate<TT>();
+                        auto sim_tts = chain.template simulate(spec);
                         auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
                         auto first_one = kitty::find_first_one_bit(xor_tt);
                         if (first_one == -1) {

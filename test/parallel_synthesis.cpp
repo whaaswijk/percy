@@ -49,7 +49,7 @@ void check_equivalence()
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts1 = c1.template simulate(spec);
         auto c1_nr_steps = c1.get_nr_vertices();
 
         auto res2 = qpfence_synth(&stats, tt, g, nr_in, 0);
@@ -57,7 +57,7 @@ void check_equivalence()
         // Make sure that the found DAG is indeed valid for this function.
         auto verify_res = synth2->synthesize(spec, g, c2);
         assert(verify_res == success);
-        auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts2 = c2.template simulate(spec);
         auto c2_nr_steps = c2.get_nr_vertices();
 
         assert(sim_tts1[0] == sim_tts2[0]);

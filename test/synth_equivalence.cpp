@@ -38,22 +38,22 @@ void check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res1 = synth1.synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts1 = c1.template simulate(spec);
         auto c1_nr_vertices = c1.get_nr_vertices();
 
         auto res1_cegar = synth1.cegar_synthesize(spec, c1_cegar);
         assert(res1_cegar == success);
-        auto sim_tts1_cegar = c1_cegar.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts1_cegar = c1_cegar.template simulate(spec);
         auto c1_cegar_nr_vertices = c1_cegar.get_nr_vertices();
 
         auto res2 = synth2.synthesize(spec, c2);
         assert(res2 == success);
-        auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts2 = c2.template simulate(spec);
         auto c2_nr_vertices = c2.get_nr_vertices();
 
         auto res2_cegar = synth2.cegar_synthesize(spec, c2_cegar);
         assert(res2_cegar == success);
-        auto sim_tts2_cegar = c2_cegar.template simulate<static_truth_table<nr_in>>();
+        auto sim_tts2_cegar = c2_cegar.template simulate(spec);
         auto c2_cegar_nr_vertices = c2.get_nr_vertices();
 
         assert(c1_nr_vertices == c2_nr_vertices);
