@@ -208,7 +208,7 @@ namespace percy
 
                         if (spec.verbosity > 1) {
                             printf("bit %d=%d", t+2, outbit);
-                            printf("\tvar=%d ", get_sim_var(i, t));
+                            printf("\tvar=%d\n", get_sim_var(i, t));
                         }
                     }
                 }
