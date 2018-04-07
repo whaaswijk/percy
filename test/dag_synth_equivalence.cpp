@@ -1,4 +1,5 @@
 #include <percy/percy.hpp>
+#include <percy/io.hpp>
 
 #define MAX_TESTS 256
 
@@ -49,8 +50,7 @@ void gen_check_equivalence(bool full_coverage)
         auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
         auto c1_nr_steps = c1.get_nr_vertices();
 
-        const auto dag_found = 
-            find_dag<static_truth_table<nr_in>>(tt, g, nr_in);
+        const auto dag_found = find_dag(spec, g, nr_in);
         assert(dag_found == success);
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
@@ -58,7 +58,11 @@ void gen_check_equivalence(bool full_coverage)
         auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
         assert(c1_nr_steps == c2_nr_steps);
         assert(sim_tts1[0] == sim_tts2[0]);
-    } 
+
+        printf("(%d/%d)\r", i + 1, max_tests);
+        fflush(stdout);
+    }
+    printf("\n");
 }
 
 template<int nr_in>
@@ -98,6 +102,7 @@ void check_equivalence(bool full_coverage)
             continue;
         }
         spec.functions[0] = &tt;
+
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
@@ -119,9 +124,14 @@ void check_equivalence(bool full_coverage)
                     c2.template simulate<static_truth_table<nr_in>>();
                 assert(c1_nr_steps == c2_nr_steps);
                 assert(sim_tts1[0] == sim_tts2[0]);
+            } else {
+                assert(result == failure);
             }
         }
-    } 
+        printf("(%d/%d)\r", i + 1, max_tests);
+        fflush(stdout);
+    }
+    printf("\n");
 }
 
 template<int nr_in>
@@ -178,7 +188,6 @@ void check_npn_equivalence()
 
     int i = 0;
     for (auto& npn_tt : npn_set) {
-        printf("i = %d\n", ++i);
         static_truth_table<nr_in> tt = npn_tt;
 
         // We skip the trivial functions
@@ -215,7 +224,7 @@ void check_npn_equivalence()
                 assert(sim_tts1[0] == sim_tts2[0]);
             }
         }
-        const auto dag_found = find_dag<static_truth_table<nr_in>>(tt, g, nr_in);
+        const auto dag_found = find_dag(spec, g, nr_in);
         assert(dag_found == success);
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);

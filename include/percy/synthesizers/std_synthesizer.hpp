@@ -50,7 +50,7 @@ namespace percy
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
                         if (spec.verbosity > 2) {
-                            encoder.print_solver_state(spec);
+                        //    encoder.print_solver_state(spec);
                         }
                         return success;
                     } else if (status == failure) {
@@ -96,9 +96,6 @@ namespace percy
                             auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
                             auto first_one = kitty::find_first_one_bit(xor_tt);
                             if (first_one == -1) {
-                                if (spec.verbosity) {
-                                    printf("  SUCCESS\n\n"); 
-                                }
                                 return success;
                             }
                             // Add additional constraint.

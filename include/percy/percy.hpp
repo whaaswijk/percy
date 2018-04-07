@@ -802,14 +802,11 @@ namespace percy
         function.
     ***************************************************************************/
     template<typename TT, int FI=2>
-    synth_result find_dag(const TT& f, dag<FI>& g, int nr_vars)
+    synth_result find_dag(const synth_spec<TT>& spec, dag<FI>& g, int nr_vars)
     {
         chain<FI> chain;
         rec_dag_generator gen;
         dag_synthesizer<FI> synth;
-
-        synth_spec<TT> spec(nr_vars, 1);
-        spec.functions[0] = &f;
 
         int nr_vertices = 1;
         while (true) {
@@ -830,7 +827,7 @@ namespace percy
     ***************************************************************************/
     template<typename TT, int FI=2>
     synth_result 
-    find_dag(const TT& f, dag<FI>& g, int nr_vars, int nr_vertices)
+    find_dag(const synth_spec<TT>& f, dag<FI>& g, int nr_vars, int nr_vertices)
     {
         chain<FI> chain;
         rec_dag_generator gen;
@@ -846,14 +843,11 @@ namespace percy
     template<typename TT>
     synth_result 
     qpfind_dag(
-            const TT& function, 
+            const synth_spec<TT>& spec, 
             dag<2>& g, 
             int nr_vars,
             bool verbose=false)
     {
-        synth_spec<TT> spec(nr_vars, 1);
-        spec.functions[0] = &function;
-
         int nr_vertices = 1;
         while (true) {
             if (verbose) {

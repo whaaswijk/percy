@@ -12,17 +12,17 @@ using kitty::static_truth_table;
     find_dag implementations.
 *******************************************************************************/
 
-template<int nrin>
+template<int nr_in>
 auto
 get_npn_classes()
 {
-    std::unordered_set<static_truth_table<nrin>, kitty::hash<static_truth_table<nrin>>> classes;
-    static_truth_table<1 << nrin> map;
+    std::unordered_set<static_truth_table<nr_in>, kitty::hash<static_truth_table<nr_in>>> classes;
+    static_truth_table<1 << nr_in> map;
     std::transform(map.cbegin(), map.cend(), map.begin(), 
             []( auto w ) { return ~w; } );
 
     int64_t index = 0;
-    static_truth_table<nrin> tt;
+    static_truth_table<nr_in> tt;
     while (index != -1) {
         kitty::create_from_words(tt, &index, &index + 1);
         const auto res = kitty::exact_npn_canonization(
@@ -40,18 +40,21 @@ get_npn_classes()
     return classes;
 }
 
-template<int nrin>
+template<int nr_in>
 void check_npn_equivalence()
 {
     dag<2> g1, g2;
     
-    auto npn_set = get_npn_classes<nrin>();
+    auto npn_set = get_npn_classes<nr_in>();
     const auto num_cpus = std::thread::hardware_concurrency();
 
     int i = 1;
     const auto total = npn_set.size();
+
+    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+
     for (auto& npn_tt : npn_set) {
-        static_truth_table<nrin> tt = npn_tt;
+        static_truth_table<nr_in> tt = npn_tt;
 
         // We skip the trivial functions
         if (is_trivial(tt)) {
@@ -60,13 +63,14 @@ void check_npn_equivalence()
             continue;
         }
 
+        spec.functions[0] = &tt;
+
         auto seq_start = std::chrono::high_resolution_clock::now();
-        auto seq_result = find_dag(tt, g1, nrin);
+        auto seq_result = find_dag(spec, g1, nr_in);
         auto seq_stop = std::chrono::high_resolution_clock::now();
     
         auto qpar_start = std::chrono::high_resolution_clock::now();
-        auto qpar_result = qpfind_dag<static_truth_table<nrin>>(
-                tt, g2, nrin);
+        auto qpar_result = qpfind_dag(spec, g2, nr_in);
         auto qpar_stop = std::chrono::high_resolution_clock::now();
 
         assert(seq_result == success);

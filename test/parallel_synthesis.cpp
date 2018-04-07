@@ -52,6 +52,7 @@ void check_equivalence()
         auto sim_tts1 = c1.template simulate<static_truth_table<nr_in>>();
         auto c1_nr_steps = c1.get_nr_vertices();
 
+        spec.verbosity = 4;
         auto res2 = qpfence_synth(&stats, tt, g, nr_in, 0);
         assert(res2 == success);
         // Make sure that the found DAG is indeed valid for this function.
@@ -59,6 +60,7 @@ void check_equivalence()
         assert(verify_res == success);
         auto sim_tts2 = c2.template simulate<static_truth_table<nr_in>>();
         auto c2_nr_steps = c2.get_nr_vertices();
+        spec.verbosity = 0;
 
         assert(sim_tts1[0] == sim_tts2[0]);
         assert(c1_nr_steps == c2_nr_steps);

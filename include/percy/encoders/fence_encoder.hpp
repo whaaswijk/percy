@@ -181,11 +181,12 @@ namespace percy
             bool
             create_main_clauses(const synth_spec<TT>& spec)
             {
-                bool success = true;
                 for (int t = 0; t < spec.get_tt_size(); t++) {
-                    success &= create_tt_clauses(spec, t);
+                    if (!create_tt_clauses(spec, t)) {
+                        return false;
+                    }
                 }
-                return success;
+                return true;
             }
 
             template<typename TT>
@@ -412,7 +413,11 @@ namespace percy
             bool 
             add_simulation_clause(
                     const synth_spec<TT>& spec, 
-                    int t, int i, int svar, int output, int opvar_idx,
+                    const int t, 
+                    const int i, 
+                    const int svar, 
+                    const int output, 
+                    const int opvar_idx,
                     auto fanins,
                     const std::bitset<FI>& fanin_asgn)
             {
@@ -735,10 +740,10 @@ namespace percy
                 create_output_clauses(spec);
                 create_op_clauses(spec);
 
+/*
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
-/*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }

@@ -17,6 +17,7 @@ extern "C"
 
 namespace percy
 {
+    /*
     template<typename TT, typename Solver>
     class old_dag_synthesizer
     {
@@ -257,9 +258,9 @@ namespace percy
                 return status;
             }
             
-            /*******************************************************************
+            *******************************************************************
                 Synthesizes while allowing for different input permutations.
-            *******************************************************************/
+            *******************************************************************
             synth_result 
             perm_synthesize(
                     const TT& spec, 
@@ -361,6 +362,7 @@ namespace percy
                         "========================================\n");
             }
     };
+*/
 
 
     /***************************************************************************
@@ -728,8 +730,6 @@ namespace percy
                     }
                     printf("\n");
                     */
-
-                
                     return true;
                 } else {
                     return false;
@@ -1344,126 +1344,6 @@ namespace percy
                 }
             }
 
-            template<typename TT>
-            void psearch_dags(
-                    const synth_spec<TT>& spec, 
-                    dag<2>& g, 
-                    dag_synthesizer<2>& synth,
-                    chain<2>& chain,
-                    bool *found,
-                    std::mutex& m)
-            {
-                // We can terminate early if a solution has already been found.
-                if (*found) {
-                    return;
-                } else if (_level == _nr_vertices) {
-                    for (int i = 1; i <= _nr_vertices; i++) {
-                        const auto j = _js[i];
-                        const auto k = _ks[i];
-                        g.set_vertex(i-1, j, k);
-                    }
-                    const auto result = synth.synthesize(spec, g, chain);
-                    if (result == success && !(*found)) {
-                        std::lock_guard<std::mutex> gen_lock(m);
-                        if (!(*found)) {
-                            ++_nr_solutions;
-                            *found = true;
-                            if (_verbosity) {
-                                printf("Found solution: ");
-                                for (int i = 1; i <= _nr_vertices; i++) {
-                                    const auto j = _js[i];
-                                    const auto k = _ks[i];
-                                    if (i > 0) {
-                                        printf(" - ");
-                                    }
-                                    printf("(%d, %d)", j+1, k+1);
-                                }
-                                printf("\n");
-                            }
-                        }
-                    }
-                    noreapply_backtrack();
-                } else {
-                    // We are only interested in DAGs that are in
-                    // co-lexicographical order. Look at the previous step
-                    // on the stack, the current step should be greater or
-                    // equal to it.
-                    const auto start_j = _js[_level];
-                    const auto start_k = _ks[_level];
-
-                    _ks[_level+1] = start_k;
-                    for (int j = start_j; j < start_k && !(*found); j++) {
-                        if (_disabled_matrix[_level][j][start_k]) {
-                            continue;
-                        }
-
-                        // If we choose fanin (j, k), record that j and k
-                        // are covered.
-                        ++_covered_steps[j];
-                        ++_covered_steps[start_k];
-
-                        int uncovered = 0;
-                        for (int i = _nr_vars; i <= _nr_vars+_level; i++) {
-                            if (_covered_steps[i] == 0) {
-                                ++uncovered;
-                            }
-                        }
-                        if (uncovered > _nr_vertices-_level) {
-                            --_covered_steps[j];
-                            --_covered_steps[start_k];
-                            continue;
-                        }
-
-                        // We are adding step (i, j, k). This means that we
-                        // don't have to consider steps (i',j,i) or (i',k,i)
-                        // for i < i' <= n+r. This avoiding reapplying an
-                        // operand.
-                        for (int ip = _level+1; ip < _nr_vertices; ip++) {
-                            ++_disabled_matrix[ip][j][_nr_vars+_level];
-                            ++_disabled_matrix[ip][start_k][_nr_vars+_level];
-                        }
-
-                        ++_level;
-                        _js[_level] = j;
-                        psearch_dags(spec, g, synth, chain, found, m);
-                    }
-                    for (int k = start_k+1; (k < _nr_vars+_level && 
-                            !(*found)); k++) {
-                        for (int j = 0; j < k && !(*found); j++) {
-                            if (_disabled_matrix[_level][j][k]) {
-                                continue;
-                            }
-                            ++_covered_steps[j];
-                            ++_covered_steps[k];
-
-                            int uncovered = 0;
-                            for (int i = _nr_vars; i <= _nr_vars+_level; i++) {
-                                if (_covered_steps[i] == 0) {
-                                    ++uncovered;
-                                }
-                            }
-                            if (uncovered > _nr_vertices-_level) {
-                                --_covered_steps[j];
-                                --_covered_steps[k];
-                                continue;
-                            }
-
-                            for (int ip = _level+1; ip < _nr_vertices; ip++) {
-                                ++_disabled_matrix[ip][j][_nr_vars+_level];
-                                ++_disabled_matrix[ip][k][_nr_vars+_level];
-                            }
-                            ++_level;
-                            _js[_level] = j;
-                            _ks[_level] = k;
-
-                            psearch_dags(spec, g, synth, chain, found, m);
-                        }
-                    }
-
-                    noreapply_backtrack();
-                }
-            }
-
             void 
             qpsearch_dags(
                     dag<2>& g, 
@@ -1664,31 +1544,6 @@ namespace percy
                 assert(_initialized);
 
                 search_dags(f, g, synth, chain);
-
-                if (_nr_solutions > 0) {
-                    return success;
-                } else {
-                    return failure;
-                }
-            }
-
-            /*******************************************************************
-                Parallel version of find_dag.
-            *******************************************************************/
-            template<typename TT, typename Solver>
-            synth_result 
-            pfind_dag(
-                    const TT& f, 
-                    dag<2>& g, 
-                    chain<2>& chain, 
-                    dag_synthesizer<2, Solver>& synth,
-                    bool *found,
-                    std::mutex& m)
-            {
-                assert(_initialized);
-
-                assert(_nr_solutions == 0);
-                psearch_dags(f, g, synth, chain, found, m);
 
                 if (_nr_solutions > 0) {
                     return success;

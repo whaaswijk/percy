@@ -96,5 +96,15 @@ namespace percy
         printf("\n");
     }
 
+    template<long unsigned FI>
+    void
+    print_fanin(const auto* const fanins)
+    {
+        for (int i = 0; i < FI; i++) {
+            printf("%d ", fanins[i]);
+        }
+        printf("\n");
+    }
+
 }
 
