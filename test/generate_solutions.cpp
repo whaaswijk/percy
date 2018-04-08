@@ -64,6 +64,28 @@ int main(void)
             }
         }
 
+        auto synth3 = new_std_synth<3>();
+        chain<3> c3;
+        synth_spec<static_truth_table<4>> spec4(4, 1);
+        static_truth_table<4> tt4;
+
+        for (int i = 0; i < 256; i++) {
+            kitty::create_from_words(tt4, &i, &i+1);
+            spec4.functions[0] = &tt4;
+
+            printf("Generating solutions for function ");
+            kitty::print_binary(tt4);
+            printf("\n");
+
+            synth3->reset();
+            while (synth3->next_solution(spec4, c3) == success) {
+                auto sim_fs = c3.simulate(spec4);
+                assert(sim_fs[0] == tt4);
+
+                printf("Next solution: (%d vertices)\n", c3.get_nr_vertices());
+            }
+        }
+
         /*
         spec2.set_nr_out(2);
         for (int i = 0; i < 16; i++) {
