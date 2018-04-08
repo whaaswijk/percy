@@ -126,14 +126,11 @@ namespace percy
             next_solution(synth_spec<TT>& spec, chain<FI>& chain)
             {
                 if (!is_dirty) {
-                    //printf("not dirty\n");
                     auto result = synthesize(spec, chain);
                     assert(result == success);
                     return success;
                 }
                     
-                //printf("dirty, getting next solution\n");
-
                 // The special case when the Boolean chain to be synthesized
                 // consists entirely of trivial functions.
                 // In this case, only one solution exists.
@@ -143,6 +140,39 @@ namespace percy
 
 
                 while (encoder.block_solution(spec)) {
+                    const auto status = 
+                        solver_solve(solver, spec.conflict_limit);
+
+                    if (status == success) {
+                        encoder.extract_chain(spec, chain);
+                        return success;
+                    } else {
+                        return status;
+                    }
+                }
+
+                return failure;
+            }
+
+            template<typename TT>
+            synth_result 
+            next_struct_solution(synth_spec<TT>& spec, chain<FI>& chain)
+            {
+                if (!is_dirty) {
+                    auto result = synthesize(spec, chain);
+                    assert(result == success);
+                    return success;
+                }
+                    
+                // The special case when the Boolean chain to be synthesized
+                // consists entirely of trivial functions.
+                // In this case, only one solution exists.
+                if (spec.nr_triv == spec.get_nr_out()) {
+                    return failure;
+                }
+
+
+                while (encoder.block_struct_solution(spec)) {
                     const auto status = 
                         solver_solve(solver, spec.conflict_limit);
 
