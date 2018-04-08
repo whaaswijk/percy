@@ -249,10 +249,10 @@ namespace percy
                     s << char(('a' + step_idx));
                     return;
                 }
-                const auto& step = dag::vertices[step_idx - dag::nr_inputs];
+                const auto& step = get_vertex(step_idx - nr_inputs);
                 auto word = 0;
                 for (int i = 0; i < 4; i++) {
-                    if (get_bit(step.op, i)) {
+                    if (kitty::get_bit(operators[step_idx - nr_inputs], i)) {
                         word |= (1 << i);
                     }
                 }
@@ -260,34 +260,34 @@ namespace percy
                 switch (word) {
                     case 2:
                         s << "(";
-                        step_to_expression(s, step.inputs[0]);
+                        step_to_expression(s, step.first);
                         s << "!";
-                        step_to_expression(s, step.inputs[1]);
+                        step_to_expression(s, step.second);
                         s << ")";
                         break;
                     case 4:
                         s << "(";
                         s << "!";
-                        step_to_expression(s, step.inputs[0]);
-                        step_to_expression(s, step.inputs[1]);
+                        step_to_expression(s, step.first);
+                        step_to_expression(s, step.second);
                         s << ")";
                         break;
                     case 6:
                         s << "[";
-                        step_to_expression(s, step.inputs[0]);
-                        step_to_expression(s, step.inputs[1]);
+                        step_to_expression(s, step.first);
+                        step_to_expression(s, step.second);
                         s << "]";
                         break;
                     case 8:
                         s << "(";
-                        step_to_expression(s, step.inputs[0]);
-                        step_to_expression(s, step.inputs[1]);
+                        step_to_expression(s, step.first);
+                        step_to_expression(s, step.second);
                         s << ")";
                         break;
                     case 14:
                         s << "{";
-                        step_to_expression(s, step.inputs[0]);
-                        step_to_expression(s, step.inputs[1]);
+                        step_to_expression(s, step.first);
+                        step_to_expression(s, step.second);
                         s << "}";
                         break;
                     default:

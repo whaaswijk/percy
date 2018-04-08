@@ -980,6 +980,82 @@ namespace percy
 
                 return true;
             }
+
+            /*******************************************************************
+                Assumes that a solution has been found by the current encoding.
+                Blocks the current solution such that the solver is forced to
+                find different ones (if they exist).
+            *******************************************************************/
+            template<typename TT>
+            bool
+            block_solution(const synth_spec<TT>& spec)
+            {
+                int ctr = 0;
+                int svar_offset = 0;
+
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                        int invert = 0;
+                        const auto op_var = get_op_var(spec, i, j);
+                        if (solver_var_value(*solver, op_var)) {
+                            invert = 1;
+                        }
+                        abc::Vec_IntSetEntry(vLits, ctr++,
+                                abc::Abc_Var2Lit(get_op_var(spec, i, j),
+                                    invert));
+                    }
+
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        if (solver_var_value(*solver, sel_var)) {
+                            abc::Vec_IntSetEntry(vLits, ctr++,
+                                    abc::Abc_Var2Lit(sel_var, 1));
+                            break;
+                        }
+                    }
+
+                    svar_offset += nr_svars_for_i;
+                }
+                
+                return solver_add_clause(
+                            *solver,
+                            abc::Vec_IntArray(vLits), 
+                            abc::Vec_IntArray(vLits) + ctr);
+            }
+
+
+            /*******************************************************************
+                Similar to block_solution, but blocks all solutions with the
+                same structure. This is more restrictive, since the other
+                method allows for the same structure but different operators.
+            *******************************************************************/
+            template<typename TT>
+            bool
+            block_struct_solution(const synth_spec<TT>& spec)
+            {
+                int ctr = 0;
+                int svar_offset = 0;
+
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        if (solver_var_value(*solver, sel_var)) {
+                            abc::Vec_IntSetEntry(vLits, ctr++,
+                                    abc::Abc_Var2Lit(sel_var, 1));
+                            break;
+                        }
+                    }
+
+                    svar_offset += nr_svars_for_i;
+                }
+
+                return solver_add_clause(
+                            *solver,
+                            abc::Vec_IntArray(vLits), 
+                            abc::Vec_IntArray(vLits) + ctr);
+            }
     };
 }
 

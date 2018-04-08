@@ -16,6 +16,7 @@ namespace percy
     {
         using synthesizer<Encoder, Solver>::solver;
         using synthesizer<Encoder, Solver>::encoder;
+        bool is_dirty = false;
 
         public:
             template<typename TT>
@@ -23,6 +24,8 @@ namespace percy
             synthesize(synth_spec<TT>& spec, chain<FI>& chain)
             {
                 assert(spec.get_nr_in() >= FI);
+               
+                is_dirty = true;
 
                 spec.preprocess();
 
@@ -80,6 +83,7 @@ namespace percy
                     return success;
                 }
 
+                is_dirty = true;
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
                 spec.nr_steps = 1;
                 while (true) {
@@ -115,6 +119,47 @@ namespace percy
                         }
                     }
                 }
+            }
+
+            template<typename TT>
+            synth_result 
+            next_solution(synth_spec<TT>& spec, chain<FI>& chain)
+            {
+                if (!is_dirty) {
+                    //printf("not dirty\n");
+                    auto result = synthesize(spec, chain);
+                    assert(result == success);
+                    return success;
+                }
+                    
+                //printf("dirty, getting next solution\n");
+
+                // The special case when the Boolean chain to be synthesized
+                // consists entirely of trivial functions.
+                // In this case, only one solution exists.
+                if (spec.nr_triv == spec.get_nr_out()) {
+                    return failure;
+                }
+
+
+                while (encoder.block_solution(spec)) {
+                    const auto status = 
+                        solver_solve(solver, spec.conflict_limit);
+
+                    if (status == success) {
+                        encoder.extract_chain(spec, chain);
+                        return success;
+                    } else {
+                        return status;
+                    }
+                }
+
+                return failure;
+            }
+
+            void reset()
+            {
+                is_dirty = false;
             }
 
     };
