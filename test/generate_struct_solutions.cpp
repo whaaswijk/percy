@@ -140,8 +140,6 @@ int main(void)
         printf("nr_solutions=%d, nr_struct_solutions=%d\n",
                 nr_solutions, nr_struct_solutions);
     }
-
-
   
     return 0;
 }
