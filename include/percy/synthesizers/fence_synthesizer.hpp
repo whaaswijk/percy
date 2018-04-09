@@ -21,7 +21,10 @@ namespace percy
         public:
             template<typename TT>
             synth_result 
-            synthesize(synth_spec<TT>& spec, chain<FI>& chain)
+            synthesize(
+                    synth_spec<TT>& spec, 
+                    chain<FI>& chain,
+                    const int initial_steps = 1)
             {
                 assert(spec.get_nr_in() >= FI);
 
@@ -43,7 +46,8 @@ namespace percy
                 // should keep track of all conflicts in existence checks.
                 int total_conflicts = 0;
                 fence f;
-                po_filter<unbounded_generator> g(unbounded_generator(), 
+                po_filter<unbounded_generator> g(
+                        unbounded_generator(initial_steps), 
                         spec.get_nr_out(), FI);
                 int old_nnodes = 1;
                 while (true) {
@@ -139,7 +143,10 @@ namespace percy
 
             template<typename TT>
             synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<FI>& chain)
+            cegar_synthesize(
+                    synth_spec<TT>& spec, 
+                    chain<FI>& chain,
+                    const int initial_steps = 1)
             {
                 assert(spec.get_nr_in() >= FI);
 
@@ -159,7 +166,8 @@ namespace percy
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
                 fence f;
-                po_filter<unbounded_generator> g(unbounded_generator(), 
+                po_filter<unbounded_generator> g(
+                        unbounded_generator(initial_steps), 
                         spec.get_nr_out(), FI);
                 int total_conflicts = 0;
                 int old_nnodes = 1;

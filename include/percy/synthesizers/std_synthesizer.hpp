@@ -21,7 +21,10 @@ namespace percy
         public:
             template<typename TT>
             synth_result 
-            synthesize(synth_spec<TT>& spec, chain<FI>& chain)
+            synthesize(
+                    synth_spec<TT>& spec, 
+                    chain<FI>& chain, 
+                    const int initial_steps = 1)
             {
                 assert(spec.get_nr_in() >= FI);
                
@@ -40,7 +43,7 @@ namespace percy
                     return success;
                 }
 
-                spec.nr_steps = 1;
+                spec.nr_steps = initial_steps;
                 while (true) {
                     solver_restart(&solver);
                     if (!encoder.encode(spec)) {
@@ -66,7 +69,10 @@ namespace percy
             
             template<typename TT>
             synth_result
-            cegar_synthesize(synth_spec<TT>& spec, chain<FI>& chain)
+            cegar_synthesize(
+                    synth_spec<TT>& spec, 
+                    chain<FI>& chain, 
+                    const int initial_steps = 1)
             {
                 assert(spec.get_nr_in() >= FI);
 
@@ -85,7 +91,7 @@ namespace percy
 
                 is_dirty = true;
                 spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
-                spec.nr_steps = 1;
+                spec.nr_steps = initial_steps;
                 while (true) {
                     solver_restart(&solver);
                     if (!encoder.cegar_encode(spec)) {

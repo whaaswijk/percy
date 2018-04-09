@@ -301,9 +301,9 @@ namespace percy
             family_generator _gen;
 
         public:
-            unbounded_generator() 
+            unbounded_generator(const int initial_nr_nodes = 1) 
             {
-                _gen.reset(1);
+                _gen.reset(initial_nr_nodes);
             }
 
             unbounded_generator(unbounded_generator&& gen)
