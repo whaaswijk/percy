@@ -26,10 +26,11 @@ namespace percy
     template<int FI=2>
     class chain : public dag<FI>
     {
-        using OpTT = static_truth_table<FI>;
-        using fanin = typename dag<FI>::fanin;
-        using dag<FI>::nr_inputs;
-        using dag<FI>::nr_vertices;
+        public:
+            using OpTT = static_truth_table<FI>;
+            using fanin = typename dag<FI>::fanin;
+            using dag<FI>::nr_inputs;
+            using dag<FI>::nr_vertices;
 
         private:
             static const int OperandTTSize = (1 << FI);
@@ -58,21 +59,26 @@ namespace percy
             int get_nr_outputs() const { return outputs.size(); }
             const std::vector<int>& get_outputs() const { return outputs; }
 
-            void 
+            const OpTT& get_operator(int i) const
+            {
+              return operators.at(i);
+            }
+
+            void
             set_step(int i, const fanin* const in, const OpTT& op)
             {
-                set_vertex(i, in);
+                dag::set_vertex(i, in);
                 operators[i] = op;
             }
 
-            void 
+            void
             set_step(int i, const std::array<fanin, FI>& in, const OpTT& op)
             {
-                set_vertex(i, in);
+                dag::set_vertex(i, in);
                 operators[i] = op;
             }
-            
-            void 
+
+            void
             set_output(int out_idx, int lit)
             {
                 outputs[out_idx] = lit;
@@ -117,9 +123,9 @@ namespace percy
                 }
 
                 for (int i = 0; i < nr_vertices; i++) {
-                    const auto& step = get_vertex(i);
-                    
-                    foreach_fanin(step, 
+                    const auto& step = dag::get_vertex(i);
+
+                    foreach_fanin(step,
                             [&ins, &tmps, nr_inputs=nr_inputs]
                             (auto fanin, int j) {
                         if (fanin < nr_inputs) {
@@ -159,8 +165,8 @@ namespace percy
                 return fs;
             }
 
-            void 
-            copy(const chain<FI>& c) 
+            void
+            copy(const chain<FI>& c)
             {
                 copy_dag(c);
                 outputs = c.outputs;
@@ -170,15 +176,15 @@ namespace percy
                 Creates a DAG from the Boolean chain in .dot format, so that
                 it may be rendered using various DAG packages (e.g. graphviz).
             *******************************************************************/
-            void 
-            to_dot(std::ostream& s)
+            void
+            to_dot(std::ostream& s) /* NOTE: deprecated impl. */
             {
                 s << "graph {\n";
                 s << "rankdir = BT\n";
                 s << "x0 [shape=none,label=<\u22A5>];\n";
                 for (int i = 0; i < dag::nr_inputs; i++) {
                     const auto idx = i + 1;
-                    s << "x" << idx << " [shape=none,label=<x<sub>" << idx 
+                    s << "x" << idx << " [shape=none,label=<x<sub>" << idx
                         << "</sub>>];\n";
                 }
 
@@ -198,7 +204,7 @@ namespace percy
                     const auto out = outputs[h];
                     const auto inv = out & 1;
                     const auto var = out >> 1;
-                    s << "f" << h << " [shape=none,label=<f<sub>" << h+1 
+                    s << "f" << h << " [shape=none,label=<f<sub>" << h+1
                         << "</sub>>];\n";
                     s << "x" << var << " -- f" << h << " [style=" <<
                         (inv ? "dashed" : "solid") << "];\n";
@@ -231,7 +237,7 @@ namespace percy
 
             }
 
-            void 
+            void
             print_dot()
             {
                 to_dot(std::cout);
@@ -243,13 +249,13 @@ namespace percy
                 2-input operators.
             *******************************************************************/
             void
-            step_to_expression(std::ostream& s, int step_idx) 
+            step_to_expression(std::ostream& s, int step_idx)
             {
                 if (step_idx < dag::nr_inputs) {
                     s << char(('a' + step_idx));
                     return;
                 }
-                const auto& step = get_vertex(step_idx - nr_inputs);
+                const auto& step = dag::get_vertex(step_idx - nr_inputs);
                 auto word = 0;
                 for (int i = 0; i < 4; i++) {
                     if (kitty::get_bit(operators[step_idx - nr_inputs], i)) {
@@ -298,7 +304,7 @@ namespace percy
                 }
             }
 
-            void 
+            void
             to_expression(std::ostream& s)
             {
                 assert(outputs.size() == 1 && FI == 2);
@@ -320,7 +326,7 @@ namespace percy
                 to_expression(std::cout);
             }
 
-            void 
+            void
             extract_dag(dag& g) const
             {
                 g.copy_dag(*this);

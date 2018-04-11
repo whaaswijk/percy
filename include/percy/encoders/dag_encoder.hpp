@@ -8,6 +8,8 @@ namespace percy
     template<typename Dag, typename Solver=sat_solver*>
     class dag_encoder
     {
+        using fanin = typename Dag::fanin;
+
         private:
             // We only keep a reference to the solver. Since we don't own it,
             // we should never use encoders outside of the synthesizer objects
@@ -86,7 +88,7 @@ namespace percy
                     const int i, 
                     const int output, 
                     const int opvar_idx,
-                    const auto fanins,
+                    const std::array<fanin, Dag::NrFanin>& fanins,
                     const std::bitset<Dag::NrFanin>& fanin_asgn)
             {
                 int ctr = 0;
@@ -148,7 +150,7 @@ namespace percy
                     const Dag& dag, 
                     int t)
             {
-                fanin<Dag> fanins[Dag::NrFanin];
+                fanin fanins[Dag::NrFanin];
                 std::bitset<Dag::NrFanin> fanin_asgn;
 
                 for (int i = 0; i < nr_vertices; i++) {
@@ -260,7 +262,7 @@ namespace percy
                     const Dag& dag, 
                     chain<Dag::NrFanin>& chain)
             {
-                fanin<Dag> op_inputs[Dag::NrFanin];
+                fanin op_inputs[Dag::NrFanin];
 
                 chain.reset(nr_inputs, 1, nr_vertices);
 

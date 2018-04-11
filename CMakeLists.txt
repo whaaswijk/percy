@@ -11,6 +11,7 @@ option(TRAVIS_BUILD "Use Travis build configuration" OFF)
 option(PERCY_TEST "Build tests" OFF)
 option(PERCY_BENCH "Build benchmarks" OFF)
 option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
+option(PERCY_BUILD_ABC "Build abc for percy" ON)
 
 externalproject_add(
 	nauty
@@ -27,9 +28,11 @@ if (${TRAVIS_BUILD})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD")
 endif()
 
-set(ABC_USE_NAMESPACE "abc")
-add_subdirectory(abc)
-target_compile_definitions(libabc-pic PUBLIC "LIN64")
+if (PERCY_BUILD_ABC)
+  set(ABC_USE_NAMESPACE "abc")
+  add_subdirectory(abc)
+  target_compile_definitions(libabc-pic PUBLIC "LIN64")
+endif()
 
 SET(NAUTY_INCLUDE_DIR "${PROJECT_BINARY_DIR}/nauty/src/nauty")
 SET(NAUTY_LDIR "${PROJECT_BINARY_DIR}/nauty/src/nauty") 
