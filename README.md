@@ -31,3 +31,6 @@ system's equivalent) to build and run the tests:
     make
     make test
 
+## EPFL logic sythesis libraries
+
+percy is part of the [EPFL logic synthesis](https://lsi.epfl.ch/page-138455-en.html) libraries.  The other libraries and several examples on how to use and integrate the libraries can be found in the [logic synthesis tool showcase](https://github.com/lsils/lstools-showcase).
