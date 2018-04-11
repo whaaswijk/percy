@@ -59,7 +59,12 @@ namespace percy
             int get_nr_outputs() const { return outputs.size(); }
             const std::vector<int>& get_outputs() const { return outputs; }
 
-            void 
+            const OpTT& get_operator(int i) const
+            {
+              return operators.at(i);
+            }
+
+            void
             set_step(int i, const fanin* const in, const OpTT& op)
             {
                 dag::set_vertex(i, in);
