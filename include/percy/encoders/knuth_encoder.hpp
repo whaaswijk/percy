@@ -7,6 +7,8 @@ namespace percy
     template<int FI=2, typename Solver=sat_solver*>
     class knuth_encoder
     {
+        using fanin = typename dag<FI>::fanin;
+
         private:
             Solver* solver;
 
@@ -22,7 +24,7 @@ namespace percy
             int total_nr_vars;
             
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
-            std::vector<std::array<int, FI>> svar_map;
+            std::vector<std::array<fanin, FI>> svar_map;
             std::vector<int> nr_svar_map;
 
         public:
@@ -382,7 +384,7 @@ namespace percy
                     const int svar, 
                     const int output, 
                     const int opvar_idx,
-                    const auto fanins,
+                    const std::array<fanin, FI>& fanins,
                     const std::bitset<FI>& fanin_asgn)
             {
                 int ctr = 0;

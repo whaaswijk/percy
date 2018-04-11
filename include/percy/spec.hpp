@@ -1,10 +1,11 @@
 #pragma once
 
+#include "tt_utils.hpp"
+
 #define MAX_OUT 64 // The maximum supported number of outputs
 
 namespace percy
 {
-
     template<typename TT>
     class synth_spec
     {

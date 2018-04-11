@@ -98,7 +98,7 @@ namespace percy
 
     template<long unsigned FI>
     void
-    print_fanin(const auto* const fanins)
+    print_fanin(const typename dag<FI>::fanin* const fanins)
     {
         for (int i = 0; i < FI; i++) {
             printf("%d ", fanins[i]);

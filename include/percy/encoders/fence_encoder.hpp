@@ -7,6 +7,8 @@ namespace percy
     template<int FI=2, typename Solver=sat_solver*>
     class fence_encoder
     {
+        using fanin = typename dag<FI>::fanin;
+
         private:
             Solver* solver;
 
@@ -24,7 +26,7 @@ namespace percy
             int fence_offset;
 
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
-            std::vector<std::array<int, FI>> svar_map;
+            std::vector<std::array<fanin, FI>> svar_map;
             std::vector<int> nr_svar_map;
 
 
@@ -418,7 +420,7 @@ namespace percy
                     const int svar, 
                     const int output, 
                     const int opvar_idx,
-                    auto fanins,
+                    const std::array<fanin, FI>& fanins,
                     const std::bitset<FI>& fanin_asgn)
             {
                 int ctr = 0;
@@ -503,7 +505,7 @@ namespace percy
             void 
             extract_chain(synth_spec<TT>& spec, chain<FI>& chain)
             {
-                fanin<dag<FI>> op_inputs[FI];
+                fanin op_inputs[FI];
 
                 chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps);
 
