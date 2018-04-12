@@ -95,11 +95,11 @@ namespace percy
             *******************************************************************/
             template<typename TT>
             std::vector<TT>
-            simulate(const synth_spec<TT>& spec) const
+            simulate(const synth_spec<TT>& spec) /*const*/
             {
                 std::vector<TT> fs(outputs.size());
                 std::vector<TT> tmps(nr_vertices);
-                std::vector<TT> ins(FI);
+                std::vector<TT> ins;
 
                 for (auto i = 0; i < nr_inputs; ++i) {
                     ins.push_back(kitty::create<TT>(nr_inputs));
@@ -125,7 +125,7 @@ namespace percy
                 for (int i = 0; i < nr_vertices; i++) {
                     const auto& step = dag::get_vertex(i);
 
-                    foreach_fanin(step,
+                    dag::foreach_fanin(step,
                             [&ins, &tmps, nr_inputs=nr_inputs]
                             (auto fanin, int j) {
                         if (fanin < nr_inputs) {
