@@ -446,9 +446,8 @@ namespace percy
                     
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        abc::Vec_IntSetEntry(vLits, j,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                kitty::get_bit(triv_op, j+1)));
+                        abc::Vec_IntSetEntry(vLits, j-1,
+                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -457,9 +456,9 @@ namespace percy
                     for (int n = 0; n < FI; n++) {
                         kitty::create_nth_var(triv_op, n);
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                            abc::Vec_IntSetEntry(vLits, j,
+                            abc::Vec_IntSetEntry(vLits, j-1,
                                     abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                        kitty::get_bit(triv_op, j+1)));
+                                        kitty::get_bit(triv_op, j)));
                         }
                         solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -881,29 +880,17 @@ namespace percy
                 assert(spec.nr_steps <= MAX_STEPS);
 
                 create_variables(spec);
-                auto success = create_main_clauses(spec);
-                if (!success) {
-                    printf("unable to create main clauses!\n");
+                if (!create_main_clauses(spec)) {
                     return false;
                 }
 
                 create_output_clauses(spec);
                 create_op_clauses(spec);
-                /*
-                success &= create_output_clauses(spec);
-                if (!success) {
-                    return false;
-                }
-                
-                success &= create_op_clauses(spec);
-                if (!success) {
-                    return false;
-                }
 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
-                */
+
                 /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
@@ -941,10 +928,11 @@ namespace percy
                 create_output_clauses(spec);
                 create_op_clauses(spec);
 
-                /*
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
+
+                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
