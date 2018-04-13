@@ -469,35 +469,48 @@ namespace percy
             /*******************************************************************
               Add clauses which ensure that every step is used at least once.
             *******************************************************************/
-/*
             template<typename TT>
             void 
             create_alonce_clauses(const synth_spec<TT>& spec)
             {
                 for (int i = 0; i < spec.nr_steps; i++) {
                     auto ctr = 0;
+
+                    // Either one of the outputs points to this step.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         abc::Vec_IntSetEntry(vLits, ctr++, 
                                 abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                     }
-                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        for (int j = 0; j < spec.get_nr_in()+i; j++) {
-                            abc::Vec_IntSetEntry(vLits, ctr++,
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, j, spec.get_nr_in()+i), 0));
-                        }
-                        for (int j = spec.get_nr_in()+i+1; j < spec.get_nr_in()+ip; j++) {
-                            abc::Vec_IntSetEntry(vLits, ctr++, 
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, spec.get_nr_in()+i, j), 0));
-                        }
+
+                    auto svar_offset = 0;
+                    for (int j = 0; j < i + 1; j++) {
+                        svar_offset += nr_svar_map[j];
                     }
-                    solver_add_clause(this->solver, 
+
+                    // Or one of the succeeding steps points to this step.
+                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                        const auto nr_svars_for_ip = nr_svar_map[ip];
+                        for (int j = 0; j < nr_svars_for_ip; j++) {
+                            const auto sel_var = get_sel_var(svar_offset + j);
+                            const auto& fanins = svar_map[svar_offset + j];
+                            for (auto fanin : fanins) {
+                                if (fanin == spec.get_nr_in() + i) {
+                                    abc::Vec_IntSetEntry(
+                                            vLits, 
+                                            ctr++,
+                                            abc::Abc_Var2Lit(
+                                                get_sel_var(sel_var), 0)
+                                            );
+                                }
+                            }
+                        }
+                        svar_offset += nr_svars_for_ip;
+                    }
+                    solver_add_clause(*solver, 
                             abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + ctr);
                 }
             }
-*/
 
             /*******************************************************************
                 Add clauses which ensure that operands are never re-applied. In
@@ -891,10 +904,11 @@ namespace percy
                     create_nontriv_clauses(spec);
                 }
 
-                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+
+                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
@@ -932,10 +946,11 @@ namespace percy
                     create_nontriv_clauses(spec);
                 }
 
-                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
