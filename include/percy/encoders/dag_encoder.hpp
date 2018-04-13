@@ -88,7 +88,7 @@ namespace percy
                     const int i, 
                     const int output, 
                     const int opvar_idx,
-                    const std::array<fanin, Dag::NrFanin>& fanins,
+                    const fanin* const fanins,
                     const std::bitset<Dag::NrFanin>& fanin_asgn)
             {
                 int ctr = 0;
