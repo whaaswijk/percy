@@ -869,8 +869,8 @@ namespace percy
     qpfind_dag(
             const synth_spec<TT>& spec, 
             dag<2>& g, 
-            int nr_vars, 
-            int nr_vertices)
+            const int nr_vars, 
+            const int nr_vertices)
     {
         vector<std::thread> threads;
        
@@ -885,14 +885,16 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
+        // Preprocess the spec only once, and not separately in every thread
+        spec.preprocess();
+
         g.reset(nr_vars, nr_vertices);
         for (int i = 0; i < nr_threads; i++) {
             threads.push_back(
-                std::thread([&spec, pfinished, pfound, &found_mutex, &g, 
-                            &q, nr_vars, nr_vertices] {
+                std::thread([&spec, pfinished, pfound, &found_mutex, &g, &q] {
                     dag<2> local_dag;
-                    chain<FI> chain;
-                    dag_synthesizer<FI> synth;
+                    chain<FI> local_chain;
+                    auto synth = new_dag_synth();
 
                     while (!(*pfound)) {
                         if (!q.try_dequeue(local_dag)) {
@@ -905,13 +907,14 @@ namespace percy
                                 continue;
                             }
                         }
-                        const auto status = 
-                            synth.synthesize(spec, local_dag, chain);
+                        const auto status = synth->synthesize(spec, local_dag,
+                                local_chain, false);
 
                         if (status == success) {
                             std::lock_guard<std::mutex> vlock(found_mutex);
                             if (!(*pfound)) {
-                                for (int j = 0; j < nr_vertices; j++) {
+                                for (int j = 0; j <
+                                        local_dag.get_nr_vertices(); j++) {
                                     const auto& v = local_dag.get_vertex(j);
                                     g.set_vertex(j, v.first, v.second);
                                 }
@@ -932,14 +935,15 @@ namespace percy
         // for another thread (if no solution was found yet.)
         if (!found) {
             dag<2> local_dag;
-            chain<FI> chain;
-            dag_synthesizer<FI> synth;
+            chain<FI> local_chain;
+            auto synth = new_dag_synth();
 
             while (!found) {
                 if (!q.try_dequeue(local_dag)) {
                     break;
                 }
-                const auto status = synth.synthesize(spec, local_dag, chain);
+                const auto status = 
+                    synth->synthesize(spec, local_dag, local_chain, false);
 
                 if (status == success) {
                     std::lock_guard<std::mutex> vlock(found_mutex);
@@ -965,8 +969,8 @@ namespace percy
     synth_result 
     qpfence_synth(
             synth_stats* stats,
-            const TT& function, 
-            Dag& g, 
+            const TT& function,
+            Dag& g,
             int nr_vars,
             int conflict_limit)
     {

@@ -20,9 +20,12 @@ namespace percy
             synthesize(
                     const synth_spec<TT>& spec, 
                     const dag<FI>& dag, 
-                    chain<FI>& chain)
+                    chain<FI>& chain,
+                    bool preprocess_spec=true)
             {
-                spec.preprocess();
+                if (preprocess_spec) {
+                    spec.preprocess();
+                }
 
                 // The special case when the Boolean chain to be synthesized
                 // consists entirely of trivial functions.

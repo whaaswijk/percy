@@ -268,31 +268,12 @@ namespace percy
 
                 int svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    /*
-                    if (spec.verbosity > 2) {
-                        printf("adding sim. clauses for step %d (t=%d)\n",
-                                i + spec.get_nr_in() + 1, t+2);
-                    }
-                    */
                     const auto nr_svars_for_i = nr_svar_map[i];
-                    /*
-                    if (spec.verbosity > 2) {
-                        printf("nr_svars_for_i = %d\n", nr_svars_for_i);
-                    }
-                    */
 
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto svar = j + svar_offset;
                         const auto& fanins = svar_map[svar];
-                        /*
-                        if (spec.verbosity > 2) {
-                            printf("fanins: ");
-                            for (int fi = FI - 1; fi >= 0; fi--) {
-                                printf("x%d ", fanins[fi] + 1);
-                            }
-                            printf("\n");
-                        }
-                        */
+
                         // First add clauses for all cases where the
                         // operator i computes zero.
                         int opvar_idx = 0;
@@ -759,7 +740,8 @@ namespace percy
                     for (int i = 0; i < spec.nr_steps; i++) {
                         if (solver_var_value(*solver, 
                                     get_out_var(spec, nontriv_count, i))) {
-                            chain.set_output(h, ((i + spec.get_nr_in() + 1) << 1) +
+                            chain.set_output(h, 
+                                    ((i + spec.get_nr_in() + 1) << 1) +
                                     ((spec.out_inv >> h) & 1));
                             nontriv_count++;
                             break;

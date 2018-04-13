@@ -52,6 +52,9 @@ void check_npn_equivalence()
     const auto total = npn_set.size();
 
     synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    
+    auto synth = new_dag_synth();
+    chain<2> c;
 
     for (auto& npn_tt : npn_set) {
         static_truth_table<nr_in> tt = npn_tt;
@@ -68,13 +71,19 @@ void check_npn_equivalence()
         auto seq_start = std::chrono::high_resolution_clock::now();
         auto seq_result = find_dag(spec, g1, nr_in);
         auto seq_stop = std::chrono::high_resolution_clock::now();
+        auto synth_stat1 = synth->synthesize(spec, g1, c);
+
+        assert(seq_result == success);
+        assert(synth_stat1 == success);
     
         auto qpar_start = std::chrono::high_resolution_clock::now();
         auto qpar_result = qpfind_dag(spec, g2, nr_in);
         auto qpar_stop = std::chrono::high_resolution_clock::now();
+        auto synth_stat2 = synth->synthesize(spec, g2, c);
 
-        assert(seq_result == success);
         assert(qpar_result == success);
+        assert(synth_stat2 == success);
+
         assert(g1.get_nr_vertices() == g2.get_nr_vertices());
 
         printf("Time elapsed: %fms (SEQ)\n", 
