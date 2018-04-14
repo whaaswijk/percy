@@ -66,6 +66,11 @@ namespace percy
 
             std::vector<int>& get_outputs() { return outputs; }
 
+            OpTT& get_operator(int i)
+            {
+              return operators.at(i);
+            }
+
             void
             set_step(int i, const fanin* const in, const OpTT& op)
             {
