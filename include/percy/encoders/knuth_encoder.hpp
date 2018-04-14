@@ -2,6 +2,8 @@
 
 #include "encoder_base.hpp"
 
+using abc::Abc_Var2Lit;
+
 namespace percy
 {
     template<int FI=2, typename Solver=sat_solver*>
@@ -517,31 +519,65 @@ namespace percy
                 other words, (Sijk --> ~Si'ji) & (Sijk --> ~Si'ki), 
                 for all (i < i').
             *******************************************************************/
-/*
             template<typename TT>
             void 
             create_noreapply_clauses(const synth_spec<TT>& spec)
             {
                 int pLits[2];
+                auto svar_offset = 0;
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int ip = i+1; ip < spec.nr_steps; ip++) {
-                        for (int k = 1; k < spec.get_nr_in()+i; k++) {
-                            for (int j = 0; j < k; j++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,j,spec.get_nr_in()+i),1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,k,spec.get_nr_in()+i),1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins = svar_map[svar_offset + j];
+                        
+                        auto svar_offsetp = 0;
+                        for (int k = 0; k < i + 1; k++) {
+                            svar_offsetp += nr_svar_map[k];
+                        }
+
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            const auto nr_svars_for_ip = nr_svar_map[ip];
+                            for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                                const auto sel_varp = 
+                                    get_sel_var(svar_offsetp + jp);
+                                const auto& faninsp = 
+                                    svar_map[svar_offsetp + jp];
+
+                                auto subsumed = true;
+                                auto has_fanin_i = false;
+                                for (auto faninp : faninsp) {
+                                    if (faninp == i + spec.get_nr_in()) {
+                                        has_fanin_i = true;
+                                    } else {
+                                        auto is_included = false;
+                                        for (auto fanin : fanins) {
+                                            if (fanin == faninp) {
+                                                is_included = true;
+                                            }
+                                        }
+                                        if (!is_included) {
+                                            subsumed = false;
+                                        }
+                                    }
+                                }
+                                if (has_fanin_i && subsumed) {
+                                    pLits[0] = Abc_Var2Lit(sel_var, 1);
+                                    pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                    solver_add_clause(
+                                            *solver, 
+                                            pLits,
+                                            pLits + 2);
+                                }
                             }
+
+                            svar_offsetp += nr_svars_for_ip;
                         }
                     }
+                    svar_offset += nr_svars_for_i;
                 }
             }
-*/
 
             /*******************************************************************
                 Add clauses which ensure that steps occur in co-lexicographic
@@ -908,10 +944,11 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
 
-                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
+
+                /*
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
@@ -950,10 +987,11 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
                 
-                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
