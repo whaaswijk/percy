@@ -526,7 +526,7 @@ namespace percy
                 int pLits[2];
                 auto svar_offset = 0;
 
-                for (int i = 0; i < spec.nr_steps; i++) {
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
                     const auto nr_svars_for_i = nr_svar_map[i];
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
@@ -580,44 +580,112 @@ namespace percy
             }
 
             /*******************************************************************
-                Add clauses which ensure that steps occur in co-lexicographic
-                order. In other words, we require steps operands to be ordered
-                tuples.
+                Returns true iff the fanins1 is co-lexicographically greater
+                than (or equal to) fanins2.
             *******************************************************************/
-/*
+            bool
+            is_colex_greater(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins1[i] > fanins2[i]) {
+                        return true;
+                    } else if (fanins1[i] == fanins2[i]) {
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            /*******************************************************************
+                Returns true iff the fanins1 is co-lexicographically strictly
+                less than fanins2.
+            *******************************************************************/
+            bool
+            is_colex_less(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins2[i] > fanins1[i]) {
+                        return true;
+                    } else if (fanins1[i] == fanins2[i]) {
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                
+                // All fanins are equal
+                return false;
+            }
+
+            /*******************************************************************
+                Returns 1 if fanins1 > fanins2, -1 if fanins1 < fanins2, and
+                0 otherwise.
+            *******************************************************************/
+
+            int
+            colex_compare(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins1[i] < fanins2[i]) {
+                        return -1;
+                    } else if (fanins1[i] > fanins2[i]) {
+                        return 1;
+                    }
+                }
+                
+                // All fanins are equal
+                return 0;
+            }
+
+            /*******************************************************************
+                Add clauses which ensure that steps occur in co-lexicographic
+                order. In other words, we require steps operands to be 
+                co-lexicographically ordered tuples.
+            *******************************************************************/
             template<typename TT>
             void 
             create_colex_clauses(const synth_spec<TT>& spec)
             {
                 int pLits[2];
+                auto svar_offset = 0;
 
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 2; k < spec.get_nr_in()+i; k++) {
-                        for (int j = 1; j < k; j++) {
-                            for (int jp = 0; jp < j; jp++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i+1, jp, k), 1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
-                            }
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins1 = svar_map[svar_offset + j];
+
+                        auto svar_offsetp = 0;
+                        for (int k = 0; k < i + 1; k++) {
+                            svar_offsetp += nr_svar_map[k];
                         }
-                        for (int j = 0; j < k; j++) {
-                            for (int kp = 1; kp < k; kp++) {
-                                for (int jp = 0; jp < kp; jp++) {
-                                    pLits[0] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i, j, k), 1);
-                                    pLits[1] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i+1, jp, kp),1);
-                                    solver_add_clause(
-                                            this->solver, pLits, pLits+2);
+
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            const auto nr_svars_for_ip = nr_svar_map[ip];
+                            for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                                const auto sel_varp = 
+                                    get_sel_var(svar_offsetp + jp);
+                                const auto& fanins2 = 
+                                    svar_map[svar_offsetp + jp];
+
+                                if (colex_compare(fanins1, fanins2) == 1) {
+                                    pLits[0] = Abc_Var2Lit(sel_var, 1);
+                                    pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                    solver_add_clause(*solver, pLits, pLits+2);
                                 }
                             }
                         }
                     }
                 }
             }
-*/
 
             /*******************************************************************
                 Ensure that Boolean operators are co-lexicographically ordered:
@@ -948,10 +1016,11 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
 
-                /*
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_colex_func_clauses) {
                     create_colex_func_clauses(spec);
                 }
@@ -991,10 +1060,11 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
                 
-                /*
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_colex_func_clauses) {
                     create_colex_func_clauses(spec);
                 }
