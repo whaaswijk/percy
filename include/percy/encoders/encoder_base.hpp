@@ -93,7 +93,6 @@ namespace percy
         for (int i = 0; i < FI; i++) {
             printf("%d ", fanins[i]);
         }
-        printf("\n");
     }
 
     template<long unsigned FI>
@@ -103,7 +102,6 @@ namespace percy
         for (int i = 0; i < FI; i++) {
             printf("%d ", fanins[i]);
         }
-        printf("\n");
     }
 
 }

@@ -46,6 +46,7 @@ void check_equivalence(bool full_coverage)
         auto res = synth->synthesize(spec, c);
         assert(res == success);
         auto chain_size = c.get_nr_vertices();
+        assert(c.satisfies_spec(spec));
 
         auto abc_ntk = Abc_NtkFindExact(&abc_tt, NrIn, 1, -1, NULL, 0, 0, 0);
         auto abc_ntk_size = Abc_NtkNodeNum(abc_ntk);

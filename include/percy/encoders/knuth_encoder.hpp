@@ -1,6 +1,7 @@
 #pragma once
 
 #include "encoder_base.hpp"
+#include "../misc.hpp"
 
 using abc::Abc_Var2Lit;
 
@@ -580,72 +581,6 @@ namespace percy
             }
 
             /*******************************************************************
-                Returns true iff the fanins1 is co-lexicographically greater
-                than (or equal to) fanins2.
-            *******************************************************************/
-            bool
-            is_colex_greater(
-                    const std::array<fanin, FI>& fanins1,
-                    const std::array<fanin, FI>& fanins2)
-            {
-                for (int i = FI-1; i >= 0; i--) {
-                    if (fanins1[i] > fanins2[i]) {
-                        return true;
-                    } else if (fanins1[i] == fanins2[i]) {
-                        continue;
-                    } else {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            /*******************************************************************
-                Returns true iff the fanins1 is co-lexicographically strictly
-                less than fanins2.
-            *******************************************************************/
-            bool
-            is_colex_less(
-                    const std::array<fanin, FI>& fanins1,
-                    const std::array<fanin, FI>& fanins2)
-            {
-                for (int i = FI-1; i >= 0; i--) {
-                    if (fanins2[i] > fanins1[i]) {
-                        return true;
-                    } else if (fanins1[i] == fanins2[i]) {
-                        continue;
-                    } else {
-                        return false;
-                    }
-                }
-                
-                // All fanins are equal
-                return false;
-            }
-
-            /*******************************************************************
-                Returns 1 if fanins1 > fanins2, -1 if fanins1 < fanins2, and
-                0 otherwise.
-            *******************************************************************/
-
-            int
-            colex_compare(
-                    const std::array<fanin, FI>& fanins1,
-                    const std::array<fanin, FI>& fanins2)
-            {
-                for (int i = FI-1; i >= 0; i--) {
-                    if (fanins1[i] < fanins2[i]) {
-                        return -1;
-                    } else if (fanins1[i] > fanins2[i]) {
-                        return 1;
-                    }
-                }
-                
-                // All fanins are equal
-                return 0;
-            }
-
-            /*******************************************************************
                 Add clauses which ensure that steps occur in co-lexicographic
                 order. In other words, we require steps operands to be 
                 co-lexicographically ordered tuples.
@@ -662,28 +597,22 @@ namespace percy
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
                         const auto& fanins1 = svar_map[svar_offset + j];
+                        pLits[0] = Abc_Var2Lit(sel_var, 1);
 
-                        auto svar_offsetp = 0;
-                        for (int k = 0; k < i + 1; k++) {
-                            svar_offsetp += nr_svar_map[k];
-                        }
+                        auto svar_offsetp = svar_offset + nr_svars_for_i;
+                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
+                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
+                            const auto& fanins2 = svar_map[svar_offsetp + jp];
 
-                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                            const auto nr_svars_for_ip = nr_svar_map[ip];
-                            for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                                const auto sel_varp = 
-                                    get_sel_var(svar_offsetp + jp);
-                                const auto& fanins2 = 
-                                    svar_map[svar_offsetp + jp];
-
-                                if (colex_compare(fanins1, fanins2) == 1) {
-                                    pLits[0] = Abc_Var2Lit(sel_var, 1);
-                                    pLits[1] = Abc_Var2Lit(sel_varp, 1);
-                                    solver_add_clause(*solver, pLits, pLits+2);
-                                }
+                            if (colex_compare<int, FI>(fanins1, fanins2) == 1) {
+                                pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                solver_add_clause(*solver, pLits, pLits+2);
                             }
                         }
                     }
+
+                    svar_offset += nr_svars_for_i;
                 }
             }
 

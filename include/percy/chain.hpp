@@ -9,6 +9,7 @@
 #include <kitty/print.hpp>
 #include "dag.hpp"
 #include "spec.hpp"
+#include "misc.hpp"
 
 using std::vector;
 using std::unique_ptr;
@@ -163,6 +164,157 @@ namespace percy
                 }
 
                 return fs;
+            }
+
+
+            /*******************************************************************
+                Checks if a chain satisfies the given specification. This
+                checks not just if the chain computes the correct function, but
+                also other requirements such as co-lexicogrpahic order (if
+                specified).
+            *******************************************************************/
+            template<typename TT>
+            bool
+            satisfies_spec(const synth_spec<TT>& spec)
+            {
+                if (spec.nr_triv == spec.get_nr_out()) {
+                    return true;
+                }
+                auto tts = simulate(spec);
+                static_truth_table<FI> op_tt;
+
+                if (spec.nr_steps != nr_vertices) {
+                    assert(false);
+                    return false;
+                }
+
+                for (int i = 0; i < spec.nr_nontriv; i++) {
+                    if (tts[i] != *spec.functions[spec.synth_functions[i]]) {
+                        assert(false);
+                        return false;
+                    }
+                }
+
+                if (spec.add_nontriv_clauses) {
+                    // Ensure that there are no trivial operators.
+                    for (auto& op : operators) {
+                        clear(op_tt);
+                        if (op == op_tt) {
+                            assert(false);
+                            return false;
+                        }
+                        for (int i = 0; i < FI; i++) {
+                            create_nth_var(op_tt, i);
+                            if (op == op_tt) {
+                                assert(false);
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                if (spec.add_alonce_clauses) {
+                    // Ensure that each step is used at least once.
+                    std::vector<int> nr_uses(nr_vertices);
+
+                    for (int i = 1; i < nr_vertices; i++) {
+                        const auto& vertex = get_vertex(i);
+                        foreach_fanin(vertex, [&nr_uses, nr_inputs=nr_inputs]
+                                (auto fid, int j) {
+                                    if (fid >= nr_inputs) {
+                                        nr_uses[fid-nr_inputs]++;
+                                    }
+                        });
+                    }
+                    for (auto output : outputs) {
+                        const auto step_idx = output >> 1;
+                        if (step_idx > nr_inputs) {
+                            nr_uses[step_idx-nr_inputs-1]++;
+                        }
+                    }
+
+                    for (auto nr : nr_uses) {
+                        if (nr == 0) {
+                            assert(false);
+                            return false;
+                        }
+                    }
+                }
+
+                if (spec.add_noreapply_clauses) {
+                    // Ensure there is no re-application of operands.
+                    for (int i = 0; i < nr_vertices - 1; i++) {
+                        fanin fanins1[FI];
+                        const auto& v = get_vertex(i);
+                        foreach_fanin(v, [&fanins1] (auto fid, int j) {
+                            fanins1[j] = fid;
+                        });
+
+                        for (int ip = i + 1; ip < nr_vertices; ip++) {
+                            fanin fanins2[FI];
+                            const auto& v2 = get_vertex(i);
+                            foreach_fanin(v2, 
+                                    [&fanins2] (auto fid, int j) {
+                                fanins2[j] = fid;
+                            });
+
+                            auto is_subsumed = true;
+                            auto has_fanin_i = false;
+                            for (auto j : fanins2) {
+                                if (j == i + nr_inputs) {
+                                    has_fanin_i = true;
+                                    continue;
+                                }
+                                auto is_included = false;
+                                for (auto jp : fanins1) {
+                                    if (j == jp) {
+                                        is_included = true;
+                                    }
+                                }
+                                if (!is_included) {
+                                    is_subsumed = false;
+                                }
+                            }
+                            if (is_subsumed && has_fanin_i) {
+                                assert(false);
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                if (spec.add_colex_clauses) {
+                    // Ensure that steps are in co-lexicographic order.
+                    for (int i = 0; i < spec.nr_steps - 1; i++) {
+                        const auto& v1 = get_vertex(i);
+                        const auto& v2 = get_vertex(i + 1);
+                        
+                        fanin fanins1[FI];
+                        foreach_fanin(v1, [&fanins1] (auto fid, int j) {
+                            fanins1[j] = fid;
+                        });
+
+                        fanin fanins2[FI];
+                        foreach_fanin(v2, [&fanins2] (auto fid, int j) {
+                            fanins2[j] = fid;
+                        });
+
+                        if (colex_compare<fanin, FI>(fanins1, fanins2) == 1) {
+                            assert(false);
+                            return false;
+                        }
+                    }
+                }
+
+                if (spec.add_colex_func_clauses) {
+                    // Ensure that steps are in co-lexicographic order.
+                }
+
+                if (spec.add_symvar_clauses) {
+                    // Ensure that symmetric variables are ordered.
+                }
+
+                return true;
             }
 
             void
