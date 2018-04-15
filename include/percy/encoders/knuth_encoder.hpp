@@ -4,6 +4,8 @@
 #include "../misc.hpp"
 
 using abc::Abc_Var2Lit;
+using abc::Vec_IntSetEntry;
+using abc::Vec_IntArray;
 
 namespace percy
 {
@@ -107,9 +109,8 @@ namespace percy
                     const auto nr_svars_for_i = nr_svar_map[i];
                     
                     for (int j = 0; j < nr_svars_for_i; j++) {
-                        abc::Vec_IntSetEntry(vLits, j,
-                                abc::Abc_Var2Lit(get_sel_var(j + svar_offset),
-                                    0));
+                        Vec_IntSetEntry(vLits, j, 
+                                Abc_Var2Lit(get_sel_var(j + svar_offset), 0));
                     }
 
                     status &= solver_add_clause(
@@ -620,57 +621,109 @@ namespace percy
                 Ensure that Boolean operators are co-lexicographically ordered:
                 (S_ijk == S_(i+1)jk) ==> f_i <= f_(i+1)
             *******************************************************************/
-/*
             template<typename TT>
             void 
-            create_colex_func_clauses(const synth_spec<TT>& spec)
+            create_lex_func_clauses(const synth_spec<TT>& spec)
             {
-                int pLits[6];
+                std::bitset<FI> fvar_asgns;
 
+                auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 1; k < spec.get_nr_in()+i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            pLits[0] = 
-                                abc::Abc_Var2Lit(get_sel_var(spec, i, j, k), 1);
-                            pLits[1] = 
-                                abc::Abc_Var2Lit(get_sel_var(spec, i+1, j, k), 1);
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins1 = svar_map[svar_offset + j];
+                        Vec_IntSetEntry(vLits, 0, Abc_Var2Lit(sel_var, 1));
+                        
+                        auto svar_offsetp = svar_offset + nr_svars_for_i;
+                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
+                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
+                            const auto& fanins2 = svar_map[svar_offsetp + jp];
 
-                            pLits[2] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->solver, pLits, pLits+4);
+                            bool equal_fanin = true;
+                            for (int k = 0; k < FI; k++) {
+                                if (fanins1[k] != fanins2[k]) {
+                                    equal_fanin = false;
+                                    break;
+                                }
+                            }
+                            if (!equal_fanin) {
+                                continue;
+                            }
+                            Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(sel_varp, 1));
 
-                            pLits[3] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 1);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->solver, pLits, pLits+5);
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->solver, pLits, pLits+5);
+                            for (int o = nr_op_vars_per_step; o >= 1; o--) {
+                                fvar_asgns.reset();
 
-                            pLits[4] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 1);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 1), 0);
-                            solver_add_clause(this->solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 1, 0), 0);
-                            solver_add_clause(this->solver, pLits, pLits+6);
-                            pLits[5] = 
-                                abc::Abc_Var2Lit(get_op_var(spec, i+1, 0, 1), 0);
-                            solver_add_clause(this->solver, pLits, pLits+6);
+                                // For each possible assignment to the op vars
+                                // < o, we ensure that if the op vars of step
+                                // i and i + 1 both have that assignment, then
+                                // their o_i <= o_i+1.
+
+                                // How many function variables to check for
+                                // equivalence.
+                                const auto num_vars = nr_op_vars_per_step - o;
+                                for (int idx = 0; idx < (1 << num_vars); idx++) {
+                                    auto ctr = 2;
+                                    for (int op = nr_op_vars_per_step; op > o; op--) {
+                                        Vec_IntSetEntry(vLits, ctr++, 
+                                            Abc_Var2Lit(get_op_var(spec,i,op), 
+                                                fvar_asgns[nr_op_vars_per_step-op]));
+                                        Vec_IntSetEntry(vLits, ctr++, 
+                                            Abc_Var2Lit(get_op_var(spec,i+1,op),
+                                                fvar_asgns[nr_op_vars_per_step-op]));
+                                    }
+
+                                    Vec_IntSetEntry(vLits, ctr++, 
+                                            Abc_Var2Lit(get_op_var(spec, i, o),
+                                                1));
+                                    Vec_IntSetEntry(vLits, ctr++,
+                                            Abc_Var2Lit(get_op_var(spec, i + 1,
+                                                    o), 0));
+
+                                    solver_add_clause(*solver, 
+                                            Vec_IntArray(vLits), 
+                                            Vec_IntArray(vLits) + ctr);
+
+                                    if (spec.verbosity > 2) {
+                                        printf("lex_func_clause: ( ");
+                                        printf("~s_%d_%d ", 
+                                                i + spec.get_nr_in() + 1,
+                                                j + 1);
+                                        printf("~s_%d_%d ",
+                                                i + spec.get_nr_in() + 2,
+                                                jp + 1);
+                                        for (int op = nr_op_vars_per_step; op > o; op--) {
+                                            printf("%sf_%d_%d ",
+                                                    (fvar_asgns[nr_op_vars_per_step-op] ? "~" : ""),
+                                                    i + spec.get_nr_in() + 1,
+                                                    op + 1);
+                                            printf("%sf_%d_%d ",
+                                                    (fvar_asgns[nr_op_vars_per_step-op] ? "~" : ""),
+                                                    i + spec.get_nr_in() + 2,
+                                                    op + 1);
+                                        }
+                                        printf("~f_%d_%d ",
+                                                i + spec.get_nr_in() + 1, o + 1);
+                                        printf("f_%d_%d ",
+                                                i + spec.get_nr_in() + 2, o + 1);
+                                        printf(" )\n");
+                                    }
+
+                                    next_assignment(fvar_asgns);
+                                }
+                            }
                         }
+
                     }
+                    svar_offset += nr_svars_for_i;
                 }
             }
-*/
 
             /*******************************************************************
                 Ensure that symmetric variables occur in order.
             *******************************************************************/
-/*
             template<typename TT>
             void
             create_symvar_clauses(const synth_spec<TT>& spec)
@@ -724,7 +777,6 @@ namespace percy
                     }
                 }
             }
-*/
 
             /*******************************************************************
               Extracts a Boolean chain from a satisfiable solution.
@@ -949,10 +1001,11 @@ namespace percy
                     create_colex_clauses(spec);
                 }
                 
-                /*
-                if (spec.add_colex_func_clauses) {
-                    create_colex_func_clauses(spec);
+                if (spec.add_lex_func_clauses) {
+                    create_lex_func_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_symvar_clauses) {
                     create_symvar_clauses(spec);
                 }
@@ -993,10 +1046,11 @@ namespace percy
                     create_colex_clauses(spec);
                 }
                 
-                /*
-                if (spec.add_colex_func_clauses) {
-                    create_colex_func_clauses(spec);
+                if (spec.add_lex_func_clauses) {
+                    create_lex_func_clauses(spec);
                 }
+
+                /*
                 if (spec.add_symvar_clauses) {
                     create_symvar_clauses(spec);
                 }

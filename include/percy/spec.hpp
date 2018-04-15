@@ -27,8 +27,9 @@ namespace percy
             bool add_alonce_clauses = true;
             bool add_noreapply_clauses = true;
             bool add_colex_clauses = true;
-            bool add_colex_func_clauses = true;
+            bool add_lex_func_clauses = true;
             bool add_symvar_clauses = true;
+            bool add_lex_clauses = false;
 
             const TT* functions[MAX_OUT]; // The requested functions
             int triv_functions[MAX_OUT]; // Trivial outputs
@@ -96,6 +97,9 @@ namespace percy
                     printf("\tnr_out=%d\n", nr_out);
                     printf("\ttt_size=%d\n", tt_size);
                 }
+
+                assert((!add_colex_clauses && !add_lex_clauses) ||
+                        (add_colex_clauses != add_lex_clauses));
 
                 // Detect any trivial outputs.
                 nr_triv = 0;

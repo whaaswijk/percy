@@ -32,13 +32,13 @@ int main(void)
 
             synth->reset();
             while (synth->next_struct_solution(spec2, c) == success) {
-                auto sim_fs = c.simulate(spec2);
                 assert(c.get_nr_vertices() <= 1);
-                assert(sim_fs[0] == tt2);
 
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
+
+                assert(c.satisfies_spec(spec2));
             }
         }
 
@@ -55,12 +55,11 @@ int main(void)
 
             synth->reset();
             while (synth->next_struct_solution(spec3, c) == success) {
-                auto sim_fs = c.simulate(spec3);
-                assert(sim_fs[0] == tt3);
-
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
+                
+                assert(c.satisfies_spec(spec3));
             }
         }
 
@@ -79,10 +78,8 @@ int main(void)
 
             synth3->reset();
             while (synth3->next_struct_solution(spec4, c3) == success) {
-                auto sim_fs = c3.simulate(spec4);
-                assert(sim_fs[0] == tt4);
-
                 printf("Next solution: (%d vertices)\n", c3.get_nr_vertices());
+                assert(c3.satisfies_spec(spec4));
             }
         }
     }

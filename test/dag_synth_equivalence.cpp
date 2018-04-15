@@ -17,13 +17,6 @@ void gen_check_equivalence(bool full_coverage)
     auto synth2 = new_dag_synth();
 
     synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
-    spec.add_nontriv_clauses = true;
-    spec.add_alonce_clauses = true;
-    spec.add_noreapply_clauses = true;
-    spec.add_colex_clauses = true;
-    spec.add_colex_func_clauses = true;
-    spec.add_symvar_clauses = true;
-
     spec.verbosity = 0;
 
 
@@ -75,12 +68,6 @@ void check_equivalence(bool full_coverage)
     auto synth2 = new_dag_synth();
        
     synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
-    spec.add_nontriv_clauses = true;
-    spec.add_alonce_clauses = true;
-    spec.add_noreapply_clauses = true;
-    spec.add_colex_clauses = true;
-    spec.add_colex_func_clauses = true;
-    spec.add_symvar_clauses = true;
 
     spec.verbosity = 0;
 
@@ -174,13 +161,6 @@ void check_npn_equivalence()
     auto synth2 = new_dag_synth();
 
     synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
-    spec.add_nontriv_clauses = true;
-    spec.add_alonce_clauses = true;
-    spec.add_noreapply_clauses = true;
-    spec.add_colex_clauses = true;
-    spec.add_colex_func_clauses = true;
-    spec.add_symvar_clauses = true;
-
     spec.verbosity = 0;
 
     chain<2> c1;

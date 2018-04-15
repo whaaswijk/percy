@@ -22,10 +22,10 @@ namespace percy
 		return C[n][k];
 	}
 
-    /*******************************************************************
-            Returns 1 if fanins1 > fanins2, -1 if fanins1 < fanins2, and
-            0 otherwise.
-    *******************************************************************/
+    /***************************************************************************
+            Returns 1 if fanins1 > fanins2, -1 if fanins1 < fanins2, and 0
+            otherwise.
+    ***************************************************************************/
     template<typename fanin, int FI>
     int
     colex_compare(
@@ -59,5 +59,6 @@ namespace percy
         // All fanins are equal
         return 0;
     }
+
 }
 

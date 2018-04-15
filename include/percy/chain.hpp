@@ -284,7 +284,7 @@ namespace percy
                 }
 
                 if (spec.add_colex_clauses) {
-                    // Ensure that steps are in co-lexicographic order.
+                    // Ensure that steps are in co-lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
                         const auto& v1 = get_vertex(i);
                         const auto& v2 = get_vertex(i + 1);
@@ -306,8 +306,33 @@ namespace percy
                     }
                 }
 
-                if (spec.add_colex_func_clauses) {
-                    // Ensure that steps are in co-lexicographic order.
+                if (spec.add_lex_func_clauses) {
+                    // Ensure that step operators are in lexicographical order.
+                    for (int i = 0; i < spec.nr_steps - 1; i++) {
+                        const auto& v1 = get_vertex(i);
+                        const auto& v2 = get_vertex(i + 1);
+
+                        fanin fanins1[FI];
+                        foreach_fanin(v1, [&fanins1] (auto fid, int j) {
+                                fanins1[j] = fid;
+                                });
+
+                        fanin fanins2[FI];
+                        foreach_fanin(v2, [&fanins2] (auto fid, int j) {
+                                fanins2[j] = fid;
+                                });
+
+                        if (colex_compare<fanin, FI>(fanins1, fanins2) == 0) {
+                            // The operator of step i must be lexicographically
+                            // less than that of i + 1.
+                            const auto& op1 = operators[i];
+                            const auto& op2 = operators[i + 1];
+                            if (op2 < op1) {
+                                assert(false);
+                                return false;
+                            }
+                        }
+                    }
                 }
 
                 if (spec.add_symvar_clauses) {
