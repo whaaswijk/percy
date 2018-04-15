@@ -188,8 +188,12 @@ namespace percy
                     return false;
                 }
 
+                auto nr_nontriv = 0;
                 for (int i = 0; i < spec.nr_nontriv; i++) {
-                    if (tts[i] != *spec.functions[spec.synth_functions[i]]) {
+                    if ((spec.triv_flag >> i) & 1) {
+                        continue;
+                    }
+                    if (tts[nr_nontriv++] != *spec.functions[i]) {
                         assert(false);
                         return false;
                     }
@@ -220,11 +224,12 @@ namespace percy
                     for (int i = 1; i < nr_vertices; i++) {
                         const auto& vertex = get_vertex(i);
                         foreach_fanin(vertex, [&nr_uses, nr_inputs=nr_inputs]
-                                (auto fid, int j) {
-                                    if (fid >= nr_inputs) {
-                                        nr_uses[fid-nr_inputs]++;
-                                    }
-                        });
+                            (auto fid, int j) {
+                                if (fid >= nr_inputs) {
+                                    nr_uses[fid-nr_inputs]++;
+                                }
+                            }
+                        );
                     }
                     for (auto output : outputs) {
                         const auto step_idx = output >> 1;
@@ -306,6 +311,29 @@ namespace percy
                     }
                 }
 
+                if (spec.add_lex_clauses) {
+                    // Ensure that steps are in lexicographical order.
+                    for (int i = 0; i < spec.nr_steps - 1; i++) {
+                        const auto& v1 = get_vertex(i);
+                        const auto& v2 = get_vertex(i + 1);
+                        
+                        fanin fanins1[FI];
+                        foreach_fanin(v1, [&fanins1] (auto fid, int j) {
+                            fanins1[j] = fid;
+                        });
+
+                        fanin fanins2[FI];
+                        foreach_fanin(v2, [&fanins2] (auto fid, int j) {
+                            fanins2[j] = fid;
+                        });
+
+                        if (lex_compare<fanin, FI>(fanins1, fanins2) == 1) {
+                            assert(false);
+                            return false;
+                        }
+                    }
+                }
+
                 if (spec.add_lex_func_clauses) {
                     // Ensure that step operators are in lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
@@ -314,13 +342,13 @@ namespace percy
 
                         fanin fanins1[FI];
                         foreach_fanin(v1, [&fanins1] (auto fid, int j) {
-                                fanins1[j] = fid;
-                                });
+                            fanins1[j] = fid;
+                        });
 
                         fanin fanins2[FI];
                         foreach_fanin(v2, [&fanins2] (auto fid, int j) {
-                                fanins2[j] = fid;
-                                });
+                            fanins2[j] = fid;
+                        });
 
                         if (colex_compare<fanin, FI>(fanins1, fanins2) == 0) {
                             // The operator of step i must be lexicographically
@@ -337,6 +365,60 @@ namespace percy
 
                 if (spec.add_symvar_clauses) {
                     // Ensure that symmetric variables are ordered.
+                    for (int q = 1; q < spec.get_nr_in(); q++) {
+                        for (int p = 0; p < q; p++) {
+                            auto symm = true;
+                            for (int i = 0; i < spec.get_nr_out(); i++) {
+                                auto outfunc = spec.functions[i];
+                                if (!(swap(*outfunc, p, q) == *outfunc)) {
+                                    symm = false;
+                                    break;
+                                }
+                            }
+                            if (!symm) {
+                                continue;
+                            }
+                            for (int i = 1; i < spec.nr_steps; i++) {
+                                const auto& v1 = get_vertex(i);
+                                auto has_fanin_p = false;
+                                auto has_fanin_q = false;
+
+                                foreach_fanin(v1, 
+                                        [p, q, &has_fanin_p, &has_fanin_q] 
+                                        (auto fid, int j) {
+                                            if (fid == p) {
+                                                has_fanin_p = true;
+                                            } else if (fid == q) {
+                                                has_fanin_q = true;
+                                            }
+                                        }
+                                );
+                                if (!has_fanin_q || has_fanin_p) {
+                                    continue;
+                                }
+                                auto p_in_prev_step = false;
+                                for (int ip = 0; ip < i; ip++) {
+                                    const auto& v2 = get_vertex(ip);
+                                    has_fanin_p = false;
+
+                                    foreach_fanin(v2, [p, q, &has_fanin_p] 
+                                        (auto fid, int j) {
+                                            if (fid == p) {
+                                                has_fanin_p = true;
+                                            }
+                                        }
+                                    );
+                                    if (has_fanin_p) {
+                                        p_in_prev_step = true;
+                                    }   
+                                }
+                                if (!p_in_prev_step) {
+                                    assert(false);
+                                    return false;
+                                }
+                            }
+                        }
+                    }
                 }
 
                 return true;

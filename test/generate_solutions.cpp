@@ -63,6 +63,28 @@ int main(void)
             }
         }
 
+        // Test generating solutions starting from a specified number of steps.
+        for (int i = 0; i < 256; i++) {
+            kitty::create_from_words(tt3, &i, &i+1);
+            spec3.functions[0] = &tt3;
+
+            printf("Generating solutions of size >= 3 for function ");
+            kitty::print_binary(tt3);
+            printf("\n");
+
+            synth->reset();
+            while (synth->next_solution(spec3, c, 3) == success) {
+                printf("Next solution: ");
+                c.to_expression(std::cout);
+                printf("\n");
+                
+                if (!is_trivial(tt3)) {
+                    assert(c.get_nr_vertices() >= 3);
+                }
+                assert(c.satisfies_spec(spec3));
+            }
+        }
+
         auto synth3 = new_std_synth<3>();
         chain<3> c3;
         synth_spec<static_truth_table<4>> spec4(4, 1);

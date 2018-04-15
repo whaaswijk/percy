@@ -129,10 +129,13 @@ namespace percy
 
             template<typename TT>
             synth_result 
-            next_solution(synth_spec<TT>& spec, chain<FI>& chain)
+            next_solution(
+                    synth_spec<TT>& spec, 
+                    chain<FI>& chain, 
+                    const int initial_steps=1)
             {
                 if (!is_dirty) {
-                    auto result = synthesize(spec, chain);
+                    auto result = synthesize(spec, chain, initial_steps);
                     assert(result == success);
                     return success;
                 }

@@ -28,10 +28,9 @@ int main(void)
         for (int i = 0; i < 16; i++) {
             kitty::create_from_words(tti, &i, &i+1);
             spec.functions[0] = &tti;
-            synth->synthesize<static_truth_table<2>>(spec, c);
-            auto sim_fs = c.simulate(spec);
-            assert(c.get_nr_vertices() <= 1);
-            assert(sim_fs[0] == tti);
+            auto result = synth->synthesize<static_truth_table<2>>(spec, c);
+            assert(result == success);
+            c.satisfies_spec(spec);
         }
 
         spec.set_nr_out(2);
@@ -43,10 +42,8 @@ int main(void)
                 spec.functions[1] = &ttj;
                 auto result = synth->synthesize(spec, c);
                 assert(result == success);
-                auto sim_fs = c.simulate(spec);
                 assert(c.get_nr_vertices() <= 2);
-                assert(sim_fs[0] == tti);
-                assert(sim_fs[1] == ttj);
+                c.satisfies_spec(spec);
             }
         }
     }

@@ -163,6 +163,7 @@ namespace percy
                                 *solver,
                                 abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + spec.nr_steps);
+
                         if (spec.verbosity > 2) {
                             printf("creating output clause: ( ");
                             for (int i = 0; i < spec.nr_steps; i++) {
@@ -183,7 +184,6 @@ namespace percy
                 }
                 status &= solver_add_clause(*solver, abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + spec.nr_nontriv);
-                    
 
                 if (spec.verbosity > 2) {
                     printf("creating output clause: ( ");
@@ -408,6 +408,7 @@ namespace percy
                 auto status = solver_add_clause(*solver,
                         abc::Vec_IntArray(vLits),
                         abc::Vec_IntArray(vLits) + ctr); 
+                assert(status);
 
                 if (spec.verbosity > 2) {
                     printf("creating sim. clause: (");
@@ -453,8 +454,10 @@ namespace percy
                         abc::Vec_IntSetEntry(vLits, j-1,
                                 abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
-                    solver_add_clause(*solver, abc::Vec_IntArray(vLits),
+                    auto status = solver_add_clause(*solver,
+                            abc::Vec_IntArray(vLits), 
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                    assert(status);
                     
                     // Dissallow all variable projection operators.
                     for (int n = 0; n < FI; n++) {
@@ -464,8 +467,10 @@ namespace percy
                                     abc::Abc_Var2Lit(get_op_var(spec, i, j), 
                                         kitty::get_bit(triv_op, j)));
                         }
-                        solver_add_clause(*solver, abc::Vec_IntArray(vLits),
+                        status = solver_add_clause(*solver, 
+                                abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                        assert(status);
                     }
                 }
             }
@@ -504,15 +509,17 @@ namespace percy
                                             ctr++,
                                             abc::Abc_Var2Lit(
                                                 get_sel_var(sel_var), 0)
-                                            );
+                                    );
                                 }
                             }
                         }
                         svar_offset += nr_svars_for_ip;
                     }
-                    solver_add_clause(*solver, 
+                    auto status = solver_add_clause(
+                            *solver, 
                             abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + ctr);
+                    assert(status);
                 }
             }
 
@@ -567,10 +574,11 @@ namespace percy
                                 if (has_fanin_i && subsumed) {
                                     pLits[0] = Abc_Var2Lit(sel_var, 1);
                                     pLits[1] = Abc_Var2Lit(sel_varp, 1);
-                                    solver_add_clause(
-                                            *solver, 
-                                            pLits,
-                                            pLits + 2);
+                                    auto status = solver_add_clause(
+                                                    *solver, 
+                                                    pLits,
+                                                    pLits + 2);
+                                    assert(status);
                                 }
                             }
 
@@ -582,7 +590,7 @@ namespace percy
             }
 
             /*******************************************************************
-                Add clauses which ensure that steps occur in co-lexicographic
+                Add clauses which ensure that steps occur in co-lexicographical
                 order. In other words, we require steps operands to be 
                 co-lexicographically ordered tuples.
             *******************************************************************/
@@ -608,7 +616,47 @@ namespace percy
 
                             if (colex_compare<int, FI>(fanins1, fanins2) == 1) {
                                 pLits[1] = Abc_Var2Lit(sel_varp, 1);
-                                solver_add_clause(*solver, pLits, pLits+2);
+                                auto status = 
+                                    solver_add_clause(*solver, pLits, pLits+2);
+                                assert(status);
+                            }
+                        }
+                    }
+
+                    svar_offset += nr_svars_for_i;
+                }
+            }
+
+            /*******************************************************************
+                Add clauses which ensure that steps occur in lexicographical
+                order. In other words, we require steps operands to be
+                lexicographically ordered tuples.
+            *******************************************************************/
+            template<typename TT>
+            void 
+            create_lex_clauses(const synth_spec<TT>& spec)
+            {
+                int pLits[2];
+                auto svar_offset = 0;
+
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins1 = svar_map[svar_offset + j];
+                        pLits[0] = Abc_Var2Lit(sel_var, 1);
+
+                        auto svar_offsetp = svar_offset + nr_svars_for_i;
+                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
+                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
+                            const auto& fanins2 = svar_map[svar_offsetp + jp];
+
+                            if (lex_compare<int, FI>(fanins1, fanins2) == 1) {
+                                pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                auto status = 
+                                    solver_add_clause(*solver, pLits, pLits+2);
+                                assert(status);
                             }
                         }
                     }
@@ -682,9 +730,11 @@ namespace percy
                                             Abc_Var2Lit(get_op_var(spec, i + 1,
                                                     o), 0));
 
-                                    solver_add_clause(*solver, 
+                                    auto status = solver_add_clause(
+                                            *solver, 
                                             Vec_IntArray(vLits), 
                                             Vec_IntArray(vLits) + ctr);
+                                    assert(status);
 
                                     if (spec.verbosity > 2) {
                                         printf("lex_func_clause: ( ");
@@ -725,15 +775,15 @@ namespace percy
                 Ensure that symmetric variables occur in order.
             *******************************************************************/
             template<typename TT>
-            void
+            bool
             create_symvar_clauses(const synth_spec<TT>& spec)
             {
                 for (int q = 1; q < spec.get_nr_in(); q++) {
                     for (int p = 0; p < q; p++) {
                         auto symm = true;
-                        for (int i = 0; i < spec.nr_out; i++) {
-                            auto outfunc = spec.functions[i];
-                            if (!(swap(*outfunc, p, q) == *outfunc)) {
+                        for (int i = 0; i < spec.nr_nontriv; i++) {
+                            auto f = spec.functions[spec.synth_functions[i]];
+                            if (!(swap(*f, p, q) == *f)) {
                                 symm = false;
                                 break;
                             }
@@ -745,34 +795,113 @@ namespace percy
                             printf("  variables x_%d and x_%d are symmetric\n",
                                     p+1, q+1);
                         }
+
+                        auto svar_offset = 0;
                         for (int i = 0; i < spec.nr_steps; i++) {
-                            for (int j = 0; j < q; j++) {
-                                if (j == p) continue;
-
-                                auto slit = 
-                                    abc::Abc_Var2Lit(get_sel_var(spec, i, j, q), 1);
-                                abc::Vec_IntSetEntry(vLits, 0, slit);
-
-                                int ctr = 1;
-                                for (int ip = 0; ip < i; ip++) {
-                                    for (int kp = 1; kp < spec.get_nr_in()+ip; kp++) {
-                                        for (int jp = 0; jp < kp; jp++) {
-                                            if (jp == p || kp == p) {
-                                                slit = abc::Abc_Var2Lit(
-                                                            get_sel_var(spec, 
-                                                            ip, jp, kp), 0);
-                                                abc::Vec_IntSetEntry(vLits, 
-                                                        ctr++, slit);
-                                                solver_add_clause(
-                                                    this->solver, 
-                                                    abc::Vec_IntArray(vLits),
-                                                    abc::Vec_IntArray(vLits) +
-                                                    ctr);
-                                            }
-                                        }
+                            const auto nr_svars_for_i = nr_svar_map[i];
+                            for (int j = 0; j < nr_svars_for_i; j++) {
+                                const auto sel_var = get_sel_var(svar_offset+j);
+                                const auto& fanins1 = svar_map[svar_offset+j];
+                                
+                                auto has_fanin_p = false;
+                                auto has_fanin_q = false;
+                                for (auto fanin : fanins1) {
+                                    if (fanin == q) {
+                                        has_fanin_q = true;
+                                        break;
+                                    } else if (fanin == p) {
+                                        has_fanin_p = true;
                                     }
                                 }
+                                if (!has_fanin_q || has_fanin_p) {
+                                    continue;
+                                }
+
+                                abc::Vec_IntSetEntry(vLits, 0, 
+                                        Abc_Var2Lit(sel_var, 1));
+
+                                auto ctr = 1;
+                                auto svar_offsetp = 0;
+                                for (int ip = 0; ip < i; ip++) {
+                                    const auto nr_svars_for_ip = nr_svar_map[ip];
+                                    for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                                        const auto sel_varp = 
+                                            get_sel_var(svar_offsetp + jp);
+                                        const auto& fanins2 = 
+                                            svar_map[svar_offsetp + jp];
+
+                                        has_fanin_p = false;
+                                        for (auto fanin : fanins2) {
+                                            if (fanin == p) {
+                                                has_fanin_p = true;
+                                            }
+                                        }
+                                        if (!has_fanin_p) {
+                                            continue;
+                                        }
+                                        abc::Vec_IntSetEntry(vLits, ctr++, 
+                                                Abc_Var2Lit(sel_varp, 0));
+                                    }
+                                    svar_offsetp += nr_svars_for_ip;
+                                }
+                                if (!solver_add_clause(
+                                            *solver, 
+                                            Vec_IntArray(vLits), 
+                                            Vec_IntArray(vLits) + ctr)) {
+                                    return false;
+                                }
                             }
+                            svar_offset += nr_svars_for_i;
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            /*******************************************************************
+                Ensure that every step has exactly 2 inputs. This may not
+                happen e.g. when we synthesize with more than the minimum
+                number of steps. (Example: synthesizing n-input OR function,
+                with more than the minimum number of steps.)
+            *******************************************************************/
+            template<typename TT>
+            void
+            create_cardinality_constraints(const synth_spec<TT>& spec)
+            {
+                int pLits[2];
+
+                auto svar_offset = 0;
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i - 1; j++) {
+                        for (int jp = j + 1; jp < nr_svars_for_i; jp++) {
+                            const auto svar1 = get_sel_var(svar_offset + j);
+                            const auto svar2 = get_sel_var(svar_offset + jp);
+
+                            pLits[0] = Abc_Var2Lit(svar1, 1);
+                            pLits[1] = Abc_Var2Lit(svar2, 1);
+
+                            auto status = solver_add_clause(
+                                    *solver, 
+                                    pLits, 
+                                    pLits + 2);
+                            assert(status);
+                        }
+                    }
+                    svar_offset += nr_svars_for_i;
+                }
+                
+                for (int h = 0; h < spec.nr_nontriv; h++) {
+                    for (int i = 0; i < spec.nr_steps - 1; i++) {
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            pLits[0] = Abc_Var2Lit(get_out_var(spec, h, i), 1);
+                            pLits[1] = Abc_Var2Lit(get_out_var(spec, h, ip), 1);
+                            auto status = solver_add_clause(
+                                    *solver, 
+                                    pLits, 
+                                    pLits + 2);
+                            assert(status);
                         }
                     }
                 }
@@ -815,7 +944,6 @@ namespace percy
                                 }
                             }
                             chain.set_step(i, fanins, op);
-                            break;
                         }
                     }
 
@@ -982,8 +1110,15 @@ namespace percy
                     return false;
                 }
 
-                create_output_clauses(spec);
-                create_op_clauses(spec);
+                if (!create_output_clauses(spec)) {
+                    return false;
+                }
+
+                if (!create_op_clauses(spec)) {
+                    return false;
+                }
+                
+                create_cardinality_constraints(spec);
 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
@@ -1000,16 +1135,20 @@ namespace percy
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
+
+                if (spec.add_lex_clauses) {
+                    create_lex_clauses(spec);
+                }
                 
                 if (spec.add_lex_func_clauses) {
                     create_lex_func_clauses(spec);
                 }
                 
-                /*
                 if (spec.add_symvar_clauses) {
-                    create_symvar_clauses(spec);
+                    if (!create_symvar_clauses(spec)) {
+                        return false;
+                    }
                 }
-                */
 
                 return true;
             }
@@ -1022,13 +1161,20 @@ namespace percy
 
                 create_variables(spec);
                 for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                    if (!create_tt_clauses(spec, rand()%spec.get_tt_size())) {
+                    if (!create_tt_clauses(spec, rand() % spec.get_tt_size())) {
                         return false;
                     }
                 }
                 
-                create_output_clauses(spec);
-                create_op_clauses(spec);
+                if (!create_output_clauses(spec)) {
+                    return false;
+                }
+                
+                if (!create_op_clauses(spec)) {
+                    return false;
+                }
+                
+                create_cardinality_constraints(spec);
 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
@@ -1046,15 +1192,17 @@ namespace percy
                     create_colex_clauses(spec);
                 }
                 
+                if (spec.add_lex_clauses) {
+                    create_colex_clauses(spec);
+                }
+
                 if (spec.add_lex_func_clauses) {
                     create_lex_func_clauses(spec);
                 }
 
-                /*
-                if (spec.add_symvar_clauses) {
-                    create_symvar_clauses(spec);
+                if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
+                    return false;
                 }
-                */
 
                 return true;
             }
