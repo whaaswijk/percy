@@ -19,10 +19,7 @@ namespace percy
             int nr_op_vars;
             int nr_sim_vars;
             int nr_op_vars_per_step;
-            int tt_size;
-            int nr_vertices;
-            int nr_inputs;
-            
+
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
@@ -43,34 +40,34 @@ namespace percy
             }
 
             int
-            get_op_var(int step_idx, int var_idx)
+            get_op_var(const Dag& dag, int step_idx, int var_idx)
             {
-                assert(step_idx < nr_vertices);
+                assert(step_idx < dag.get_nr_vertices());
                 assert(var_idx > 0);
                 assert(var_idx <= nr_op_vars_per_step);
 
                 return step_idx * nr_op_vars_per_step + var_idx - 1;
             }
 
+            template<typename TT>
             int
-            get_sim_var(int step_idx, int t)
+            get_sim_var(
+                    const synth_spec<TT>& spec, const Dag& dag,
+                    int step_idx, 
+                    int t)
             {
-                assert(step_idx < nr_vertices);
+                assert(step_idx < dag.get_nr_vertices());
 
-                return nr_op_vars + tt_size * step_idx + t;
+                return nr_op_vars + spec.get_tt_size() * step_idx + t;
             }
 
             template<typename TT>
             void
             create_variables(const synth_spec<TT>& spec, const Dag& dag)
             {
-                nr_vertices = dag.get_nr_vertices();
-                tt_size = spec.get_tt_size();
-                nr_inputs = spec.get_nr_in();
-
                 nr_op_vars_per_step = ((1u << Dag::NrFanin) - 1);
-                nr_op_vars = nr_vertices * nr_op_vars_per_step;
-                nr_sim_vars = nr_vertices * tt_size;
+                nr_op_vars = dag.get_nr_vertices() * nr_op_vars_per_step;
+                nr_sim_vars = dag.get_nr_vertices() * spec.get_tt_size();
                 if (spec.verbosity > 1) {
                     printf("nr_op_vars_per_step=%d\n", nr_op_vars_per_step);
                     printf("nr_op_vars=%d\n", nr_op_vars);
@@ -84,6 +81,7 @@ namespace percy
             bool
             add_simulation_clause(
                     const synth_spec<TT>& spec,
+                    const Dag& dag,
                     const int t, 
                     const int i, 
                     const int output, 
@@ -96,22 +94,23 @@ namespace percy
                 for (int j = 0; j < Dag::NrFanin; j++) {
                     auto child = fanins[j];
                     auto assign = fanin_asgn[j];
-                    if (child < nr_inputs) {
+                    if (child < spec.get_nr_in()) {
                         if (( ( (t + 1) & (1 << child) ) ? 1 : 0 ) != assign) {
                             return true;
                         }
                     } else {
                         abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(
-                                    get_sim_var(child - nr_inputs, t), assign));
+                                    get_sim_var(spec, dag, child -
+                                        spec.get_nr_in(), t), assign));
                     }
                 }
 
                 abc::Vec_IntSetEntry(vLits, ctr++,
-                        abc::Abc_Var2Lit(get_sim_var(i, t), output));
+                        abc::Abc_Var2Lit(get_sim_var(spec, dag, i, t), output));
 
                 if (opvar_idx > 0) {
                     abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(
-                                get_op_var(i, opvar_idx), 1 - output));
+                                get_op_var(dag, i, opvar_idx), 1 - output));
                 }
 
                 auto status =  solver_add_clause(*solver,
@@ -135,7 +134,7 @@ namespace percy
                     if (opvar_idx > 0) {
                         printf(" \\/ %sf_%d_%d ", 
                                 (1-output) ? "!" : "", 
-                                nr_inputs + i + 1, opvar_idx + 1);
+                                spec.get_nr_in() + i + 1, opvar_idx + 1);
                     }
                     printf(") (status=%d)\n", status);
                 }
@@ -153,7 +152,7 @@ namespace percy
                 fanin fanins[Dag::NrFanin];
                 std::bitset<Dag::NrFanin> fanin_asgn;
 
-                for (int i = 0; i < nr_vertices; i++) {
+                for (int i = 0; i < dag.get_nr_vertices(); i++) {
                     auto v = dag.get_vertex(i);
                     dag.foreach_fanin(v, [&fanins] (auto f_id, int j) {
                         fanins[j] = f_id;
@@ -169,16 +168,16 @@ namespace percy
                             break;
                         }
                         opvar_idx++;
-                        if (!add_simulation_clause(spec, t, i, 0, opvar_idx,
-                                fanins, fanin_asgn)) {
+                        if (!add_simulation_clause(spec, dag, t, i, 0,
+                                    opvar_idx, fanins, fanin_asgn)) {
                             return false;
                         }
                     }
 
                     // Next, all cases where operator i computes one.
                     opvar_idx = 0;
-                    if (!add_simulation_clause(spec, t, i, 1, opvar_idx,
-                            fanins, fanin_asgn)) {
+                    if (!add_simulation_clause(spec, dag, t, i, 1, opvar_idx,
+                                fanins, fanin_asgn)) {
                         return false;
                     }
                     while (true) {
@@ -187,7 +186,7 @@ namespace percy
                             break;
                         }
                         opvar_idx++;
-                        if (!add_simulation_clause(spec, t, i, 1, opvar_idx,
+                        if (!add_simulation_clause(spec, dag, t, i, 1, opvar_idx,
                                 fanins, fanin_asgn)) {
                             return false;
                         }
@@ -196,21 +195,21 @@ namespace percy
                     // If an output has selected this particular operand, we
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
-                    if (i == nr_vertices-1) {
+                    if (i == dag.get_nr_vertices()-1) {
                         int pLits[1];
                         auto outbit = kitty::get_bit(*spec.functions[0], t+1);
-                        if ((spec.out_inv >> spec.synth_functions[0]) & 1) {
+                        if (spec.out_inv & 1) {
                             outbit = 1 - outbit;
                         }
-                        pLits[0] = abc::Abc_Var2Lit(get_sim_var(i, t), 
-                                1 - outbit);
+                        pLits[0] = abc::Abc_Var2Lit(get_sim_var(spec, dag, i,
+                                    t), 1 - outbit);
                         if (!solver_add_clause(*solver,pLits,pLits+1)) {
                             return false;
                         }
 
                         if (spec.verbosity > 1) {
                             printf("bit %d=%d", t+2, outbit);
-                            printf("\tvar=%d\n", get_sim_var(i, t));
+                            printf("\tvar=%d\n", get_sim_var(spec, dag, i, t));
                         }
                     }
                 }
@@ -222,7 +221,7 @@ namespace percy
             bool
             create_main_clauses(const synth_spec<TT>& spec, const Dag& dag)
             {
-                for (int t = 0; t < tt_size; t++) {
+                for (int t = 0; t < spec.get_tt_size(); t++) {
                     if (!create_tt_clauses(spec, dag, t)) {
                         return false;
                     }
@@ -264,12 +263,12 @@ namespace percy
             {
                 fanin op_inputs[Dag::NrFanin];
 
-                chain.reset(nr_inputs, 1, nr_vertices);
+                chain.reset(spec.get_nr_in(), 1, dag.get_nr_vertices());
 
-                for (int i = 0; i < nr_vertices; i++) {
+                for (int i = 0; i < dag.get_nr_vertices(); i++) {
                     kitty::static_truth_table<Dag::NrFanin> op;
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        if (solver_var_value(*solver, get_op_var(i, j))) {
+                        if (solver_var_value(*solver, get_op_var(dag, i, j))) {
                             kitty::set_bit(op, j); 
                         }
                     }
@@ -294,7 +293,8 @@ namespace percy
 
 
                 // TODO: support multiple outputs
-                chain.set_output(0, ((nr_vertices + nr_inputs) << 1) +
+                chain.set_output(0, 
+                        ((dag.get_nr_vertices() + spec.get_nr_in()) << 1) +
                         ((spec.out_inv) & 1));
 
                 /*

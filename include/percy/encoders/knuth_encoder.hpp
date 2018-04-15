@@ -2,6 +2,8 @@
 
 #include "encoder_base.hpp"
 
+using abc::Abc_Var2Lit;
+
 namespace percy
 {
     template<int FI=2, typename Solver=sat_solver*>
@@ -268,31 +270,12 @@ namespace percy
 
                 int svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    /*
-                    if (spec.verbosity > 2) {
-                        printf("adding sim. clauses for step %d (t=%d)\n",
-                                i + spec.get_nr_in() + 1, t+2);
-                    }
-                    */
                     const auto nr_svars_for_i = nr_svar_map[i];
-                    /*
-                    if (spec.verbosity > 2) {
-                        printf("nr_svars_for_i = %d\n", nr_svars_for_i);
-                    }
-                    */
 
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto svar = j + svar_offset;
                         const auto& fanins = svar_map[svar];
-                        /*
-                        if (spec.verbosity > 2) {
-                            printf("fanins: ");
-                            for (int fi = FI - 1; fi >= 0; fi--) {
-                                printf("x%d ", fanins[fi] + 1);
-                            }
-                            printf("\n");
-                        }
-                        */
+
                         // First add clauses for all cases where the
                         // operator i computes zero.
                         int opvar_idx = 0;
@@ -465,9 +448,8 @@ namespace percy
                     
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        abc::Vec_IntSetEntry(vLits, j,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                kitty::get_bit(triv_op, j+1)));
+                        abc::Vec_IntSetEntry(vLits, j-1,
+                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -476,9 +458,9 @@ namespace percy
                     for (int n = 0; n < FI; n++) {
                         kitty::create_nth_var(triv_op, n);
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                            abc::Vec_IntSetEntry(vLits, j,
+                            abc::Vec_IntSetEntry(vLits, j-1,
                                     abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                        kitty::get_bit(triv_op, j+1)));
+                                        kitty::get_bit(triv_op, j)));
                         }
                         solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -489,106 +471,221 @@ namespace percy
             /*******************************************************************
               Add clauses which ensure that every step is used at least once.
             *******************************************************************/
-/*
             template<typename TT>
             void 
             create_alonce_clauses(const synth_spec<TT>& spec)
             {
                 for (int i = 0; i < spec.nr_steps; i++) {
                     auto ctr = 0;
+
+                    // Either one of the outputs points to this step.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         abc::Vec_IntSetEntry(vLits, ctr++, 
                                 abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                     }
-                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        for (int j = 0; j < spec.get_nr_in()+i; j++) {
-                            abc::Vec_IntSetEntry(vLits, ctr++,
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, j, spec.get_nr_in()+i), 0));
-                        }
-                        for (int j = spec.get_nr_in()+i+1; j < spec.get_nr_in()+ip; j++) {
-                            abc::Vec_IntSetEntry(vLits, ctr++, 
-                                    abc::Abc_Var2Lit(
-                                    get_sel_var(spec, ip, spec.get_nr_in()+i, j), 0));
-                        }
+
+                    auto svar_offset = 0;
+                    for (int j = 0; j < i + 1; j++) {
+                        svar_offset += nr_svar_map[j];
                     }
-                    solver_add_clause(this->solver, 
+
+                    // Or one of the succeeding steps points to this step.
+                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                        const auto nr_svars_for_ip = nr_svar_map[ip];
+                        for (int j = 0; j < nr_svars_for_ip; j++) {
+                            const auto sel_var = get_sel_var(svar_offset + j);
+                            const auto& fanins = svar_map[svar_offset + j];
+                            for (auto fanin : fanins) {
+                                if (fanin == spec.get_nr_in() + i) {
+                                    abc::Vec_IntSetEntry(
+                                            vLits, 
+                                            ctr++,
+                                            abc::Abc_Var2Lit(
+                                                get_sel_var(sel_var), 0)
+                                            );
+                                }
+                            }
+                        }
+                        svar_offset += nr_svars_for_ip;
+                    }
+                    solver_add_clause(*solver, 
                             abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + ctr);
                 }
             }
-*/
 
             /*******************************************************************
                 Add clauses which ensure that operands are never re-applied. In
                 other words, (Sijk --> ~Si'ji) & (Sijk --> ~Si'ki), 
                 for all (i < i').
             *******************************************************************/
-/*
             template<typename TT>
             void 
             create_noreapply_clauses(const synth_spec<TT>& spec)
             {
                 int pLits[2];
+                auto svar_offset = 0;
 
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int ip = i+1; ip < spec.nr_steps; ip++) {
-                        for (int k = 1; k < spec.get_nr_in()+i; k++) {
-                            for (int j = 0; j < k; j++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,j,spec.get_nr_in()+i),1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec,ip,k,spec.get_nr_in()+i),1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins = svar_map[svar_offset + j];
+                        
+                        auto svar_offsetp = 0;
+                        for (int k = 0; k < i + 1; k++) {
+                            svar_offsetp += nr_svar_map[k];
+                        }
+
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            const auto nr_svars_for_ip = nr_svar_map[ip];
+                            for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                                const auto sel_varp = 
+                                    get_sel_var(svar_offsetp + jp);
+                                const auto& faninsp = 
+                                    svar_map[svar_offsetp + jp];
+
+                                auto subsumed = true;
+                                auto has_fanin_i = false;
+                                for (auto faninp : faninsp) {
+                                    if (faninp == i + spec.get_nr_in()) {
+                                        has_fanin_i = true;
+                                    } else {
+                                        auto is_included = false;
+                                        for (auto fanin : fanins) {
+                                            if (fanin == faninp) {
+                                                is_included = true;
+                                            }
+                                        }
+                                        if (!is_included) {
+                                            subsumed = false;
+                                        }
+                                    }
+                                }
+                                if (has_fanin_i && subsumed) {
+                                    pLits[0] = Abc_Var2Lit(sel_var, 1);
+                                    pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                    solver_add_clause(
+                                            *solver, 
+                                            pLits,
+                                            pLits + 2);
+                                }
                             }
+
+                            svar_offsetp += nr_svars_for_ip;
                         }
                     }
+                    svar_offset += nr_svars_for_i;
                 }
             }
-*/
+
+            /*******************************************************************
+                Returns true iff the fanins1 is co-lexicographically greater
+                than (or equal to) fanins2.
+            *******************************************************************/
+            bool
+            is_colex_greater(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins1[i] > fanins2[i]) {
+                        return true;
+                    } else if (fanins1[i] == fanins2[i]) {
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            /*******************************************************************
+                Returns true iff the fanins1 is co-lexicographically strictly
+                less than fanins2.
+            *******************************************************************/
+            bool
+            is_colex_less(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins2[i] > fanins1[i]) {
+                        return true;
+                    } else if (fanins1[i] == fanins2[i]) {
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                
+                // All fanins are equal
+                return false;
+            }
+
+            /*******************************************************************
+                Returns 1 if fanins1 > fanins2, -1 if fanins1 < fanins2, and
+                0 otherwise.
+            *******************************************************************/
+
+            int
+            colex_compare(
+                    const std::array<fanin, FI>& fanins1,
+                    const std::array<fanin, FI>& fanins2)
+            {
+                for (int i = FI-1; i >= 0; i--) {
+                    if (fanins1[i] < fanins2[i]) {
+                        return -1;
+                    } else if (fanins1[i] > fanins2[i]) {
+                        return 1;
+                    }
+                }
+                
+                // All fanins are equal
+                return 0;
+            }
 
             /*******************************************************************
                 Add clauses which ensure that steps occur in co-lexicographic
-                order. In other words, we require steps operands to be ordered
-                tuples.
+                order. In other words, we require steps operands to be 
+                co-lexicographically ordered tuples.
             *******************************************************************/
-/*
             template<typename TT>
             void 
             create_colex_clauses(const synth_spec<TT>& spec)
             {
                 int pLits[2];
+                auto svar_offset = 0;
 
-                for (int i = 0; i < spec.nr_steps-1; i++) {
-                    for (int k = 2; k < spec.get_nr_in()+i; k++) {
-                        for (int j = 1; j < k; j++) {
-                            for (int jp = 0; jp < j; jp++) {
-                                pLits[0] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i, j, k), 1);
-                                pLits[1] = abc::Abc_Var2Lit(
-                                        get_sel_var(spec, i+1, jp, k), 1);
-                                solver_add_clause(this->solver,pLits,pLits+2);
-                            }
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        const auto& fanins1 = svar_map[svar_offset + j];
+
+                        auto svar_offsetp = 0;
+                        for (int k = 0; k < i + 1; k++) {
+                            svar_offsetp += nr_svar_map[k];
                         }
-                        for (int j = 0; j < k; j++) {
-                            for (int kp = 1; kp < k; kp++) {
-                                for (int jp = 0; jp < kp; jp++) {
-                                    pLits[0] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i, j, k), 1);
-                                    pLits[1] = abc::Abc_Var2Lit(
-                                            get_sel_var(spec, i+1, jp, kp),1);
-                                    solver_add_clause(
-                                            this->solver, pLits, pLits+2);
+
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            const auto nr_svars_for_ip = nr_svar_map[ip];
+                            for (int jp = 0; jp < nr_svars_for_ip; jp++) {
+                                const auto sel_varp = 
+                                    get_sel_var(svar_offsetp + jp);
+                                const auto& fanins2 = 
+                                    svar_map[svar_offsetp + jp];
+
+                                if (colex_compare(fanins1, fanins2) == 1) {
+                                    pLits[0] = Abc_Var2Lit(sel_var, 1);
+                                    pLits[1] = Abc_Var2Lit(sel_varp, 1);
+                                    solver_add_clause(*solver, pLits, pLits+2);
                                 }
                             }
                         }
                     }
                 }
             }
-*/
 
             /*******************************************************************
                 Ensure that Boolean operators are co-lexicographically ordered:
@@ -759,7 +856,8 @@ namespace percy
                     for (int i = 0; i < spec.nr_steps; i++) {
                         if (solver_var_value(*solver, 
                                     get_out_var(spec, nontriv_count, i))) {
-                            chain.set_output(h, ((i + spec.get_nr_in() + 1) << 1) +
+                            chain.set_output(h, 
+                                    ((i + spec.get_nr_in() + 1) << 1) +
                                     ((spec.out_inv >> h) & 1));
                             nontriv_count++;
                             break;
@@ -899,39 +997,30 @@ namespace percy
                 assert(spec.nr_steps <= MAX_STEPS);
 
                 create_variables(spec);
-                auto success = create_main_clauses(spec);
-                if (!success) {
-                    printf("unable to create main clauses!\n");
+                if (!create_main_clauses(spec)) {
                     return false;
                 }
 
                 create_output_clauses(spec);
                 create_op_clauses(spec);
-                /*
-                success &= create_output_clauses(spec);
-                if (!success) {
-                    return false;
-                }
-                
-                success &= create_op_clauses(spec);
-                if (!success) {
-                    return false;
-                }
 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
-                */
-                /*
+
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
+
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_colex_func_clauses) {
                     create_colex_func_clauses(spec);
                 }
@@ -959,19 +1048,23 @@ namespace percy
                 create_output_clauses(spec);
                 create_op_clauses(spec);
 
-                /*
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
+
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+                
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
+                
                 if (spec.add_colex_clauses) {
                     create_colex_clauses(spec);
                 }
+                
+                /*
                 if (spec.add_colex_func_clauses) {
                     create_colex_func_clauses(spec);
                 }

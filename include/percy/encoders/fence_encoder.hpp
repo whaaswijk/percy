@@ -237,9 +237,8 @@ namespace percy
                     
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        abc::Vec_IntSetEntry(vLits, j,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                kitty::get_bit(triv_op, j+1)));
+                        abc::Vec_IntSetEntry(vLits, j-1,
+                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -248,30 +247,13 @@ namespace percy
                     for (int n = 0; n < FI; n++) {
                         kitty::create_nth_var(triv_op, n);
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                            abc::Vec_IntSetEntry(vLits, j,
+                            abc::Vec_IntSetEntry(vLits, j-1,
                                     abc::Abc_Var2Lit(get_op_var(spec, i, j), 
-                                        kitty::get_bit(triv_op, j+1)));
+                                        kitty::get_bit(triv_op, j)));
                         }
                         solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
                     }
-
-                    /*
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 0);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 0);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 0);
-                    solver_add_clause(this->solver, pLits, pLits + 3);
-
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 0);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 1);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                    solver_add_clause(this->solver, pLits, pLits + 3);
-
-                    pLits[0] = abc::Abc_Var2Lit(get_op_var(spec, i, 0, 1), 1);
-                    pLits[1] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 0), 0);
-                    pLits[2] = abc::Abc_Var2Lit(get_op_var(spec, i, 1, 1), 1);
-                    solver_add_clause(this->solver, pLits, pLits + 3);
-                    */
                 }
             }
 
@@ -739,10 +721,11 @@ namespace percy
                 create_output_clauses(spec);
                 create_op_clauses(spec);
 
-/*
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
+
+                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }

@@ -17,12 +17,6 @@ void check_equivalence()
 
     synth_stats stats;
     synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
-    spec.add_nontriv_clauses = true;
-    spec.add_alonce_clauses = true;
-    spec.add_noreapply_clauses = true;
-    spec.add_colex_clauses = true;
-    spec.add_colex_func_clauses = true;
-    spec.add_symvar_clauses = true;
 
     auto synth1 = new_std_synth();
     auto synth2 = new_dag_synth();
