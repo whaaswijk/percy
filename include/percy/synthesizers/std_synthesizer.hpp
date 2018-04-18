@@ -133,7 +133,7 @@ namespace percy
             {
                 if (!is_dirty) {
                     auto result = synthesize(spec, chain);
-                    assert(result == success);
+                    // assert(result == success);
                     return result;
                 }
                     
@@ -166,7 +166,7 @@ namespace percy
             {
                 if (!is_dirty) {
                     auto result = synthesize(spec, chain);
-                    assert(result == success);
+                    // assert(result == success);
                     return result;
                 }
                     
