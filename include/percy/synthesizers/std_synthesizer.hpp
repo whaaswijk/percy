@@ -134,7 +134,7 @@ namespace percy
                 if (!is_dirty) {
                     auto result = synthesize(spec, chain);
                     assert(result == success);
-                    return success;
+                    return result;
                 }
                     
                 // The special case when the Boolean chain to be synthesized
@@ -167,7 +167,7 @@ namespace percy
                 if (!is_dirty) {
                     auto result = synthesize(spec, chain);
                     assert(result == success);
-                    return success;
+                    return result;
                 }
                     
                 // The special case when the Boolean chain to be synthesized
