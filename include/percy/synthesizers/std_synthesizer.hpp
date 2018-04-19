@@ -135,9 +135,7 @@ namespace percy
                     const int initial_steps=1)
             {
                 if (!is_dirty) {
-                    auto result = synthesize(spec, chain, initial_steps);
-                    assert(result == success);
-                    return success;
+                    return synthesize(spec, chain);
                 }
                     
                 // The special case when the Boolean chain to be synthesized
@@ -169,8 +167,8 @@ namespace percy
             {
                 if (!is_dirty) {
                     auto result = synthesize(spec, chain);
-                    assert(result == success);
-                    return success;
+                    // assert(result == success);
+                    return result;
                 }
                     
                 // The special case when the Boolean chain to be synthesized
