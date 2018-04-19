@@ -135,7 +135,7 @@ namespace percy
                     const int initial_steps=1)
             {
                 if (!is_dirty) {
-                    return synthesize(spec, chain);
+                    return synthesize(spec, chain, initial_steps);
                 }
                     
                 // The special case when the Boolean chain to be synthesized
