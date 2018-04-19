@@ -314,6 +314,34 @@ namespace percy
                 _ks[v_idx] = fanins[1];
             }
 
+            void 
+            add_vertex(const fanin* const fanins)
+            {
+                auto new_js = new fanin[nr_vertices + 1];
+                auto new_ks = new fanin[nr_vertices + 1];
+
+                for (int i = 0; i < nr_vertices; i++) {
+                    new_js[i] = _js[i];
+                    new_ks[i] = _ks[i];
+                }
+
+                new_js[nr_vertices] = fanins[0];
+                new_ks[nr_vertices] = fanins[1];
+
+                if (_js != nullptr) {
+                    delete[] _js;
+                }
+
+                if (_ks != nullptr) {
+                    delete[] _ks;
+                }
+
+                _js = new_js;
+                _ks = new_ks;
+
+                nr_vertices++;
+            }
+
             const std::pair<int,int> get_vertex(int v_idx) const
             {
                 return std::make_pair(_js[v_idx], _ks[v_idx]);

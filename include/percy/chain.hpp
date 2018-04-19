@@ -14,6 +14,7 @@
 using std::vector;
 using std::unique_ptr;
 using kitty::static_truth_table;
+using kitty::dynamic_truth_table;
 using kitty::create_nth_var;
 
 /*******************************************************************************
@@ -72,6 +73,13 @@ namespace percy
               return operators.at(i);
             }
 
+            bool
+            is_output_inverted(int out_idx)
+            {
+                assert(out_idx < outputs.size());
+                return outputs[out_idx] & 1;
+            }
+
             void
             set_step(int i, const fanin* const in, const OpTT& op)
             {
@@ -87,14 +95,164 @@ namespace percy
             }
 
             void
+            add_step(const fanin* const in, const OpTT& op)
+            {
+                dag::add_vertex(in);
+                operators.push_back(op);
+            }
+
+            void
             set_output(int out_idx, int lit)
             {
                 outputs[out_idx] = lit;
             }
 
-            void invert() {
+            void
+            set_output(int out_idx, int step, bool invert)
+            {
+                outputs[out_idx] = (step << 1) | invert;
+            }
+
+            void 
+            invert() 
+            {
                 for (int i = 0; i < outputs.size(); i++) {
                     outputs[i] = (outputs[i] ^ 1);
+                }
+            }
+            
+            /*******************************************************************
+                De-normalizes a chain, meaning that all outputs will be
+                converted to non-complemented edges. This may mean that some
+                shared steps have to be duplicated or replaced by NOT gates.
+                NOTE: some outputs may point to constants or PIs. These will
+                not be changed.
+
+                The use_nots flag may be used to insert NOT gates instead of
+                duplicating inverted steps.
+            *******************************************************************/
+            void
+            denormalize(const bool use_nots = false)
+            {
+                if (outputs.size() == 1) {
+                    if (outputs[0] & 1) {
+                        invert();
+                    }
+                    return;
+                }
+
+                std::vector<int> refcount(nr_vertices);
+                std::vector<dynamic_truth_table> tmps(nr_vertices);
+                std::vector<dynamic_truth_table> ins;
+                std::vector<dynamic_truth_table> fs(outputs.size());
+
+                for (int i = 1; i < nr_vertices; i++) {
+                    const auto& v = get_vertex(i);
+                    foreach_fanin(v, [&refcount, nr_in=nr_inputs] (auto fid, int j) {
+                        if (fid > nr_in) {
+                            refcount[fid - nr_in - 1]++;
+                        }
+                    });
+                }
+
+                for (int i = 0; i < outputs.size(); i++) {
+                    const auto step_idx = outputs[i] >> 1;
+                    if (step_idx > nr_inputs) {
+                        refcount[step_idx - nr_inputs - 1]++;
+                    }
+                }
+
+                for (auto count : refcount) {
+                    assert(count > 0);
+                }
+
+                for (auto i = 0; i < nr_inputs; ++i) {
+                    auto in_tt = kitty::create<dynamic_truth_table>(nr_inputs);
+                    ins.push_back(in_tt);
+                }
+
+                auto tt_step = kitty::create<dynamic_truth_table>(nr_inputs);
+                auto tt_compute = kitty::create<dynamic_truth_table>(nr_inputs);
+                
+                for (int i = 0; i < nr_vertices; i++) {
+                    const auto& step = dag::get_vertex(i);
+
+                    dag::foreach_fanin(step,
+                            [&ins, &tmps, nr_inputs=nr_inputs]
+                            (auto fanin, int j) {
+                        if (fanin < nr_inputs) {
+                            create_nth_var(ins[j], fanin);
+                        } else {
+                            ins[j] = tmps[fanin - nr_inputs];
+                        }
+                    });
+
+                    kitty::clear(tt_step);
+                    for (int j = 1; j < OperandTTSize; j++) {
+                        kitty::clear(tt_compute);
+                        tt_compute = ~tt_compute;
+                        if (get_bit(operators[i], j)) {
+                            for (int k = 0; k < FI; k++) {
+                                if ((j >> k) & 1) {
+                                    tt_compute &= ins[k];
+                                } else {
+                                    tt_compute &= ~ins[k];
+                                }
+                            }
+                            tt_step |= tt_compute;
+                        }
+                    }
+                    tmps[i] = tt_step;
+
+                    for (int h = 0; h < outputs.size(); h++) {
+                        const auto out = outputs[h];
+                        const auto var = out >> 1;
+                        const auto inv = out & 1;
+                        if (var - nr_inputs - 1 == i) {
+                            fs[h] = inv ? ~tt_step : tt_step;
+                        }
+                    }
+                }
+                
+                for (int i = 0; i < outputs.size(); i++) {
+                    auto step_idx = outputs[i] >> 1;
+                    const auto invert = outputs[i] & 1;
+
+                    if (!invert || step_idx <= nr_inputs) {
+                        continue;
+                    }
+
+                    step_idx -= (nr_inputs + 1);
+                    assert(refcount[step_idx] >= 1);
+                    if (refcount[step_idx] == 1) {
+                        operators[step_idx] = ~operators[step_idx];
+                    } else {
+                        // This output points to a shared step that needs to
+                        // be inverted. If no inverted version of this step
+                        // exists somewhere in the chain, we need to add a new
+                        // step.
+                        bool inv_step_found = false;
+                        for (int j = 0; j < nr_vertices; j++) {
+                            if (tmps[j] == fs[i]) {
+                                set_output(i, j + nr_inputs + 1, false);
+                                inv_step_found = true;
+                            }
+                        }
+                        if (inv_step_found) {
+                            continue;
+                        }
+                        fanin fanins[FI];
+                        const auto& v = get_vertex(step_idx);
+                        foreach_fanin(v, [&fanins] (auto fid, int j) {
+                            fanins[j] = fid;
+                        });
+
+                        add_step(fanins, ~operators[step_idx]);
+                        set_output(i, nr_inputs + nr_vertices, false);
+                        tmps.push_back(fs[i]);
+
+                        refcount[step_idx]--;
+                    }
                 }
             }
 
@@ -144,7 +302,7 @@ namespace percy
                     });
 
                     kitty::clear(tt_step);
-                    for (int j = 1; j < OperandTTSize; j++) {
+                    for (int j = 0; j < OperandTTSize; j++) {
                         kitty::clear(tt_compute);
                         tt_compute = ~tt_compute;
                         if (get_bit(operators[i], j)) {
