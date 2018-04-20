@@ -17,6 +17,7 @@
 #include "spec.hpp"
 #include "synthesizers.hpp"
 #include <kitty/kitty.hpp>
+#include "floating_dag.hpp"
 
 
 using abc::lit;
@@ -436,6 +437,16 @@ namespace percy
     new_dag_synth()
     {
         return std::make_unique<dag_synthesizer<FI, E, S>>();
+    }
+
+    template<
+        int FI=2, 
+        typename E=floating_dag_encoder<FI>, 
+        typename S=sat_solver*>
+    auto
+    new_floating_dag_synth()
+    {
+        return std::make_unique<floating_dag_synthesizer<FI, E, S>>();
     }
 
     /*

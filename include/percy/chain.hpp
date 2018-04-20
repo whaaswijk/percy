@@ -261,7 +261,7 @@ namespace percy
             *******************************************************************/
             template<typename TT>
             std::vector<TT>
-            simulate(const synth_spec<TT>& spec) /*const*/
+            simulate(const synth_spec<TT>& spec) const
             {
                 std::vector<TT> fs(outputs.size());
                 std::vector<TT> tmps(nr_vertices);
