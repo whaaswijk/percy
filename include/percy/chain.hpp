@@ -147,7 +147,7 @@ namespace percy
                 std::vector<dynamic_truth_table> fs(outputs.size());
 
                 for (int i = 1; i < nr_vertices; i++) {
-                    const auto& v = get_vertex(i);
+                    const auto& v = dag::get_vertex(i);
                     foreach_fanin(v, [&refcount, nr_in=nr_inputs] (auto fid, int j) {
                         if (fid > nr_in) {
                             refcount[fid - nr_in - 1]++;
@@ -242,7 +242,7 @@ namespace percy
                             continue;
                         }
                         fanin fanins[FI];
-                        const auto& v = get_vertex(step_idx);
+                        const auto& v = dag::get_vertex(step_idx);
                         foreach_fanin(v, [&fanins] (auto fid, int j) {
                             fanins[j] = fid;
                         });
@@ -387,7 +387,7 @@ namespace percy
                     std::vector<int> nr_uses(nr_vertices);
 
                     for (int i = 1; i < nr_vertices; i++) {
-                        const auto& vertex = get_vertex(i);
+                        const auto& vertex = dag::get_vertex(i);
                         foreach_fanin(vertex, [&nr_uses, nr_inputs=nr_inputs]
                             (auto fid, int j) {
                                 if (fid >= nr_inputs) {
@@ -415,14 +415,14 @@ namespace percy
                     // Ensure there is no re-application of operands.
                     for (int i = 0; i < nr_vertices - 1; i++) {
                         fanin fanins1[FI];
-                        const auto& v = get_vertex(i);
+                        const auto& v = dag::get_vertex(i);
                         foreach_fanin(v, [&fanins1] (auto fid, int j) {
                             fanins1[j] = fid;
                         });
 
                         for (int ip = i + 1; ip < nr_vertices; ip++) {
                             fanin fanins2[FI];
-                            const auto& v2 = get_vertex(i);
+                            const auto& v2 = dag::get_vertex(i);
                             foreach_fanin(v2, 
                                     [&fanins2] (auto fid, int j) {
                                 fanins2[j] = fid;
@@ -456,8 +456,8 @@ namespace percy
                 if (spec.add_colex_clauses) {
                     // Ensure that steps are in co-lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = get_vertex(i);
-                        const auto& v2 = get_vertex(i + 1);
+                        const auto& v1 = dag::get_vertex(i);
+                        const auto& v2 = dag::get_vertex(i + 1);
                         
                         fanin fanins1[FI];
                         foreach_fanin(v1, [&fanins1] (auto fid, int j) {
@@ -479,8 +479,8 @@ namespace percy
                 if (spec.add_lex_clauses) {
                     // Ensure that steps are in lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = get_vertex(i);
-                        const auto& v2 = get_vertex(i + 1);
+                        const auto& v1 = dag::get_vertex(i);
+                        const auto& v2 = dag::get_vertex(i + 1);
                         
                         fanin fanins1[FI];
                         foreach_fanin(v1, [&fanins1] (auto fid, int j) {
@@ -502,8 +502,8 @@ namespace percy
                 if (spec.add_lex_func_clauses) {
                     // Ensure that step operators are in lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = get_vertex(i);
-                        const auto& v2 = get_vertex(i + 1);
+                        const auto& v1 = dag::get_vertex(i);
+                        const auto& v2 = dag::get_vertex(i + 1);
 
                         fanin fanins1[FI];
                         foreach_fanin(v1, [&fanins1] (auto fid, int j) {
@@ -544,7 +544,7 @@ namespace percy
                                 continue;
                             }
                             for (int i = 1; i < spec.nr_steps; i++) {
-                                const auto& v1 = get_vertex(i);
+                                const auto& v1 = dag::get_vertex(i);
                                 auto has_fanin_p = false;
                                 auto has_fanin_q = false;
 
@@ -563,7 +563,7 @@ namespace percy
                                 }
                                 auto p_in_prev_step = false;
                                 for (int ip = 0; ip < i; ip++) {
-                                    const auto& v2 = get_vertex(ip);
+                                    const auto& v2 = dag::get_vertex(ip);
                                     has_fanin_p = false;
 
                                     foreach_fanin(v2, [p, q, &has_fanin_p] 
