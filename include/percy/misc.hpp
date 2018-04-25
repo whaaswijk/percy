@@ -3,7 +3,7 @@
 namespace percy
 {
 
-	int 
+	inline int 
 	binomial_coeff(int n, int k)
 	{
 		int C[n+1][k+1];
