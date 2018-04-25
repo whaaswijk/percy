@@ -98,7 +98,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_input(Fn&& fn)
+            foreach_input(Fn&& fn) const
             {
                 for (auto i = 0; i < nr_inputs; i++) {
                     fn(i);
@@ -107,7 +107,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_vertex(Fn&& fn)
+            foreach_vertex(Fn&& fn) const
             {
                 for (std::size_t i = 0; i < nr_vertices; i++) {
                     fn(vertices[i], i);
@@ -116,7 +116,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_fanin(vertex v, Fn&& fn)
+            foreach_fanin(vertex v, Fn&& fn) const
             {
                 for (auto i = 0; i < FI; i++) {
                     fn(v[i], i);
@@ -349,7 +349,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_input(Fn&& fn)
+            foreach_input(Fn&& fn) const
             {
                 for (auto i = 0; i < nr_inputs; i++) {
                     fn(i);
@@ -358,7 +358,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_vertex(Fn&& fn)
+            foreach_vertex(Fn&& fn) const
             {
                 for (std::size_t i = 0; i < nr_vertices; i++) {
                     fn(std::make_pair(_js[i], _ks[i]), i);
@@ -367,7 +367,7 @@ namespace percy
 
             template<typename Fn>
             void 
-            foreach_fanin(vertex v, Fn&& fn)
+            foreach_fanin(vertex v, Fn&& fn) const
             {
                 fn(v.first, 0);
                 fn(v.second, 1);
