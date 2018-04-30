@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "tt_utils.hpp"
 
 #define MAX_OUT 64 // The maximum supported number of outputs
@@ -34,6 +35,10 @@ namespace percy
             const TT* functions[MAX_OUT]; // The requested functions
             int triv_functions[MAX_OUT]; // Trivial outputs
             int synth_functions[MAX_OUT]; // Nontrivial outputs
+
+            // A place for synthesizers to log elapsed synthesis time.
+            // Measured in microseconds.
+            int64_t synth_time;
 
             int conflict_limit;
             
