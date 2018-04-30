@@ -1230,11 +1230,11 @@ namespace percy
                 }
             }
 
-            template<typename TT>
+            template<typename TT, typename Enc, typename S>
             void search_dags(
-                    const synth_spec<TT>& spec, 
+                    synth_spec<TT>& spec, 
                     dag<2>& g, 
-                    dag_synthesizer<2>& synth,
+                    dag_synthesizer<2, Enc, S>& synth,
                     chain<2>& chain)
             {
                 // We can terminate early if a solution has already been found.
@@ -1533,17 +1533,17 @@ namespace percy
                 function. Fails if no DAG of the current size can implement
                 the function.
             *******************************************************************/
-            template<typename TT, typename Solver>
+            template<typename TT, typename Enc, typename S>
             synth_result 
             find_dag(
-                    const TT& f, 
+                    synth_spec<TT>& spec, 
                     dag<2>& g, 
                     chain<2>& chain, 
-                    dag_synthesizer<2, Solver>& synth)
+                    dag_synthesizer<2, Enc, S>& synth)
             {
                 assert(_initialized);
 
-                search_dags(f, g, synth, chain);
+                search_dags(spec, g, synth, chain);
 
                 if (_nr_solutions > 0) {
                     return success;

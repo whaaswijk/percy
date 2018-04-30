@@ -186,7 +186,8 @@ namespace percy
                 nr_vertices++;
             }
 
-            vertex& get_vertex(int v_idx)
+            const vertex& 
+            get_vertex(int v_idx) const
             {
                 return vertices[v_idx];
             }

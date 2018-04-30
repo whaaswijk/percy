@@ -2,10 +2,10 @@ cmake_minimum_required (VERSION 2.8)
 
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
-project(percy LANGUAGES C CXX)
+project(percy LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-Wall -fPIC -DLIN64")
+set(CMAKE_CXX_FLAGS "-Wall -pedantic -fPIC -DLIN64")
 
 option(TRAVIS_BUILD "Use Travis build configuration" OFF)
 option(PERCY_TEST "Build tests" OFF)
@@ -31,7 +31,7 @@ endif()
 if (PERCY_BUILD_ABC)
   set(ABC_USE_NAMESPACE "abc")
   add_subdirectory(abc)
-  target_compile_definitions(libabc-pic PUBLIC "LIN64")
+  target_compile_definitions(libabc-pic PUBLIC "LIN64" ABC_NAMESPACE=abc)
 endif()
 
 SET(NAUTY_INCLUDE_DIR "${PROJECT_BINARY_DIR}/nauty/src/nauty")

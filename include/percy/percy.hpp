@@ -28,8 +28,8 @@ using std::chrono::duration;
 using std::chrono::time_point;
 
 /*******************************************************************************
-    This module defines the interface to actually synthesize Boolean chains
-    from specifications. The inspiration for this module is taken from Mathias
+    This module defines the interface to synthesize Boolean chains from
+    specifications. The inspiration for this module is taken from Mathias
     Soeken's earlier exact synthesis algorithm, which has been integrated in
     the ABC synthesis package. That implementation is itself based on earlier
     work by Éen[1] and Knuth[2].
@@ -50,7 +50,7 @@ namespace percy
         double overhead = 0;
         double total_synth_time = 0;
         double time_to_first_synth = 0;
-    };
+    };    
     
     /***************************************************************************
         We consider a truth table to be trivial if it is equal to (or the
@@ -813,7 +813,7 @@ namespace percy
         function.
     ***************************************************************************/
     template<typename TT, int FI=2>
-    synth_result find_dag(const synth_spec<TT>& spec, dag<FI>& g, int nr_vars)
+    synth_result find_dag(synth_spec<TT>& spec, dag<FI>& g, int nr_vars)
     {
         chain<FI> chain;
         rec_dag_generator gen;
@@ -838,7 +838,11 @@ namespace percy
     ***************************************************************************/
     template<typename TT, int FI=2>
     synth_result 
-    find_dag(const synth_spec<TT>& f, dag<FI>& g, int nr_vars, int nr_vertices)
+    find_dag(
+            synth_spec<TT>& spec, 
+            dag<FI>& g, 
+            const int nr_vars, 
+            const int nr_vertices)
     {
         chain<FI> chain;
         rec_dag_generator gen;
@@ -846,7 +850,7 @@ namespace percy
 
         gen.reset(nr_vars, nr_vertices);
         g.reset(nr_vars, nr_vertices);
-        return gen.find_dag(f, g, chain, synth);
+        return gen.find_dag(spec, g, chain, synth);
     }
 
 
@@ -854,7 +858,7 @@ namespace percy
     template<typename TT>
     synth_result 
     qpfind_dag(
-            const synth_spec<TT>& spec, 
+            synth_spec<TT>& spec, 
             dag<2>& g, 
             int nr_vars,
             bool verbose=false)
@@ -878,7 +882,7 @@ namespace percy
     template<typename TT, int FI=2>
     synth_result 
     qpfind_dag(
-            const synth_spec<TT>& spec, 
+            synth_spec<TT>& spec, 
             dag<2>& g, 
             const int nr_vars, 
             const int nr_vertices)

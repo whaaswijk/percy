@@ -18,7 +18,7 @@ namespace percy
             template<typename TT>
             synth_result 
             synthesize(
-                    const synth_spec<TT>& spec, 
+                    synth_spec<TT>& spec, 
                     const dag<FI>& dag, 
                     chain<FI>& chain,
                     bool preprocess_spec=true)
