@@ -65,8 +65,8 @@ void check_equivalence()
 
 int main(void)
 {
-    check_equivalence<2>();
-    check_equivalence<3>();
+//    check_equivalence<2>();
+//   check_equivalence<3>();
 //    check_equivalence<4>();
 
     return 0;
