@@ -12,7 +12,7 @@ option(PERCY_TEST "Build tests" OFF)
 option(PERCY_BENCH "Build benchmarks" OFF)
 option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
 option(PERCY_BUILD_ABC "Build abc for percy" ON)
-option(PERCY_USE_SYRUP "Use glucose-syrup instead of glucose" OFF)
+option(PERCY_USE_SYRUP "Use glucose-syrup instead of glucose" ON)
 option(PERCY_BUILD_CMS "Enables support for CryptoMinisat" ON)
 
 externalproject_add(
