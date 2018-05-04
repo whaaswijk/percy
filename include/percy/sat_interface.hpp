@@ -1,5 +1,14 @@
 #pragma once
 
+#ifdef USE_CMS
+#include <cryptominisat5/cryptominisat.h>
+// A hack to undefine the CryptoMiniSat lbool definitions, 
+// as they conflict with those defined by ABC.
+#undef l_True
+#undef l_False
+#undef l_Undef
+#endif
+
 #include <base/abc/abc.h>
 #include <misc/vec/vecInt.h>
 #include <misc/vec/vecPtr.h>
@@ -12,8 +21,11 @@
 #include <glucose/core/Solver.h>
 #endif
 
+
 using abc::lit;
 using abc::sat_solver;
+using abc::Abc_LitIsCompl;
+using abc::Abc_Lit2Var;
 
 namespace percy 
 {
@@ -380,6 +392,117 @@ namespace percy
     {
         return solver_solve(s, cl);
 	}
+#endif
+
+#ifdef USE_CMS
+    template<>
+    inline void 
+    solver_alloc(CMSat::SATSolver** solver) 
+    {
+       *solver = new CMSat::SATSolver;
+       auto nr_threads = std::thread::hardware_concurrency();
+       (*solver)->set_num_threads(nr_threads);
+    }
+
+    template<>
+    inline void 
+    solver_dealloc(CMSat::SATSolver** solver) 
+    {
+        delete *solver;
+        *solver = nullptr;
+    }
+
+    template<>
+    inline void 
+    solver_restart(CMSat::SATSolver** solver) 
+    {
+        delete *solver;
+        *solver = new CMSat::SATSolver;
+        auto nr_threads = std::thread::hardware_concurrency();
+        (*solver)->set_num_threads(nr_threads);
+    }
+
+    template<>
+    inline void 
+    solver_set_nr_vars(CMSat::SATSolver* solver, unsigned nr_vars) 
+    {
+        solver->new_vars(nr_vars);
+    }
+
+    template<>
+    inline int 
+    solver_add_clause(CMSat::SATSolver* solver, lit* begin, lit* end) 
+    {
+        static std::vector<CMSat::Lit> clause;
+        clause.clear();
+        for (auto i = begin; i < end; i++) {
+            clause.push_back(CMSat::Lit(Abc_Lit2Var(*i), Abc_LitIsCompl(*i)));
+        }
+        return solver->add_clause(clause);
+    }
+
+    template<>
+    inline int 
+    solver_var_value(CMSat::SATSolver* solver, int var) 
+    {
+        return solver->get_model()[var] == CMSat::boolToLBool(true);
+    }
+
+    template<>
+    inline synth_result 
+    solver_solve(CMSat::SATSolver* solver, int cl) 
+    {
+        std::vector<CMSat::Lit> assumps;
+        if (cl > 0) {
+            solver->set_max_confl(cl);
+        }
+        auto res = solver->solve(&assumps);
+        if (res == CMSat::boolToLBool(true)) {
+            return success;
+        } else if (res == CMSat::boolToLBool(false)) {
+            return failure;
+        } else {
+            return timeout;
+        }
+    }
+
+    template<>
+    inline synth_result 
+    solver_solve(CMSat::SATSolver* solver, lit* begin, lit* end, int cl) 
+    {
+        static std::vector<CMSat::Lit> assumps;
+        assumps.clear();
+        for (auto i = begin; i < end; i++) {
+            assumps.push_back(CMSat::Lit(Abc_Lit2Var(*i), Abc_LitIsCompl(*i)));
+        }
+        if (cl > 0) {
+            solver->set_max_confl(cl);
+        }
+        auto res = solver->solve(&assumps);
+        if (res == CMSat::boolToLBool(true)) {
+            return success;
+        } else if (res == CMSat::boolToLBool(false)) {
+            return failure;
+        } else {
+            return timeout;
+        }
+    }
+
+    template<>
+    inline int 
+    solver_nr_conflicts(CMSat::SATSolver* solver) 
+    {
+        return 0u;
+    }
+
+    template<>
+	inline int 
+    solver_nr_clauses(CMSat::SATSolver* s)
+    {
+        // TODO: fix implementation.
+        return 0;
+    }
+
 #endif
 
 }

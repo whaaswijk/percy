@@ -10,3 +10,6 @@
 [submodule "syrup"]
 	path = syrup
 	url = https://github.com/whaaswijk/glucose-syrup
+[submodule "cryptominisat"]
+	path = cryptominisat
+	url = https://github.com/msoos/cryptominisat.git

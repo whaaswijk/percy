@@ -13,6 +13,7 @@ option(PERCY_BENCH "Build benchmarks" OFF)
 option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
 option(PERCY_BUILD_ABC "Build abc for percy" ON)
 option(PERCY_USE_SYRUP "Use glucose-syrup instead of glucose" OFF)
+option(PERCY_BUILD_CMS "Enables support for CryptoMinisat" ON)
 
 externalproject_add(
 	nauty
@@ -49,11 +50,19 @@ else()
     add_subdirectory(glucose)
 endif()
 
-
 if (PERCY_BUILD_KITTY)
     add_subdirectory(kitty EXCLUDE_FROM_ALL)
 endif()
 add_subdirectory(include)
+
+if (PERCY_BUILD_CMS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_CMS")
+    add_subdirectory(cryptominisat)
+    SET(CMS_INCLUDE_DIR "${PROJECT_BINARY_DIR}/cryptominisat/include") 
+    SET(CMS_LDIR "${PROJECT_BINARY_DIR}/cryptominisat/lib") 
+    include_directories(${CMS_INCLUDE_DIR})
+    link_directories(${CMS_LDIR})
+endif()
 
 if (PERCY_BENCH)
     add_subdirectory(bench)

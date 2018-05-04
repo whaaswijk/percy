@@ -7,3 +7,7 @@ if (PERCY_USE_SYRUP)
 else()
     target_link_libraries(percy INTERFACE glucose)
 endif()
+
+if (PERCY_BUILD_CMS)
+    target_link_libraries(percy INTERFACE cryptominisat5)
+endif()
