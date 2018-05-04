@@ -50,8 +50,16 @@ namespace percy
                         spec.nr_steps++;
                         continue;
                     }
+
+                    auto begin = std::chrono::steady_clock::now();
                     const auto status = 
                         solver_solve(solver, spec.conflict_limit);
+                    auto end = std::chrono::steady_clock::now();
+                    auto synth_time = 
+                        std::chrono::duration_cast<std::chrono::microseconds>(
+                                end - begin
+                        ).count();
+                    spec.synth_time = synth_time;
 
                     if (status == success) {
                         encoder.extract_chain(spec, chain);
