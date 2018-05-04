@@ -12,6 +12,7 @@ option(PERCY_TEST "Build tests" OFF)
 option(PERCY_BENCH "Build benchmarks" OFF)
 option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
 option(PERCY_BUILD_ABC "Build abc for percy" ON)
+option(PERCY_USE_SYRUP "Use glucose-syrup instead of glucose" OFF)
 
 externalproject_add(
 	nauty
@@ -41,7 +42,14 @@ add_library(libnauty STATIC IMPORTED)
 set_target_properties(libnauty PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${NAUTY_INCLUDE_DIR})
 set_target_properties(libnauty PROPERTIES IMPORTED_LOCATION ${NAUTY_LDIR}/nautyL1.a)
 
-add_subdirectory(glucose)
+if (PERCY_USE_SYRUP)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_SYRUP")
+    add_subdirectory(syrup)
+else()
+    add_subdirectory(glucose)
+endif()
+
+
 if (PERCY_BUILD_KITTY)
     add_subdirectory(kitty EXCLUDE_FROM_ALL)
 endif()

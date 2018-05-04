@@ -6,7 +6,11 @@
 #include <sat/bsat/satSolver.h>
 #include <thread>
 
+#ifdef USE_SYRUP
+#include <syrup/parallel/MultiSolvers.h>
+#else
 #include <glucose/core/Solver.h>
+#endif
 
 using abc::lit;
 using abc::sat_solver;
@@ -152,6 +156,7 @@ namespace percy
         }
 	}
 
+#ifndef USE_SYRUP
     template<>
 	inline void solver_alloc(Glucose::Solver** s) 
     {
@@ -264,6 +269,118 @@ namespace percy
             return timeout;
         }
 	}
+#else
+    template<>
+	inline void solver_alloc(Glucose::MultiSolvers** s) 
+    {
+        //auto nr_threads = 2;
+        //*s = new Glucose::MultiSolvers(nr_threads);
+        *s = new Glucose::MultiSolvers();
+	}
+
+	template<>
+	inline void solver_dealloc(Glucose::MultiSolvers** s)
+    {
+        delete *s;
+        *s = nullptr;
+	}
+
+	template<>
+	inline void solver_restart(Glucose::MultiSolvers** s) 
+    {
+        delete *s;
+        //auto nr_threads = 2;
+        //*s = new Glucose::MultiSolvers(nr_threads);
+        *s = new Glucose::MultiSolvers();
+	}
+
+	template<>
+	inline void 
+    solver_set_nr_vars(Glucose::MultiSolvers* s, unsigned nr_vars) 
+    {
+        while (nr_vars-- > 0) {
+            s->newVar();
+        }
+	}
+
+    template<>
+    inline int
+	solver_nr_vars(Glucose::MultiSolvers* s)
+    {
+        return s->nVars();
+    }
+    
+    template<>
+	inline int 
+    solver_nr_clauses(Glucose::MultiSolvers* s)
+    {
+        return s->nClauses();
+    }
+
+    template<>
+        inline int 
+    solver_nr_conflicts(Glucose::MultiSolvers* s)
+    {
+        // Currently not supported by Glucose::MultiSolvers.
+        return 0;
+    }
+
+	template<>
+	inline int 
+    solver_add_clause(Glucose::MultiSolvers* s, lit* begin, lit* end) 
+    {
+        Glucose::vec<Glucose::Lit> litvec;
+        for (auto i = begin; i != end; i++) {
+            litvec.push(Glucose::mkLit((*i >> 1), (*i & 1)));
+        }
+        return s->addClause(litvec);
+	}
+
+    template<>
+	inline void 
+    solver_add_var(Glucose::MultiSolvers* s)
+    {
+        s->newVar();
+	}
+
+	template<>
+	inline int solver_var_value(Glucose::MultiSolvers* s, int var) 
+    {
+        return s->model[var] == l_True;
+	}
+
+    template<>
+	inline synth_result 
+    solver_solve(Glucose::MultiSolvers* s, int cl) 
+    {
+        int ret2 = s->simplify();   
+        s->use_simplification = false;
+        if(ret2) {
+            s->eliminate();
+        }
+
+        if (!ret2 || !s->okay()){
+            return failure;
+        }
+
+        // Conflict limits are currently not supported by Glucose::MultiSolvers.   
+        auto res = s->solve();
+        if (res == l_True) {
+            return success;
+        } else if (res == l_False) {
+            return failure;
+        } else {
+            return timeout;
+        }
+	}
+
+	template<>
+	inline synth_result 
+    solver_solve(Glucose::MultiSolvers* s, lit* begin, lit* end, int cl) 
+    {
+        return solver_solve(s, cl);
+	}
+#endif
 
 }
 

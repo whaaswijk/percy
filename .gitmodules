@@ -7,3 +7,6 @@
 [submodule "bench/benchmark"]
 	path = bench/benchmark
 	url = https://github.com/google/benchmark
+[submodule "syrup"]
+	path = syrup
+	url = https://github.com/whaaswijk/glucose-syrup

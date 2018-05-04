@@ -408,7 +408,6 @@ namespace percy
                 auto status = solver_add_clause(*solver,
                         abc::Vec_IntArray(vLits),
                         abc::Vec_IntArray(vLits) + ctr); 
-                assert(status);
 
                 if (spec.verbosity > 2) {
                     printf("creating sim. clause: (");
