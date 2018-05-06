@@ -1,11 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-void   Abc_Start();
-void   Abc_Stop();
-void * Abc_FrameGetGlobalFrame();
-int    Cmd_CommandExecute( void * pAbc, char * sCommand );
-
+#include <base/main/main.h>
 
 /*******************************************************************************
     A simple test to verify that integration with ABC is set up properly. The
@@ -18,19 +14,17 @@ int main(int argc, char * argv[])
     void *pAbc;
     char Command[1000];
 
-    /* TODO: fix abc integration.
-    Abc_Start();
-    pAbc = Abc_FrameGetGlobalFrame();
+    abc::Abc_Start();
+    pAbc = abc::Abc_FrameGetGlobalFrame();
     
     sprintf( Command, "echo \"test\"" );
-    if ( Cmd_CommandExecute( pAbc, Command ) )
+    if ( abc::Cmd_CommandExecute( pAbc, Command ) )
     {
         printf("Cannot execute command \"%s\".\n", Command);
         return 1;
     }
 
-    Abc_Stop();
-    */
+    abc::Abc_Stop();
 
     return 0;
 }
