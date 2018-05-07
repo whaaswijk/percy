@@ -16,8 +16,7 @@ void check_std_equivalence(bool full_coverage)
     synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
 
     auto synth1 = new_std_synth();
-    auto synth2 = new_std_synth<2, 
-         knuth_encoder<2, CMSat::SATSolver*>, CMSat::SATSolver*>();
+    auto synth2 = new_std_synth<2, CMSat::SATSolver*>();
 
     spec.verbosity = 0;
 

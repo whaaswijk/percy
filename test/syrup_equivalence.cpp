@@ -16,8 +16,7 @@ void check_std_equivalence(bool full_coverage)
     synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
 
     auto synth1 = new_std_synth();
-    auto synth2 = new_std_synth<2, 
-         knuth_encoder<2, Glucose::MultiSolvers*>, Glucose::MultiSolvers*>();
+    auto synth2 = new_std_synth<2, Glucose::MultiSolvers*>();
 
     spec.verbosity = 0;
 

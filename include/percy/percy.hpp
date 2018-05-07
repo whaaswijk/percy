@@ -418,21 +418,30 @@ namespace percy
         The following are constructor functions that allocate new synthesizer
         objects. This is the preferred way of instantiating new synthesizers.
     ***************************************************************************/
-    template<int FI=2, typename E=knuth_encoder<FI>, typename S=sat_solver*>
+    template<
+        int FI=2, 
+        typename S=sat_solver*, 
+        typename E=knuth_encoder<FI, S>>
     auto
     new_std_synth()
     {
         return std::make_unique<std_synthesizer<FI, E, S>>();
     }
 
-    template<int FI=2, typename E=fence_encoder<FI>, typename S=sat_solver*>
+    template<
+        int FI=2, 
+        typename S=sat_solver*, 
+        typename E=fence_encoder<FI, S>>
     auto
     new_fence_synth()
     {
         return std::make_unique<fence_synthesizer<FI, E, S>>();
     }
 
-    template<int FI=2, typename E=dag_encoder<dag<FI>>, typename S=sat_solver*>
+    template<
+        int FI=2,
+        typename S=sat_solver*,
+        typename E=dag_encoder<dag<FI>,S>>
     auto
     new_dag_synth()
     {
@@ -441,8 +450,8 @@ namespace percy
 
     template<
         int FI=2, 
-        typename E=floating_dag_encoder<FI>, 
-        typename S=sat_solver*>
+        typename S=sat_solver*,
+        typename E=floating_dag_encoder<FI, S>> 
     auto
     new_floating_dag_synth()
     {

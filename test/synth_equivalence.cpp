@@ -190,6 +190,8 @@ int main(int argc, char **argv)
         4, 
         3>(full_coverage);
     //check_equivalence<STD,DAG, 4, 3>(full_coverage);
+    //
+    auto synth = new_std_synth<3, Glucose::MultiSolvers*>();
     
     return 0;
 }
