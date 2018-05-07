@@ -8,8 +8,8 @@
     test tries to execute an echo command within the ABC environment. The test
     fails if it is unable to do so.
 *******************************************************************************/
-
-int main(int argc, char * argv[])
+int 
+main(int argc, char * argv[])
 {
     void *pAbc;
     char Command[1000];

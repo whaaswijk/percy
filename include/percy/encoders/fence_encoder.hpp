@@ -4,6 +4,8 @@
 
 namespace percy
 {
+    using abc::Abc_Var2Lit;
+
     template<int FI=2, typename Solver=sat_solver*>
     class fence_encoder
     {
@@ -200,7 +202,7 @@ namespace percy
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         for (int i = 0; i < spec.nr_steps; i++) {
                             abc::Vec_IntSetEntry(vLits, i, 
-                                    abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
+                                    Abc_Var2Lit(get_out_var(spec, h, i), 0));
                             if (spec.verbosity) {
                                 printf("  output %d may point to step %d\n", 
                                         h+1, spec.get_nr_in()+i+1);
@@ -216,7 +218,7 @@ namespace percy
                 const auto last_op = spec.nr_steps - 1;
                 for (int h = 0; h < spec.nr_nontriv; h++) {
                     abc::Vec_IntSetEntry(vLits, h, 
-                            abc::Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
+                            Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
                 }
                 solver_add_clause(*solver, abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + spec.nr_nontriv);
@@ -238,7 +240,7 @@ namespace percy
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
                         abc::Vec_IntSetEntry(vLits, j-1,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
+                                Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     solver_add_clause(*solver, abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -276,7 +278,7 @@ namespace percy
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto svar = j + svar_offset;
                         const auto& fanins = svar_map[svar];
-                        // First add clauses for all cases where the
+                        // First add clauses 
                         // operator i computes zero.
                         int opvar_idx = 0;
                         clear_assignment<FI>(fanin_asgn);
@@ -358,7 +360,9 @@ namespace percy
                 }
             }
 
-/*
+            /*******************************************************************
+              Add clauses which ensure that every step is used at least once.
+            *******************************************************************/
             template<typename TT>
             void 
             create_alonce_clauses(const synth_spec<TT>& spec)
@@ -369,30 +373,44 @@ namespace percy
                         abc::Vec_IntSetEntry(vLits, ctr++, 
                                 abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                     }
+
                     const auto level = get_level(spec, i + spec.get_nr_in());
                     const auto idx = spec.get_nr_in()+i;
                     for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                        auto svar_offset = 0;
+                        for (auto svi = 0; svi < ip; svi++) {
+                            svar_offset += nr_svar_map[svi];
+                        }
+
                         auto levelp = get_level(spec, ip + spec.get_nr_in());
                         assert(levelp >= level);
                         if (levelp == level) {
                             continue;
                         }
-                        for (auto k = first_step_on_level(levelp-1); 
-                                k < first_step_on_level(levelp); k++) {
-                            for (int j = 0; j < k; j++) {
-                                if (j == idx || k == idx) {
-                                    abc::Vec_IntSetEntry(vLits, ctr++, 
-                                            abc::Abc_Var2Lit(spec.selection_vars[ip][j][k], 0));
+
+                        const auto nr_svars_for_ip = nr_svar_map[ip];
+                        for (int j = 0; j < nr_svars_for_ip; j++) {
+                            const auto svar = j + svar_offset;
+                            const auto& fanins = svar_map[svar];
+                            for (const auto fanin : fanins) {
+                                if (fanin == idx) {
+                                    abc::Vec_IntSetEntry(
+                                            vLits, 
+                                            ctr++, 
+                                            Abc_Var2Lit(svar, 0));
+                                    break;
                                 }
                             }
                         }
+
                     }
-                    solver_add_clause(this->solver, abc::Vec_IntArray(vLits),
+                    solver_add_clause(
+                            *solver, 
+                            abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + ctr);
                 }
             }
 
-*/
             template<typename TT>
             bool 
             add_simulation_clause(
@@ -725,10 +743,10 @@ namespace percy
                     create_nontriv_clauses(spec);
                 }
 
-                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
@@ -766,10 +784,10 @@ namespace percy
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
-                /*
                 if (spec.add_alonce_clauses) {
                     create_alonce_clauses(spec);
                 }
+                /*
                 if (spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
