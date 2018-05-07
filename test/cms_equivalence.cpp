@@ -13,6 +13,7 @@ using kitty::static_truth_table;
 template<int NrIn>
 void check_std_equivalence(bool full_coverage)
 {
+#ifdef USE_CMS
     synth_spec<static_truth_table<NrIn>> spec(NrIn, 1);
 
     auto synth1 = new_std_synth();
@@ -65,6 +66,7 @@ void check_std_equivalence(bool full_coverage)
         fflush(stdout);
     }
     printf("\n");
+#endif
 }
 
 /*******************************************************************************
@@ -74,7 +76,6 @@ void check_std_equivalence(bool full_coverage)
 *******************************************************************************/
 int main(int argc, char **argv)
 {
-#ifdef USE_CMS
     bool full_coverage = false;
     if (argc > 1) {
         full_coverage = true;
@@ -88,7 +89,6 @@ int main(int argc, char **argv)
     check_std_equivalence<2>(full_coverage);
     check_std_equivalence<3>(full_coverage);
     check_std_equivalence<4>(full_coverage);
-#endif
 
     return 0;
 }
