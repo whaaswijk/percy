@@ -74,6 +74,7 @@ void check_std_equivalence(bool full_coverage)
 *******************************************************************************/
 int main(int argc, char **argv)
 {
+#ifdef USE_CMS
     bool full_coverage = false;
     if (argc > 1) {
         full_coverage = true;
@@ -87,6 +88,7 @@ int main(int argc, char **argv)
     check_std_equivalence<2>(full_coverage);
     check_std_equivalence<3>(full_coverage);
     check_std_equivalence<4>(full_coverage);
+#endif
 
     return 0;
 }
