@@ -1,9 +1,6 @@
 [submodule "kitty"]
 	path = kitty
 	url = https://github.com/msoeken/kitty/
-[submodule "abc"]
-	path = abc
-	url = https://github.com/msoeken/abc
 [submodule "bench/benchmark"]
 	path = bench/benchmark
 	url = https://github.com/google/benchmark
