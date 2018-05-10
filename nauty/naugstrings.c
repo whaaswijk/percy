@@ -5,7 +5,7 @@
 
 /****************************************************************************/
 
-static void
+void
 encodegraphsize(int n, char **pp)
 /* Encode the size n in a string starting at **p, and reset **p
    to point to the character after the size */
