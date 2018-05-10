@@ -10,3 +10,6 @@
 [submodule "cryptominisat"]
 	path = cryptominisat
 	url = https://github.com/msoos/cryptominisat.git
+[submodule "abc"]
+	path = abc
+	url = https://github.com/whaaswijk/abc
