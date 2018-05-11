@@ -64,4 +64,9 @@ if (PERCY_TEST)
     add_subdirectory(test)
 endif()
 
-add_subdirectory(nauty)
+# Nauty does not seem to compile nicely on Windows
+if (UNIX)
+    add_subdirectory(nauty)
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_NAUTY")
+endif()
