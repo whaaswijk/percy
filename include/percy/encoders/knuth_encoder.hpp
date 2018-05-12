@@ -906,9 +906,7 @@ namespace percy
                 }
             }
 
-            /*******************************************************************
-              Extracts a Boolean chain from a satisfiable solution.
-            *******************************************************************/
+            /// Extracts chain from encoded CNF solution.
             template<typename TT>
             void 
             extract_chain(synth_spec<TT>& spec, chain<FI>& chain)
@@ -1098,6 +1096,7 @@ namespace percy
                         "========================================\n");
             }
 
+			/// Encodes specifciation for use in standard synthesis flow.
             template<typename TT>
             bool 
             encode(const synth_spec<TT>& spec)
@@ -1152,6 +1151,7 @@ namespace percy
                 return true;
             }
 
+			/// Encodes specifciation for use in CEGAR based synthesis flow.
             template<typename TT>
             bool 
             cegar_encode(const synth_spec<TT>& spec)
@@ -1206,11 +1206,9 @@ namespace percy
                 return true;
             }
 
-            /*******************************************************************
-                Assumes that a solution has been found by the current encoding.
-                Blocks the current solution such that the solver is forced to
-                find different ones (if they exist).
-            *******************************************************************/
+            /// Assumes that a solution has been found by the current encoding.
+            /// Blocks the current solution such that the solver is forced to
+            /// find different ones (if they exist).
             template<typename TT>
             bool
             block_solution(const synth_spec<TT>& spec)
@@ -1250,11 +1248,9 @@ namespace percy
             }
 
 
-            /*******************************************************************
-                Similar to block_solution, but blocks all solutions with the
-                same structure. This is more restrictive, since the other
-                method allows for the same structure but different operators.
-            *******************************************************************/
+            /// Similar to block_solution, but blocks all solutions with the
+            /// same structure. This is more restrictive, since the other
+            /// method allows for the same structure but different operators.
             template<typename TT>
             bool
             block_struct_solution(const synth_spec<TT>& spec)

@@ -7,7 +7,7 @@ between the library's components.
 
 .. literalinclude:: ../test/synthesizer.cpp
    :language: c++
-   :lines: 53-72
+   :lines: 53-87
 
 In this example, we see how a synthesizer is instantiated based on a
 specification. The synthesizer is of the `std_synthesizer` type, which is the

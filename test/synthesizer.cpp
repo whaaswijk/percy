@@ -50,23 +50,38 @@ int main(void)
     
     // Synthesize a full adder
     {
+        // Create the truth table specification object. It has three inputs and two outputs.
         synth_spec<static_truth_table<3>> spec(3, 2);
         spec.verbosity = 1;
+
+        // Instantiate a new standard synthesizer.
         auto synth = new_std_synth();
         chain<2> c;
 
+        // Create the functions to synthesize.
+        // We use three static truth tables to 
+        // represent the three inputs to the full adder.
         static_truth_table<3> x, y, z;
 
         create_nth_var( x, 0 );
         create_nth_var( y, 1 );
         create_nth_var( z, 2 );
 
+        // The sum and carry functions represent the outputs of the 
+        // chain that we want to synthesize. 
         const auto sum = x ^ y ^ z;
         const auto carry = ternary_majority(x, y, z);
         spec.functions[0] = &sum;
         spec.functions[1] = &carry;
+
+        // Call the synthesizer with the specification we've constructed.
         auto result = synth->synthesize(spec, c);
+		
+        // Ensure that synthesis was successful.
         assert(result == success);
+
+        // Simulate the synthesized circuit and ensure that it
+        // computes the correct functions.
         auto sim_fs = c.simulate(spec);
         assert(sim_fs[0] == sum);
         assert(sim_fs[1] == carry);

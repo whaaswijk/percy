@@ -140,6 +140,8 @@ namespace percy
                 }
             }
 
+            /// Generates the next solution. This can be used in a loop to enumerate
+            /// different solutions to a specification.
             template<typename TT>
             synth_result 
             next_solution(
@@ -174,6 +176,10 @@ namespace percy
                 return failure;
             }
 
+            /// Generates the next *structurally different* solution, where structure
+            /// refers to the underlying DAG structure of a solution. This method can 
+            /// be used in a loop to enumerate structurally different solutions to a 
+            /// specification.
             template<typename TT>
             synth_result 
             next_struct_solution(synth_spec<TT>& spec, chain<FI>& chain)
@@ -207,6 +213,7 @@ namespace percy
                 return failure;
             }
 
+            /// Resets synthesizer state. Used in generating multiple solutions.
             void reset()
             {
                 is_dirty = false;

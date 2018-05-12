@@ -229,6 +229,7 @@ namespace percy
                 return true;
             }
 
+			/// Encodes specifciation for use in standard synthesis flow.
             template<typename TT>
             bool 
             encode(const synth_spec<TT>& spec, const Dag& dag)
@@ -240,6 +241,7 @@ namespace percy
                 return success;
             }
 
+			/// Encodes specifciation for use in CEGAR based synthesis flow.
             template<typename TT>
             bool 
             cegar_encode(const synth_spec<TT>& spec, const Dag& dag)
@@ -254,6 +256,7 @@ namespace percy
                 return true;
             }
 
+            /// Extracts chain from encoded CNF solution.
             template<typename TT>
             void 
             extract_chain(
@@ -318,9 +321,9 @@ namespace percy
                 */
             }
 
-            // Assumes that a solution was found by the synthesizer. In that
-            // case, we can block the current solution by blocking the current
-            // assignment to the operator variables.
+            /// Assumes that a solution was found by the synthesizer. In that
+            /// case, we can block the current solution by blocking the current
+            /// assignment to the operator variables.
             void
             block_solution()
             {
