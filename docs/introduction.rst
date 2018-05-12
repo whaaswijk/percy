@@ -1,23 +1,53 @@
 Introduction
 ============
 
-The C++ library `percy` provides data structures and algorithms for
-SAT based exact synthesis (ES). It also supports state-of-the-art ES algorithms
-that take advantage of DAG topology information.
+The `percy` library provides a collection of SAT based exact synthesis engines.
+That includes engines based on conventional methods, as well as
+state-of-the-art engines which can take advantage of DAG topology information
+The aim of `percy` is to provide a flexible common interface that makes it easy
+to construct a parameterizable synthesis engine suitable for different domains.
+It is a header-only library, meaning that it can be used simply by including
+the percy/include folder in your project.  Internally, `percy` uses the `kitty`
+library [#]_ to represent the truth tables of the functions to be synthesized.
 
-A truth table is represented in terms of
-64-bit words, where each bit in the word represents a function value.
-For example, the truth table for the function :math:`x_0 \land x_1` is
-``0x8`` (which is ``1000`` in base 2) and the truth table for the
-function :math:`\langle x_0x_1x_2\rangle` is ``0xe8`` (which is
-``1110100`` in base 2).  A single 64-bit word can represent functions
-with up to 6 variables.  To store functions with 7 variables, one
-needs two words, for 8 variables one needs 4 words, and so on.
+Synthesis using `percy` concerns five main components:
 
-Two main data structures are provided in `kitty` to represent truth
-tables: ``static_truth_table`` and ``dynamic_truth_table``.  The
-choice to take which depends on whether one knows the number of
-variables at compile-time or not.  The structure
-``static_truth_table`` is parameterized by a template argument for the
-number of variables, ``dynamic_truth_table`` retrieves this
-information as constructor argument.
+1. *Specifications* -- Specification objects contain the information essential
+   to the synthesis process such as which functions to synthesize, I/O
+   information, and possibly optional parameters such as conflict limits for
+   time-bound synthesis, or topology information.  
+2. *Encoders* -- Encoders are objects which convert specifications to CNF
+   formulae. There are various ways to create such encodings, and by
+   separating their implementations it becomes simple to experiment with
+   different encodings in various settings.
+3. *Solvers* -- Once an encoding has been created, we use a SAT solver to find
+   a solution. Currently supported are ABC's `bsat` solver [#]_, the
+   Glucose and Glucose-Syrup solvers, [#]_ and the CryptoMinisat solver. [#]_
+   Adding a new solver to `percy` is as simple as declaring a handful of
+   interface functions. [#]_
+4. *Synthesizers* -- Synthesizers perform the task of composing encoders and
+   solvers. Different synthesizers correspond to different synthesis flows. For
+   example, some synthesizers may support synthesis flows that use topological
+   constraints, or allow for parallel synthesis flows. To perform synthesis
+   using `percy`, one creates a synthesizer object. Synthesizers are
+   parameterizable: we can change their encoder and solver backends. This
+   happens at compile time, so there is no runtime overhead.
+5. *Chains* -- Boolean chains are the result of exact synthesis.  A Boolean
+   chain is a compact multi-level logic representation that can be used to
+   represent multi-output Boolean functions. 
+
+A typical workflow will have some source for generating specifications, which
+are then given to a synthesizer that converts the specifications into optimum
+Boolean chains. Internally, the synthesizer will compose its underlying encoder
+and SAT solver in its specific synthesis flow. For example, a resynthesis
+algorithm might generate cuts in a logic network which serve as specifications.
+They are then fed to a synthesizer, and if the resulting optimum Boolean chains
+leads to an improvement, are replaced in the logic network. In optimizing this
+workflow, `percy` makes it easy to swap out one synthesis flow for another, to
+change CNF encodings, or to switch to a different SAT solver.
+
+.. [#] https://github.com/msoeken/kitty 
+.. [#] https://github.com/berkeley-abc/abc 
+.. [#] http://www.labri.fr/perso/lsimon/glucose/ 
+.. [#] https://github.com/msoos/cryptominisat 
+.. [#] Unfortunately some solvers may not compile on your favorite OS...

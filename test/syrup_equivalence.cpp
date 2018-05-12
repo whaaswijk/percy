@@ -2,6 +2,8 @@
 #include <percy/percy.hpp>
 #include <kitty/kitty.hpp>
 
+#if !defined(_WIN32) && !defined(_WIN64)
+
 #define MAX_TESTS 256
 
 using namespace percy;
@@ -94,3 +96,6 @@ int main(int argc, char **argv)
     return 0;
 }
 
+#else
+int main(void) { return 0; }
+#endif

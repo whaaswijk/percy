@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef DISABLE_NAUTY
 #include <nauty.h>
+#endif
 #include <vector>
 #include <ostream>
 #include <set>
@@ -399,6 +401,7 @@ namespace percy
                 }
             }
 
+#ifndef DISABLE_NAUTY
             /*******************************************************************
                 Uses the Nauty package to check for isomorphism beteen DAGs.
             *******************************************************************/
@@ -480,6 +483,7 @@ namespace percy
 
                 return isomorphic;
             }
+#endif
 
             /*******************************************************************
                 Checks a restricted form of graph isomorphism: are two graphs

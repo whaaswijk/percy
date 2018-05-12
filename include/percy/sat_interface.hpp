@@ -15,20 +15,22 @@
 #include <sat/bsat/satSolver.h>
 #include <thread>
 
+#if !defined(_WIN32) && !defined(_WIN64)
 #ifdef USE_SYRUP
 #include <syrup/parallel/MultiSolvers.h>
 #else
 #include <glucose/core/Solver.h>
 #endif
+#endif
 
-
-using abc::lit;
-using abc::sat_solver;
-using abc::Abc_LitIsCompl;
-using abc::Abc_Lit2Var;
 
 namespace percy 
 {
+	using abc::lit;
+	using abc::sat_solver;
+	using abc::Abc_LitIsCompl;
+	using abc::Abc_Lit2Var;
+
     enum synth_result
     {
         success,
@@ -167,6 +169,8 @@ namespace percy
             return timeout;
         }
 	}
+
+#if !defined(_WIN32) && !defined(_WIN64) // Disable Glucose on Windows
 
 #ifndef USE_SYRUP
     template<>
@@ -393,6 +397,8 @@ namespace percy
         return solver_solve(s, cl);
 	}
 #endif
+
+#endif // Disable Glucose on Windows
 
 #ifdef USE_CMS
     template<>

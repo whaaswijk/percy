@@ -6,10 +6,13 @@ namespace percy
 	inline int 
 	binomial_coeff(int n, int k)
 	{
-		int C[n+1][k+1];
+		auto C = new int*[n + 1];
+		for (int i = 0; i < n + 1; i++) {
+			C[i] = new int[k + 1];
+		}
 
 		for (int i = 0; i <= n; i++) {
-			for (int j = 0; j <= std::min(i, k); j++)
+			for (int j = 0; j <= (std::min)(i, k); j++)
 			{
 				if (j == 0 || j == i) {
 					C[i][j] = 1;
@@ -18,8 +21,14 @@ namespace percy
 				}
 			}
 		}
+		const auto result = C[n][k];
 
-		return C[n][k];
+		for (int i = 0; i < n + 1; i++) {
+			delete[] C[i];
+		}
+		delete[] C;
+
+		return result;
 	}
 
     /***************************************************************************

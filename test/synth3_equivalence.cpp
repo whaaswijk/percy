@@ -37,20 +37,20 @@ void check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res1 = synth1.synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate(spec);
+        auto sim_tts1 = c1.simulate(spec);
 
         auto res1_cegar = synth1.cegar_synthesize(spec, c1_cegar);
         assert(res1_cegar == success);
-        auto sim_tts1_cegar = c1_cegar.template simulate(spec);
+        auto sim_tts1_cegar = c1_cegar.simulate(spec);
 
         auto res2 = synth2.synthesize(spec, c2);
         assert(res2 == success);
-        auto sim_tts2 = c2.template simulate(spec);
+        auto sim_tts2 = c2.simulate(spec);
         auto c2_nr_vertices = c2.get_nr_vertices();
 
         auto res2_cegar = synth2.cegar_synthesize(spec, c2_cegar);
         assert(res2_cegar == success);
-        auto sim_tts2_cegar = c2_cegar.template simulate(spec);
+        auto sim_tts2_cegar = c2_cegar.simulate(spec);
         auto c2_cegar_nr_vertices = c2.get_nr_vertices();
 
         assert(c2_nr_vertices == c2_cegar_nr_vertices);
@@ -61,12 +61,12 @@ void check_equivalence(bool full_coverage)
         if (nr_in >= 4) {
             auto res3 = synth3.synthesize(spec, c3);
             assert(res3 == success);
-            auto sim_tts3 = c3.template simulate(spec);
+            auto sim_tts3 = c3.simulate(spec);
             auto c3_nr_vertices = c3.get_nr_vertices();
 
             auto res3_cegar = synth3.cegar_synthesize(spec, c3_cegar);
             assert(res3_cegar == success);
-            auto sim_tts3_cegar = c3_cegar.template simulate(spec);
+            auto sim_tts3_cegar = c3_cegar.simulate(spec);
             auto c3_cegar_nr_vertices = c3.get_nr_vertices();
 
             assert(c3_nr_vertices == c3_cegar_nr_vertices);

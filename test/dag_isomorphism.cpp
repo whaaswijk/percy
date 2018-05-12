@@ -6,6 +6,7 @@ using namespace percy;
 
 int main(void)
 {
+#ifndef DISABLE_NAUTY
     dag<2> g1, g2;
     sat_dag_generator<sat_solver*> gen;
     unbounded_dag_generator<sat_solver*> ugen;
@@ -57,7 +58,7 @@ int main(void)
 
     isomorphic = g1.is_isomorphic(g2, 1);
     assert(!isomorphic);
-
+#endif
     return 0;
 }
 

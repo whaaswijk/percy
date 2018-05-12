@@ -1,5 +1,10 @@
 #pragma once
 
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <mutex>
+#include <kitty/kitty.hpp>
 #include "base/abc/abc.h"
 #include "misc/vec/vecInt.h"
 #include "misc/vec/vecPtr.h"
@@ -8,24 +13,11 @@
 #include "chain.hpp"
 #include "sat_interface.hpp"
 #include "dag_generation.hpp"
-#include <memory>
-#include <thread>
-#include <mutex>
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
-#include <chrono>
 #include "spec.hpp"
 #include "synthesizers.hpp"
-#include <kitty/kitty.hpp>
 #include "floating_dag.hpp"
-
-
-using abc::lit;
-using abc::sat_solver;
-
-using std::chrono::high_resolution_clock;
-using std::chrono::duration;
-using std::chrono::time_point;
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
@@ -41,7 +33,13 @@ using std::chrono::time_point;
 *******************************************************************************/
 namespace percy
 {
-        
+	using abc::lit;
+	using abc::sat_solver;
+
+	using std::chrono::high_resolution_clock;
+	using std::chrono::duration;
+	using std::chrono::time_point;
+
     /***************************************************************************
         Used to gather data on synthesis experiments.
     ***************************************************************************/

@@ -11,11 +11,15 @@
 #include "spec.hpp"
 #include "misc.hpp"
 
-using std::vector;
-using std::unique_ptr;
-using kitty::static_truth_table;
-using kitty::dynamic_truth_table;
-using kitty::create_nth_var;
+/// A hack to get around differences in member template specialization between
+/// GCC and Visual Studio.
+/// See https://stackoverflow.com/questions/1840253/template-member-function-of-template-class-called-from-template-function
+
+#ifdef _WIN32
+#define chain_simulate(chain, spec) chain.simulate(spec)
+#else
+#define chain_simulate(chain, spec) chain.template simulate(spec)
+#endif
 
 /*******************************************************************************
     Definition of Boolean chain. A Boolean chain is a sequence of steps. Each
@@ -24,6 +28,11 @@ using kitty::create_nth_var;
 *******************************************************************************/
 namespace percy
 {
+	using std::vector;
+	using std::unique_ptr;
+	using kitty::static_truth_table;
+	using kitty::dynamic_truth_table;
+	using kitty::create_nth_var;
 
     template<int FI=2>
     class chain : public dag<FI>

@@ -1566,6 +1566,7 @@ namespace percy
                 qpsearch_dags(g, q, found);
             }
 
+#ifndef DISABLE_NAUTY
             uint64_t 
             count_non_isomorphic_dags()
             {
@@ -1631,6 +1632,7 @@ namespace percy
 
                 return dags;
             }
+#endif
     };
     
 }

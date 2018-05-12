@@ -26,7 +26,7 @@ void check_equivalence(bool full_coverage)
     // Don't run too many tests.
     auto max_tests = (1 << (1 << NrIn));
     if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
+        max_tests = (std::min)(max_tests, MAX_TESTS);
     }
     static_truth_table<NrIn> tt;
     chain<2> c;

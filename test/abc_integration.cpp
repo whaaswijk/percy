@@ -11,11 +11,10 @@
 int 
 main(int argc, char * argv[])
 {
-    void *pAbc;
     char Command[1000];
 
     abc::Abc_Start();
-    pAbc = abc::Abc_FrameGetGlobalFrame();
+    auto pAbc = abc::Abc_FrameGetGlobalFrame();
     
     sprintf( Command, "echo \"test\"" );
     if ( abc::Cmd_CommandExecute( pAbc, Command ) )

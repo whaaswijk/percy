@@ -8,8 +8,7 @@
 #include <functional>
 #include "concurrentqueue.h"
 #include <cmath>
-
-using std::min;
+#include <thread>
 
 /*******************************************************************************
     Definitions of Boolean fences and fence filters and generators.
@@ -372,8 +371,7 @@ namespace percy
                     if (this->_gen.next_fence(f)) {
                         bool is_valid = true;
                         const int nlevels = f.nr_levels();
-                        auto max_in_use = min(_nout, 
-                                f[nlevels-1]);
+						auto max_in_use = std::min(_nout, f[nlevels-1]);
                         auto nnodes = f[nlevels-1];
                         if (max_in_use < nnodes) {
                             continue;
@@ -524,8 +522,7 @@ namespace percy
                         // At the highest level, we need at most as many nodes
                         // as we have outputs. For lower levels we have similar
                         // bounds.
-                        max_budget = 
-                            std::min(max_nodes_on_level(_level)-1, _budget);
+                        max_budget = std::min((max_nodes_on_level(_level)-1), _budget);
                     } else {
                         max_budget = _budget;
                     }

@@ -18,6 +18,8 @@ namespace percy
         DAG,
     };
     
+    /// The synthesizer base class. All synthesizers have some Encoder and
+    /// some Solver, which they compose to perform synthesis.
     template<typename Encoder, typename Solver>
     class synthesizer
     {

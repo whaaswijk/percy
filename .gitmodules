@@ -10,3 +10,6 @@
 [submodule "abc"]
 	path = abc
 	url = https://github.com/whaaswijk/abc
+[submodule "kitty"]
+	path = kitty
+	url = https://github.com/whaaswijk/kitty

@@ -74,6 +74,7 @@ void check_std_equivalence(bool full_coverage)
 *******************************************************************************/
 int main(int argc, char **argv)
 {
+#ifndef DISABLE_GLUCOSE
 #ifndef USE_SYRUP
     bool full_coverage = false;
     if (argc > 1) {
@@ -89,7 +90,7 @@ int main(int argc, char **argv)
     check_std_equivalence<3>(full_coverage);
     check_std_equivalence<4>(full_coverage);
 #endif
-
+#endif
     return 0;
 }
 

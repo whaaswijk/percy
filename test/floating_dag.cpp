@@ -38,6 +38,7 @@ int main(void)
         fanins[1] = 1;
         dag2.set_vertex(2, fanins);
 
+#ifndef DISABLE_NAUTY
         auto iso_vec1 = dag.get_iso_vector();
         auto iso_vec2 = dag2.get_iso_vector();
         assert(iso_vec1 == iso_vec2);
@@ -50,6 +51,7 @@ int main(void)
         iso_vec2 = dag2.get_iso_vector();
         assert(iso_vec1 != iso_vec2);
         assert(!dag.is_isomorphic(dag2));
+#endif
     }
 
           

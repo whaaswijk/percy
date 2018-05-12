@@ -4,10 +4,8 @@
 
 namespace percy
 {
-    /***************************************************************************
-        Standard synthesizer class that uses conventional SAT based synthesis
-        techniques.
-    ***************************************************************************/
+    /// Standard synthesizer class that uses conventional SAT based synthesis
+    /// techniques.
     template<
         int FI=2, 
         typename Encoder=knuth_encoder<FI>, 
@@ -19,6 +17,12 @@ namespace percy
         bool is_dirty = false;
 
         public:
+
+            /// Performs exact synthesis using a standard synthesis loop.
+            /// Given the specifcation \p spec it stores the result of
+            /// synthesis in \p chain. Using \p initial_steps we can give a
+            /// specify the initial number of steps to start synthesis from.
+            /// Note that this may lead to suboptimal results.
             template<typename TT>
             synth_result 
             synthesize(
@@ -75,6 +79,7 @@ namespace percy
                 }
             }
             
+            /// Performs synthesis using a CEGAR loop.
             template<typename TT>
             synth_result
             cegar_synthesize(
@@ -110,7 +115,7 @@ namespace percy
                         auto stat = solver_solve(solver, spec.conflict_limit);
                         if (stat == success) {
                             encoder.extract_chain(spec, chain);
-                            auto sim_tts = chain.template simulate(spec);
+							auto sim_tts = chain_simulate(chain, spec);
                             auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
                             auto first_one = kitty::find_first_one_bit(xor_tt);
                             if (first_one == -1) {

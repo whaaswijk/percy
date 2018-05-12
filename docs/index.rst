@@ -13,9 +13,12 @@ Welcome to percy's documentation!
     introduction
     installation
     examples
+    acknowledgments
 
 .. toctree::
     :maxdepth: 2
     :caption: Reference
 
+    specifications
+    encoders
     synthesizers

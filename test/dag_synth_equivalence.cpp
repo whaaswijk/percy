@@ -40,7 +40,7 @@ void gen_check_equivalence(bool full_coverage)
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate(spec);
+        auto sim_tts1 = chain_simulate(c1, spec);
         auto c1_nr_steps = c1.get_nr_vertices();
 
         const auto dag_found = find_dag(spec, g, nr_in);
@@ -48,7 +48,7 @@ void gen_check_equivalence(bool full_coverage)
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
         auto c2_nr_steps = c2.get_nr_vertices();
-        auto sim_tts2 = c2.template simulate(spec);
+        auto sim_tts2 = chain_simulate(c2, spec);
         assert(c1_nr_steps == c2_nr_steps);
         assert(sim_tts1[0] == sim_tts2[0]);
 
@@ -92,7 +92,7 @@ void check_equivalence(bool full_coverage)
 
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate(spec);
+        auto sim_tts1 = chain_simulate(c1, spec);
         auto c1_nr_steps = c1.get_nr_vertices();
 
         ugen.reset(nr_in);
@@ -107,8 +107,7 @@ void check_equivalence(bool full_coverage)
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
-                auto sim_tts2 = 
-                    c2.template simulate(spec);
+                auto sim_tts2 = chain_simulate(c2, spec);
                 assert(c1_nr_steps == c2_nr_steps);
                 assert(sim_tts1[0] == sim_tts2[0]);
             } else {
@@ -183,7 +182,7 @@ void check_npn_equivalence()
         spec.functions[0] = &tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
-        auto sim_tts1 = c1.template simulate(spec);
+        auto sim_tts1 = chain_simulate(c1, spec);
         auto c1_nr_steps = c1.get_nr_vertices();
 
         ugen.reset(nr_in);
@@ -198,8 +197,7 @@ void check_npn_equivalence()
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
-                auto sim_tts2 = 
-                    c2.template simulate(spec);
+                auto sim_tts2 = chain_simulate(c2, spec);
                 assert(c1_nr_steps == c2_nr_steps);
                 assert(sim_tts1[0] == sim_tts2[0]);
             }
@@ -209,7 +207,7 @@ void check_npn_equivalence()
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
         auto c2_nr_steps = c2.get_nr_vertices();
-        auto sim_tts2 = c2.template simulate(spec);
+        auto sim_tts2 = chain_simulate(c2, spec);
         assert(c1_nr_steps == c2_nr_steps);
         assert(sim_tts1[0] == sim_tts2[0]);
     }
