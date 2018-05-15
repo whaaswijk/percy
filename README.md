@@ -8,6 +8,8 @@ percy is a header-only exact synthesis library. It offers a collection of
 different synthesizers and exact synthesis methods for use in applications such
 as circuit resynthesis and design exploration.
 
+[Read the documentation here.](http://percy.readthedocs.io/en/latest/?badge=latest)
+
 ## Quick install guide
 
 Percy is a header-only library. As such, no build steps are required to start
