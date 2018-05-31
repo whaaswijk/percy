@@ -9,10 +9,10 @@
 #undef l_Undef
 #endif
 
-#include <base/abc/abc.h>
-#include <misc/vec/vecInt.h>
-#include <misc/vec/vecPtr.h>
-#include <sat/bsat/satSolver.h>
+//#include <base/abc/abc.h>
+//#include <misc/vec/vecInt.h>
+//#include <misc/vec/vecPtr.h>
+#include <abc/satSolver.h>
 #include <thread>
 
 #if !defined(_WIN32) && !defined(_WIN64)

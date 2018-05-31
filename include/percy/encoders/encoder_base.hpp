@@ -6,6 +6,7 @@
 #include "../sat_interface.hpp"
 #include "../spec.hpp"
 #include "../misc.hpp"
+#include <abc/vecInt.h>
 
 #define MAX_STEPS 20 // The maximum number of steps we'll synthesize
 

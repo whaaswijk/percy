@@ -5,10 +5,6 @@
 #include <thread>
 #include <mutex>
 #include <kitty/kitty.hpp>
-#include "base/abc/abc.h"
-#include "misc/vec/vecInt.h"
-#include "misc/vec/vecPtr.h"
-#include "sat/bsat/satSolver.h"
 #include "fence.hpp"
 #include "chain.hpp"
 #include "sat_interface.hpp"

@@ -1,11 +1,5 @@
 #pragma once
 
-extern "C" 
-{
-    #include "base/abc/abc.h"
-    #include "misc/vec/vecInt.h"
-}
-
 #include "sat_interface.hpp"
 #include "dag.hpp"
 #include <thread>
