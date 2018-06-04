@@ -22,10 +22,12 @@ namespace percy
 			int nr_out_vars;
 			int nr_sim_vars;
 			int nr_sel_vars;
+			int nr_lex_vars;
             int sel_offset;
             int ops_offset;
             int out_offset;
             int sim_offset;
+            int lex_offset;
             int total_nr_vars;
             
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
@@ -87,6 +89,16 @@ namespace percy
                 assert(t < spec.get_tt_size());
 
                 return sim_offset + spec.get_tt_size() * step_idx + t;
+            }
+
+            template<typename TT>
+            int
+            get_lex_var(const synth_spec<TT>& spec, int step_idx, int op_idx) const
+            {
+                assert(step_idx < spec.nr_steps);
+                assert(op_idx < nr_op_vars_per_step);
+
+                return lex_offset + step_idx * (nr_op_vars_per_step - 1) + op_idx;
             }
 
             /*******************************************************************
@@ -209,13 +221,9 @@ namespace percy
                 nr_op_vars = spec.nr_steps * nr_op_vars_per_step;
                 nr_out_vars = spec.nr_nontriv * spec.nr_steps;
                 nr_sim_vars = spec.nr_steps * spec.get_tt_size();
+                nr_lex_vars = (spec.nr_steps - 1) * (nr_op_vars_per_step - 1);
                 
-                if (spec.verbosity > 2) {
-                    printf("Creating variables (KNUTH-%d)\n", FI);
-                    printf("nr_op_vars = %d\n", nr_op_vars);
-                    printf("nr_out_vars = %d\n", nr_out_vars);
-                    printf("nr_sim_vars = %d\n", nr_sim_vars);
-                }
+                
 
                 nr_sel_vars = 0;
                 svar_map.clear();
@@ -250,12 +258,19 @@ namespace percy
                 ops_offset = nr_sel_vars;
                 out_offset = nr_sel_vars + nr_op_vars;
                 sim_offset = nr_sel_vars + nr_op_vars + nr_out_vars;
+                lex_offset = nr_sel_vars + nr_op_vars + nr_out_vars + nr_sim_vars;
                 
                 total_nr_vars = nr_op_vars + nr_out_vars + nr_sim_vars +
-                    nr_sel_vars;
+                                nr_sel_vars + nr_lex_vars;
 
                 if (spec.verbosity > 2) {
+                    printf("Creating variables (KNUTH-%d)\n", FI);
+                    printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
+                    printf("nr_op_vars = %d\n", nr_op_vars);
+                    printf("nr_out_vars = %d\n", nr_out_vars);
+                    printf("nr_sim_vars = %d\n", nr_sim_vars);
+                    printf("nr_lex_vars = %d\n", nr_lex_vars);
                     printf("creating %d total variables\n", total_nr_vars);
                 }
 
@@ -665,7 +680,7 @@ namespace percy
             }
 
             /*******************************************************************
-                Ensure that Boolean operators are co-lexicographically ordered:
+                Ensure that Boolean operators are lexicographically ordered:
                 (S_ijk == S_(i+1)jk) ==> f_i <= f_(i+1)
             *******************************************************************/
             template<typename TT>
@@ -673,9 +688,10 @@ namespace percy
             create_lex_func_clauses(const synth_spec<TT>& spec)
             {
                 std::bitset<FI> fvar_asgns;
+                int lits[3];
 
                 auto svar_offset = 0;
-                for (int i = 0; i < spec.nr_steps-1; i++) {
+                for (int i = 0; i < spec.nr_steps - 1; i++) {
                     const auto nr_svars_for_i = nr_svar_map[i];
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
@@ -685,7 +701,7 @@ namespace percy
                         auto svar_offsetp = svar_offset + nr_svars_for_i;
                         const auto nr_svars_for_ip = nr_svar_map[i + 1];
                         for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
+                            const auto sel_varp = get_sel_var(svar_offsetp + jp);
                             const auto& fanins2 = svar_map[svar_offsetp + jp];
 
                             bool equal_fanin = true;
@@ -698,70 +714,52 @@ namespace percy
                             if (!equal_fanin) {
                                 continue;
                             }
+
                             Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(sel_varp, 1));
-
-                            for (int o = nr_op_vars_per_step; o >= 1; o--) {
-                                fvar_asgns.reset();
-
-                                // For each possible assignment to the op vars
-                                // < o, we ensure that if the op vars of step
-                                // i and i + 1 both have that assignment, then
-                                // their o_i <= o_i+1.
-
-                                // How many function variables to check for
-                                // equivalence.
-                                const auto num_vars = nr_op_vars_per_step - o;
-                                for (int idx = 0; idx < (1 << num_vars); idx++) {
-                                    auto ctr = 2;
-                                    for (int op = nr_op_vars_per_step; op > o; op--) {
-                                        Vec_IntSetEntry(vLits, ctr++, 
-                                            Abc_Var2Lit(get_op_var(spec,i,op), 
-                                                fvar_asgns[nr_op_vars_per_step-op]));
-                                        Vec_IntSetEntry(vLits, ctr++, 
-                                            Abc_Var2Lit(get_op_var(spec,i+1,op),
-                                                fvar_asgns[nr_op_vars_per_step-op]));
-                                    }
-
-                                    Vec_IntSetEntry(vLits, ctr++, 
-                                            Abc_Var2Lit(get_op_var(spec, i, o),
-                                                1));
-                                    Vec_IntSetEntry(vLits, ctr++,
-                                            Abc_Var2Lit(get_op_var(spec, i + 1,
-                                                    o), 0));
-
-                                    auto status = solver_add_clause(
-                                            *solver, 
-                                            Vec_IntArray(vLits), 
-                                            Vec_IntArray(vLits) + ctr);
-                                    assert(status);
-
-                                    if (spec.verbosity > 2) {
-                                        printf("lex_func_clause: ( ");
-                                        printf("~s_%d_%d ", 
-                                                i + spec.get_nr_in() + 1,
-                                                j + 1);
-                                        printf("~s_%d_%d ",
-                                                i + spec.get_nr_in() + 2,
-                                                jp + 1);
-                                        for (int op = nr_op_vars_per_step; op > o; op--) {
-                                            printf("%sf_%d_%d ",
-                                                    (fvar_asgns[nr_op_vars_per_step-op] ? "~" : ""),
-                                                    i + spec.get_nr_in() + 1,
-                                                    op + 1);
-                                            printf("%sf_%d_%d ",
-                                                    (fvar_asgns[nr_op_vars_per_step-op] ? "~" : ""),
-                                                    i + spec.get_nr_in() + 2,
-                                                    op + 1);
-                                        }
-                                        printf("~f_%d_%d ",
-                                                i + spec.get_nr_in() + 1, o + 1);
-                                        printf("f_%d_%d ",
-                                                i + spec.get_nr_in() + 2, o + 1);
-                                        printf(" )\n");
-                                    }
-
-                                    next_assignment(fvar_asgns);
+                            
+                            // The steps have the same fanin, so enforce lexicographical order.
+                            // We do this by constraining the operator variables of both steps.
+                            // Note: the operator variable with the highest index is used 
+                            // first in the ordering.
+                            for (int op_idx = 0; op_idx < nr_op_vars_per_step; op_idx++) {
+                                // Inequality only has to hold if all previous operator variables
+                                // are equal.
+                                auto ctr = 2;
+                                for (int prev_idx = 0; prev_idx < op_idx; prev_idx++) {
+                                    const auto prev_alpha_i = get_lex_var(spec, i, prev_idx);
+                                    Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(prev_alpha_i, 1));
                                 }
+
+                                // Ensure that f_i_n <= f_{i+1}_n.
+                                const auto iop_var = get_op_var(spec, i, nr_op_vars_per_step - op_idx);
+                                const auto ipop_var = get_op_var(spec, i + 1, nr_op_vars_per_step - op_idx);
+                                Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(iop_var, 1));
+                                Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ipop_var, 0));
+                                auto status = solver_add_clause(*solver,
+                                                                abc::Vec_IntArray(vLits),
+                                                                abc::Vec_IntArray(vLits) + ctr);
+                                assert(status);
+                                if (op_idx == (nr_op_vars_per_step - 1)) {
+                                    continue;
+                                }
+                                // alpha_i is 1 iff f_j_i == f_{j+1}_i.
+                                auto alpha_i = get_lex_var(spec, i, op_idx);
+                                lits[0] = Abc_Var2Lit(alpha_i, 1);
+                                lits[1] = Abc_Var2Lit(iop_var, 0);
+                                lits[2] = Abc_Var2Lit(ipop_var, 1);
+                                solver_add_clause(*solver, lits, lits + 3);
+                                lits[0] = Abc_Var2Lit(alpha_i, 1);
+                                lits[1] = Abc_Var2Lit(iop_var, 1);
+                                lits[2] = Abc_Var2Lit(ipop_var, 0);
+                                solver_add_clause(*solver, lits, lits + 3);
+                                lits[0] = Abc_Var2Lit(alpha_i, 0);
+                                lits[1] = Abc_Var2Lit(iop_var, 1);
+                                lits[2] = Abc_Var2Lit(ipop_var, 1);
+                                solver_add_clause(*solver, lits, lits + 3);
+                                lits[0] = Abc_Var2Lit(alpha_i, 0);
+                                lits[1] = Abc_Var2Lit(iop_var, 0);
+                                lits[2] = Abc_Var2Lit(ipop_var, 0);
+                                solver_add_clause(*solver, lits, lits + 3);
                             }
                         }
 
@@ -1142,10 +1140,8 @@ namespace percy
                     create_lex_func_clauses(spec);
                 }
                 
-                if (spec.add_symvar_clauses) {
-                    if (!create_symvar_clauses(spec)) {
-                        return false;
-                    }
+                if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
+                    return false;
                 }
 
                 return true;
