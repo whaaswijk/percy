@@ -10,14 +10,15 @@ namespace percy
     /// than C.
     /// This encoding is due to Andrey Mokhov.
     template<class Solver>
-    void
+    bool
     create_cardinality_circuit(
-        Solver s, 
-        std::vector<int> const& sum_vars, 
-        std::vector<int> const& res_vars, 
+        Solver s,
+        std::vector<int> const& sum_vars,
+        std::vector<int> const& res_vars,
         const int C)
     {
         int lits[3];
+        bool status = true;
 
         // We have C + 2 result variables per addition step: (res[0], res[1], ..., res[C], res[C+1]).
         assert(res_vars.size() == ((C + 2) * (sum_vars.size() + 1)));
@@ -29,8 +30,7 @@ namespace percy
             } else {
                 lits[0] = abc::Abc_Var2Lit(res_vars[i], 1);
             }
-            auto status = solver_add_clause(s, lits, lits + 1);
-            assert(status);
+            status &= solver_add_clause(s, lits, lits + 1);
         }
 
         for (int i = 0; i < sum_vars.size(); i++) {
@@ -45,16 +45,13 @@ namespace percy
                     lits[0] = abc::Abc_Var2Lit(x_k, 0);
                     lits[1] = abc::Abc_Var2Lit(res_j, 1);
                     lits[2] = abc::Abc_Var2Lit(res_jp, 0);
-                    auto status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(x_k, 1);
                     lits[1] = abc::Abc_Var2Lit(res_jp, 1);
-                    status = solver_add_clause(s, lits, lits + 2);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 2);
                     lits[0] = abc::Abc_Var2Lit(res_j, 0);
                     lits[1] = abc::Abc_Var2Lit(res_jp, 1);
-                    status = solver_add_clause(s, lits, lits + 2);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 2);
                 } else if (j == C + 1) {
                     // res'[C+2] = MUX(x[k], res[C+2], res[C+1] \/ res[C+1]) = 
                     // (~x[k] /\ res[C+2]) \/ (x[k] /\ res[C+1]) \/ (x[k] /\ res[C+2]) =
@@ -64,22 +61,18 @@ namespace percy
                     lits[0] = abc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = abc::Abc_Var2Lit(res_j - 1, 0);
                     lits[2] = abc::Abc_Var2Lit(res_j, 0);
-                    auto status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = abc::Abc_Var2Lit(x_k, 0);
                     lits[2] = abc::Abc_Var2Lit(res_j, 0);
-                    status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = abc::Abc_Var2Lit(x_k, 1);
                     lits[2] = abc::Abc_Var2Lit(res_j - 1, 1);
-                    status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = abc::Abc_Var2Lit(res_j, 1);
-                    status = solver_add_clause(s, lits, lits + 2);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 2);
                 } else {
                     // res'[i] = MUX(x[k], res[i], res[i-1]).
                     // Tseytin encoding:
@@ -87,25 +80,23 @@ namespace percy
                     lits[0] = abc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = abc::Abc_Var2Lit(res_j, 0);
                     lits[2] = abc::Abc_Var2Lit(x_k, 0);
-                    auto status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = abc::Abc_Var2Lit(res_j - 1, 0);
                     lits[2] = abc::Abc_Var2Lit(x_k, 1);
-                    status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = abc::Abc_Var2Lit(res_j, 1);
                     lits[2] = abc::Abc_Var2Lit(x_k, 0);
-                    status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                     lits[0] = abc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = abc::Abc_Var2Lit(res_j - 1, 1);
                     lits[2] = abc::Abc_Var2Lit(x_k, 1);
-                    status = solver_add_clause(s, lits, lits + 3);
-                    assert(status);
+                    status &= solver_add_clause(s, lits, lits + 3);
                 }
             }
         }
+
+        return status;
     }
 }

@@ -95,9 +95,6 @@ int main(void)
     enumerate_solutions(4, 2);
     enumerate_solutions(4, 3);
     
-    printf("Press any key to continue...\n");
-    std::cin.get();
-
     return 0;
 }
 
