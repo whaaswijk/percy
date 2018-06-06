@@ -52,16 +52,13 @@ void check_equivalence(bool full_coverage)
         assert(res2 == success);
         auto sim_tts2 = c2.simulate(spec);
         auto c2_nr_vertices = c2.get_nr_vertices();
-        // TODO: Re-enable check once additional constraints have been added
-        // to fence-based synthesis.
-        //assert(c2.satisfies_spec(spec));
+        assert(c2.satisfies_spec(spec));
 
         auto res2_cegar = synth2.cegar_synthesize(spec, c2_cegar);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate(spec);
         auto c2_cegar_nr_vertices = c2.get_nr_vertices();
-        // TODO: re-enable
-        //assert(c2_cegar.satisfies_spec(spec));
+        assert(c2_cegar.satisfies_spec(spec));
 
         assert(c1_nr_vertices == c2_nr_vertices);
         assert(c1_nr_vertices == c1_cegar_nr_vertices);
