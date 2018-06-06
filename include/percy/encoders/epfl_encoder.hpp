@@ -553,35 +553,36 @@ namespace percy
                         }
                         assert(selected_idx == FI);
 
-                        // Step i + 1 cannot have fanin i and the remaining FI - 1 fanins from
+                        // Step i' cannot have both fanin i and the remaining FI - 1 fanins from
                         // the same collection as the fanin of step i.
-                        pfanin_svars[FI - 1] = get_sel_var(spec, i + 1, spec.get_nr_in() + i);
-                        for (int j = 0; j < FI; j++) {
-                            std::string bitmaskp(FI - 1, 1);
-                            bitmaskp.resize(FI, 0);
-                            do {
-                                selected_idx = 0;
-                                for (int fi_idx = 0; fi_idx < FI; fi_idx++) {
-                                    if (bitmaskp[fi_idx]) {
-                                        pfanin_svars[selected_idx++] = get_sel_var(spec, i + 1, fanins[fi_idx]);
+                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                            pfanin_svars[FI - 1] = get_sel_var(spec, ip, spec.get_nr_in() + i);
+                            for (int j = 0; j < FI; j++) {
+                                std::string bitmaskp(FI - 1, 1);
+                                bitmaskp.resize(FI, 0);
+                                do {
+                                    selected_idx = 0;
+                                    for (int fi_idx = 0; fi_idx < FI; fi_idx++) {
+                                        if (bitmaskp[fi_idx]) {
+                                            pfanin_svars[selected_idx++] = get_sel_var(spec, ip, fanins[fi_idx]);
+                                        }
                                     }
-                                }
-                                assert(selected_idx == (FI - 1));
+                                    assert(selected_idx == (FI - 1));
 
-                                auto ctr = 0;
-                                for (const auto svar : fanin_svars) {
-                                    abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
-                                }
-                                for (const auto svar : pfanin_svars) {
-                                    abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
-                                }
-                                auto status = solver_add_clause(*solver,
-                                                           abc::Vec_IntArray(vLits),
-                                                           abc::Vec_IntArray(vLits) + ctr);
-                                assert(status);
-                            } while (std::prev_permutation(bitmaskp.begin(), bitmaskp.end()));
+                                    auto ctr = 0;
+                                    for (const auto svar : fanin_svars) {
+                                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
+                                    }
+                                    for (const auto svar : pfanin_svars) {
+                                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
+                                    }
+                                    auto status = solver_add_clause(*solver,
+                                        abc::Vec_IntArray(vLits),
+                                        abc::Vec_IntArray(vLits) + ctr);
+                                    assert(status);
+                                } while (std::prev_permutation(bitmaskp.begin(), bitmaskp.end()));
+                            }
                         }
-
                     } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
 
 
@@ -596,35 +597,46 @@ namespace percy
             void 
             create_colex_clauses(const synth_spec<TT>& spec)
             {
-                /*
-                int pLits[2];
-                auto svar_offset = 0;
+                int pLits[2 * FI];
+                fanin fanins_i[FI];
+                fanin fanins_ip[FI];
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = nr_svar_map[i];
-                    for (int j = 0; j < nr_svars_for_i; j++) {
-                        const auto sel_var = get_sel_var(svar_offset + j);
-                        const auto& fanins1 = svar_map[svar_offset + j];
-                        pLits[0] = Abc_Var2Lit(sel_var, 1);
-
-                        auto svar_offsetp = svar_offset + nr_svars_for_i;
-                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
-                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
-                            const auto& fanins2 = svar_map[svar_offsetp + jp];
-
-                            if (colex_compare<int, FI>(fanins1, fanins2) == 1) {
-                                pLits[1] = Abc_Var2Lit(sel_varp, 1);
-                                auto status = 
-                                    solver_add_clause(*solver, pLits, pLits+2);
-                                assert(status);
+                    const auto nr_svars_for_i = spec.get_nr_in() + i;
+                    std::string bitmask(FI, 1);
+                    bitmask.resize(nr_svars_for_i, 0);
+                    do {
+                        auto fanin_ctr = 0;
+                        for (int k = 0; k < nr_svars_for_i; k++) {
+                            if (bitmask[k]) {
+                                pLits[fanin_ctr] = Abc_Var2Lit(get_sel_var(spec, i, k), 1);
+                                fanins_i[fanin_ctr] = k;
+                                fanin_ctr++;
                             }
                         }
-                    }
+                        assert(fanin_ctr == FI);
 
-                    svar_offset += nr_svars_for_i;
+                        const auto nr_svars_for_ip = spec.get_nr_in() + i + 1;
+                        std::string bitmask_ip(FI, 1);
+                        bitmask_ip.resize(nr_svars_for_ip, 0);
+                        do {
+                            fanin_ctr = 0;
+                            for (int k = 0; k < nr_svars_for_ip; k++) {
+                                if (bitmask_ip[k]) {
+                                    pLits[FI + fanin_ctr] = Abc_Var2Lit(get_sel_var(spec, i + 1, k), 1);
+                                    fanins_ip[fanin_ctr] = k;
+                                    fanin_ctr++;
+                                }
+                            }
+                            assert(fanin_ctr == FI);
+                            if (colex_compare<int, FI>(fanins_i, fanins_ip) == 1) {
+                                auto status = 
+                                    solver_add_clause(*solver, pLits, pLits + (FI * 2));
+                                assert(status);
+                            }
+                        } while (std::prev_permutation(bitmask_ip.begin(), bitmask_ip.end()));
+                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
                 }
-                */
             }
 
             /*******************************************************************
@@ -636,126 +648,125 @@ namespace percy
             void 
             create_lex_clauses(const synth_spec<TT>& spec)
             {
-                /*
-                int pLits[2];
-                auto svar_offset = 0;
+                int pLits[2 * FI];
+                fanin fanins_i[FI];
+                fanin fanins_ip[FI];
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = nr_svar_map[i];
-                    for (int j = 0; j < nr_svars_for_i; j++) {
-                        const auto sel_var = get_sel_var(svar_offset + j);
-                        const auto& fanins1 = svar_map[svar_offset + j];
-                        pLits[0] = Abc_Var2Lit(sel_var, 1);
-
-                        auto svar_offsetp = svar_offset + nr_svars_for_i;
-                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
-                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                            const auto sel_varp = get_sel_var(svar_offsetp+jp);
-                            const auto& fanins2 = svar_map[svar_offsetp + jp];
-
-                            if (lex_compare<int, FI>(fanins1, fanins2) == 1) {
-                                pLits[1] = Abc_Var2Lit(sel_varp, 1);
-                                auto status = 
-                                    solver_add_clause(*solver, pLits, pLits+2);
-                                assert(status);
+                    const auto nr_svars_for_i = spec.get_nr_in() + i;
+                    std::string bitmask(FI, 1);
+                    bitmask.resize(nr_svars_for_i, 0);
+                    do {
+                        auto fanin_ctr = 0;
+                        for (int k = 0; k < nr_svars_for_i; k++) {
+                            if (bitmask[k]) {
+                                pLits[fanin_ctr] = Abc_Var2Lit(get_sel_var(spec, i, k), 1);
+                                fanins_i[fanin_ctr] = k;
+                                fanin_ctr++;
                             }
                         }
-                    }
+                        assert(fanin_ctr == FI);
 
-                    svar_offset += nr_svars_for_i;
+                        const auto nr_svars_for_ip = spec.get_nr_in() + i + 1;
+                        std::string bitmask_ip(FI, 1);
+                        bitmask_ip.resize(nr_svars_for_ip, 0);
+                        do {
+                            fanin_ctr = 0;
+                            for (int k = 0; k < nr_svars_for_ip; k++) {
+                                if (bitmask_ip[k]) {
+                                    pLits[FI + fanin_ctr] = Abc_Var2Lit(get_sel_var(spec, i + 1, k), 1);
+                                    fanins_ip[fanin_ctr] = k;
+                                    fanin_ctr++;
+                                }
+                            }
+                            assert(fanin_ctr == FI);
+                            if (lex_compare<int, FI>(fanins_i, fanins_ip) == 1) {
+                                auto status = 
+                                    solver_add_clause(*solver, pLits, pLits + (FI * 2));
+                                assert(status);
+                            }
+                        } while (std::prev_permutation(bitmask_ip.begin(), bitmask_ip.end()));
+                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
                 }
-                */
             }
 
             /*******************************************************************
-                Ensure that Boolean operators are lexicographically ordered:
-                (S_ijk == S_(i+1)jk) ==> f_i <= f_(i+1)
+                Ensure that Boolean operators are lexicographically ordered.
             *******************************************************************/
             template<typename TT>
             void 
             create_lex_func_clauses(const synth_spec<TT>& spec)
             {
-                /*
-                std::bitset<FI> fvar_asgns;
                 int lits[3];
+                fanin fanin[FI];
+                std::bitset<FI> fvar_asgns;
 
                 auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = nr_svar_map[i];
-                    for (int j = 0; j < nr_svars_for_i; j++) {
-                        const auto sel_var = get_sel_var(svar_offset + j);
-                        const auto& fanins1 = svar_map[svar_offset + j];
-                        Vec_IntSetEntry(vLits, 0, Abc_Var2Lit(sel_var, 1));
-                        
-                        auto svar_offsetp = svar_offset + nr_svars_for_i;
-                        const auto nr_svars_for_ip = nr_svar_map[i + 1];
-                        for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                            const auto sel_varp = get_sel_var(svar_offsetp + jp);
-                            const auto& fanins2 = svar_map[svar_offsetp + jp];
-
-                            bool equal_fanin = true;
-                            for (int k = 0; k < FI; k++) {
-                                if (fanins1[k] != fanins2[k]) {
-                                    equal_fanin = false;
-                                    break;
-                                }
-                            }
-                            if (!equal_fanin) {
-                                continue;
-                            }
-
-                            Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(sel_varp, 1));
-                            
-                            // The steps have the same fanin, so enforce lexicographical order.
-                            // We do this by constraining the operator variables of both steps.
-                            // Note: the operator variable with the highest index is used 
-                            // first in the ordering.
-                            for (int op_idx = 0; op_idx < nr_op_vars_per_step; op_idx++) {
-                                // Inequality only has to hold if all previous operator variables
-                                // are equal.
-                                auto ctr = 2;
-                                for (int prev_idx = 0; prev_idx < op_idx; prev_idx++) {
-                                    const auto prev_alpha_i = get_lex_var(spec, i, prev_idx);
-                                    Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(prev_alpha_i, 1));
-                                }
-
-                                // Ensure that f_i_n <= f_{i+1}_n.
-                                const auto iop_var = get_op_var(spec, i, nr_op_vars_per_step - op_idx);
-                                const auto ipop_var = get_op_var(spec, i + 1, nr_op_vars_per_step - op_idx);
-                                Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(iop_var, 1));
-                                Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ipop_var, 0));
-                                auto status = solver_add_clause(*solver,
-                                                                abc::Vec_IntArray(vLits),
-                                                                abc::Vec_IntArray(vLits) + ctr);
-                                assert(status);
-                                if (op_idx == (nr_op_vars_per_step - 1)) {
-                                    continue;
-                                }
-                                // alpha_i is 1 iff f_j_i == f_{j+1}_i.
-                                auto alpha_i = get_lex_var(spec, i, op_idx);
-                                lits[0] = Abc_Var2Lit(alpha_i, 1);
-                                lits[1] = Abc_Var2Lit(iop_var, 0);
-                                lits[2] = Abc_Var2Lit(ipop_var, 1);
-                                solver_add_clause(*solver, lits, lits + 3);
-                                lits[0] = Abc_Var2Lit(alpha_i, 1);
-                                lits[1] = Abc_Var2Lit(iop_var, 1);
-                                lits[2] = Abc_Var2Lit(ipop_var, 0);
-                                solver_add_clause(*solver, lits, lits + 3);
-                                lits[0] = Abc_Var2Lit(alpha_i, 0);
-                                lits[1] = Abc_Var2Lit(iop_var, 1);
-                                lits[2] = Abc_Var2Lit(ipop_var, 1);
-                                solver_add_clause(*solver, lits, lits + 3);
-                                lits[0] = Abc_Var2Lit(alpha_i, 0);
-                                lits[1] = Abc_Var2Lit(iop_var, 0);
-                                lits[2] = Abc_Var2Lit(ipop_var, 0);
-                                solver_add_clause(*solver, lits, lits + 3);
+                    const auto nr_svars_for_i = spec.get_nr_in() + i;
+                    std::string bitmask(FI, 1);
+                    bitmask.resize(nr_svars_for_i, 0);
+                    do {
+                        auto fanin_ctr = 0;
+                        for (int j = 0; j < nr_svars_for_i; j++) {
+                            if (bitmask[j]) {
+                                fanin[fanin_ctr++] = j;
                             }
                         }
+                        assert(fanin_ctr == FI);
 
-                    }
-                    svar_offset += nr_svars_for_i;
+                        auto ctr = 0;
+                        for (int k = 0; k < FI; k++) {
+                            Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(get_sel_var(spec, i, fanin[k]), 1));
+                            Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(get_sel_var(spec, i + 1, fanin[k]), 1));
+                        }
+                        assert(ctr == FI * 2);
+                        // The steps have the same fanin, so enforce lexicographical order.
+                        // We do this by constraining the operator variables of both steps.
+                        // Note: the operator variable with the highest index is used 
+                        // first in the ordering.
+                        for (int op_idx = 0; op_idx < nr_op_vars_per_step; op_idx++) {
+                            // Inequality only has to hold if all previous operator variables
+                            // are equal.
+                            ctr = FI * 2;
+                            for (int prev_idx = 0; prev_idx < op_idx; prev_idx++) {
+                                const auto prev_alpha_i = get_lex_var(spec, i, prev_idx);
+                                Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(prev_alpha_i, 1));
+                            }
+
+                            // Ensure that f_i_n <= f_{i+1}_n.
+                            const auto iop_var = get_op_var(spec, i, nr_op_vars_per_step - op_idx);
+                            const auto ipop_var = get_op_var(spec, i + 1, nr_op_vars_per_step - op_idx);
+                            Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(iop_var, 1));
+                            Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ipop_var, 0));
+                            auto status = solver_add_clause(*solver,
+                                abc::Vec_IntArray(vLits),
+                                abc::Vec_IntArray(vLits) + ctr);
+                            assert(status);
+                            if (op_idx == (nr_op_vars_per_step - 1)) {
+                                continue;
+                            }
+                            // alpha_i is 1 iff f_j_i == f_{j+1}_i.
+                            auto alpha_i = get_lex_var(spec, i, op_idx);
+                            lits[0] = Abc_Var2Lit(alpha_i, 1);
+                            lits[1] = Abc_Var2Lit(iop_var, 0);
+                            lits[2] = Abc_Var2Lit(ipop_var, 1);
+                            solver_add_clause(*solver, lits, lits + 3);
+                            lits[0] = Abc_Var2Lit(alpha_i, 1);
+                            lits[1] = Abc_Var2Lit(iop_var, 1);
+                            lits[2] = Abc_Var2Lit(ipop_var, 0);
+                            solver_add_clause(*solver, lits, lits + 3);
+                            lits[0] = Abc_Var2Lit(alpha_i, 0);
+                            lits[1] = Abc_Var2Lit(iop_var, 1);
+                            lits[2] = Abc_Var2Lit(ipop_var, 1);
+                            solver_add_clause(*solver, lits, lits + 3);
+                            lits[0] = Abc_Var2Lit(alpha_i, 0);
+                            lits[1] = Abc_Var2Lit(iop_var, 0);
+                            lits[2] = Abc_Var2Lit(ipop_var, 0);
+                            solver_add_clause(*solver, lits, lits + 3);
+                        }
+                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
                 }
-                */
             }
 
             /*******************************************************************
@@ -765,7 +776,6 @@ namespace percy
             bool
             create_symvar_clauses(const synth_spec<TT>& spec)
             {
-                /*
                 for (int q = 1; q < spec.get_nr_in(); q++) {
                     for (int p = 0; p < q; p++) {
                         auto symm = true;
@@ -779,71 +789,29 @@ namespace percy
                         if (!symm) {
                             continue;
                         }
-                        if (spec.verbosity) {
+                        if (spec.verbosity > 1) {
                             printf("  variables x_%d and x_%d are symmetric\n",
                                     p+1, q+1);
                         }
 
-                        auto svar_offset = 0;
                         for (int i = 0; i < spec.nr_steps; i++) {
-                            const auto nr_svars_for_i = nr_svar_map[i];
-                            for (int j = 0; j < nr_svars_for_i; j++) {
-                                const auto sel_var = get_sel_var(svar_offset+j);
-                                const auto& fanins1 = svar_map[svar_offset+j];
-                                
-                                auto has_fanin_p = false;
-                                auto has_fanin_q = false;
-                                for (auto fanin : fanins1) {
-                                    if (fanin == q) {
-                                        has_fanin_q = true;
-                                        break;
-                                    } else if (fanin == p) {
-                                        has_fanin_p = true;
-                                    }
-                                }
-                                if (!has_fanin_q || has_fanin_p) {
-                                    continue;
-                                }
+                            const auto svar_p = get_sel_var(spec, i, p);
+                            const auto svar_q = get_sel_var(spec, i, q);
 
-                                abc::Vec_IntSetEntry(vLits, 0, 
-                                        Abc_Var2Lit(sel_var, 1));
+                            abc::Vec_IntSetEntry(vLits, 0, Abc_Var2Lit(svar_p, 0));
+                            abc::Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(svar_q, 1));
 
-                                auto ctr = 1;
-                                auto svar_offsetp = 0;
-                                for (int ip = 0; ip < i; ip++) {
-                                    const auto nr_svars_for_ip = nr_svar_map[ip];
-                                    for (int jp = 0; jp < nr_svars_for_ip; jp++) {
-                                        const auto sel_varp = 
-                                            get_sel_var(svar_offsetp + jp);
-                                        const auto& fanins2 = 
-                                            svar_map[svar_offsetp + jp];
-
-                                        has_fanin_p = false;
-                                        for (auto fanin : fanins2) {
-                                            if (fanin == p) {
-                                                has_fanin_p = true;
-                                            }
-                                        }
-                                        if (!has_fanin_p) {
-                                            continue;
-                                        }
-                                        abc::Vec_IntSetEntry(vLits, ctr++, 
-                                                Abc_Var2Lit(sel_varp, 0));
-                                    }
-                                    svar_offsetp += nr_svars_for_ip;
-                                }
-                                if (!solver_add_clause(
-                                            *solver, 
-                                            Vec_IntArray(vLits), 
-                                            Vec_IntArray(vLits) + ctr)) {
-                                    return false;
-                                }
+                            auto ctr = 2;
+                            for (int ip = 0; ip < i; ip++) {
+                                const auto ip_svar_p = get_sel_var(spec, ip, p);
+                                abc::Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ip_svar_p, 0));
                             }
-                            svar_offset += nr_svars_for_i;
+                            if (!solver_add_clause( *solver, Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr)) {
+                                return false;
+                            }
                         }
                     }
                 }
-                */
 
                 return true;
             }
@@ -1138,7 +1106,7 @@ namespace percy
                 }
                 
                 if (spec.add_lex_clauses) {
-                    create_colex_clauses(spec);
+                    create_lex_clauses(spec);
                 }
 
                 if (spec.add_lex_func_clauses) {

@@ -18,13 +18,6 @@ int main(void)
     {
         synth_spec<static_truth_table<2>> spec2(2, 1);
         spec2.verbosity = 0;
-        spec2.add_nontriv_clauses = false;
-        spec2.add_alonce_clauses = false; ///< Symmetry break: all steps must be used at least once
-        spec2.add_noreapply_clauses = false; ///< Symmetry break: no re-application of operators
-        spec2.add_colex_clauses = false; ///< Symmetry break: order step fanins co-lexicographically
-        spec2.add_lex_func_clauses = false; ///< Symmetry break: order step operators co-lexicographically
-        spec2.add_symvar_clauses = false; ///< Symmetry break: impose order on symmetric variables
-        spec2.add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
 
         auto synth1 = new_std_synth();
         auto synth2 = new_std_synth<2, abc::sat_solver*, epfl_encoder<2, abc::sat_solver*>>();
@@ -69,13 +62,6 @@ int main(void)
         }
 
         synth_spec<static_truth_table<3>> spec3(3, 1);
-        spec3.add_nontriv_clauses = false;
-        spec3.add_alonce_clauses = false; ///< Symmetry break: all steps must be used at least once
-        spec3.add_noreapply_clauses = false; ///< Symmetry break: no re-application of operators
-        spec3.add_colex_clauses = false; ///< Symmetry break: order step fanins co-lexicographically
-        spec3.add_lex_func_clauses = false; ///< Symmetry break: order step operators co-lexicographically
-        spec3.add_symvar_clauses = false; ///< Symmetry break: impose order on symmetric variables
-        spec3.add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
    
         static_truth_table<3> tt3;
 
@@ -89,6 +75,7 @@ int main(void)
 
             synth1->reset();
             auto solutions1 = 0;
+            printf("=== SYNTH 1 ===\n");
             while (synth1->next_solution(spec3, c) == success) {
                 printf("Next solution: ");
                 c.to_expression(std::cout);
@@ -99,6 +86,7 @@ int main(void)
             }
             synth2->reset();
             auto solutions2 = 0;
+            printf("=== SYNTH 2 ===\n");
             while (synth2->next_solution(spec3, c) == success) {
                 printf("Next solution: ");
                 c.to_expression(std::cout);
@@ -115,13 +103,6 @@ int main(void)
         auto synth32 = new_std_synth<3, abc::sat_solver*, epfl_encoder<3, abc::sat_solver*>>();
         chain<3> c3;
         synth_spec<static_truth_table<4>> spec4(4, 1);
-        spec4.add_nontriv_clauses = false;
-        spec4.add_alonce_clauses = false; ///< Symmetry break: all steps must be used at least once
-        spec4.add_noreapply_clauses = false; ///< Symmetry break: no re-application of operators
-        spec4.add_colex_clauses = false; ///< Symmetry break: order step fanins co-lexicographically
-        spec4.add_lex_func_clauses = false; ///< Symmetry break: order step operators co-lexicographically
-        spec4.add_symvar_clauses = false; ///< Symmetry break: impose order on symmetric variables
-        spec4.add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
         
         static_truth_table<4> tt4;
 

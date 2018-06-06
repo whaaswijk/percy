@@ -82,6 +82,8 @@ namespace percy
             void 
             preprocess(void)
             {
+                assert(!add_colex_clauses || !add_lex_clauses);
+
                 if (verbosity) {
                     printf("\n");
                     printf("========================================"

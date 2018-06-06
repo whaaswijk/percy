@@ -15,13 +15,6 @@ void check_equivalence(bool full_coverage)
     std_synthesizer<FI, epfl_encoder<FI, sat_solver*>, sat_solver*> synth2;
 
     spec.verbosity = 0;
-    spec.add_nontriv_clauses = false;
-    spec.add_alonce_clauses = false; ///< Symmetry break: all steps must be used at least once
-    spec.add_noreapply_clauses = false; ///< Symmetry break: no re-application of operators
-    spec.add_colex_clauses = false; ///< Symmetry break: order step fanins co-lexicographically
-    spec.add_lex_func_clauses = false; ///< Symmetry break: order step operators co-lexicographically
-    spec.add_symvar_clauses = false; ///< Symmetry break: impose order on symmetric variables
-    spec.add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));

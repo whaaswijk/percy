@@ -222,9 +222,6 @@ namespace percy
                 nr_out_vars = spec.nr_nontriv * spec.nr_steps;
                 nr_sim_vars = spec.nr_steps * spec.get_tt_size();
                 nr_lex_vars = (spec.nr_steps - 1) * (nr_op_vars_per_step - 1);
-                
-                
-
                 nr_sel_vars = 0;
                 svar_map.clear();
                 nr_svar_map.resize(spec.nr_steps);
@@ -681,7 +678,7 @@ namespace percy
 
             /*******************************************************************
                 Ensure that Boolean operators are lexicographically ordered:
-                (S_ijk == S_(i+1)jk) ==> f_i <= f_(i+1)
+                (S_ijk /\ S_(i+1)jk) ==> f_i <= f_(i+1)
             *******************************************************************/
             template<typename TT>
             void 
@@ -1188,7 +1185,7 @@ namespace percy
                 }
                 
                 if (spec.add_lex_clauses) {
-                    create_colex_clauses(spec);
+                    create_lex_clauses(spec);
                 }
 
                 if (spec.add_lex_func_clauses) {
