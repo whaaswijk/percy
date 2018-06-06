@@ -25,9 +25,10 @@
 ///                          INCLUDES                                ///
 ////////////////////////////////////////////////////////////////////////
 
+#include <cstdint>
 #ifdef _WIN32
 #ifndef __MINGW32__
-#define inline __inline // compatible with MS VS 6.0
+//#define inline __inline // compatible with MS VS 6.0
 #pragma warning(disable : 4152) // warning C4152: nonstandard extension, function/data pointer conversion in expression
 #pragma warning(disable : 4200) // warning C4200: nonstandard extension used : zero-sized array in struct/union
 #pragma warning(disable : 4244) // warning C4244: '+=' : conversion from 'int ' to 'unsigned short ', possible loss of data
@@ -169,17 +170,7 @@ typedef signed __int64 ABC_INT64_T;
 /**
  * 64-bit unsigned integral type.
  */
-#if       defined(__ccdoc__)
-typedef platform_dependent_type ABC_UINT64_T;
-#elif     defined(LIN64)
-typedef unsigned long ABC_UINT64_T;
-#elif     defined(NT64) || defined(LIN)
-typedef unsigned long long ABC_UINT64_T;
-#elif     defined(WIN32) || defined(NT)
-typedef unsigned __int64 ABC_UINT64_T;
-#else
-   #error unknown platform
-#endif /* defined(PLATFORM) */
+typedef uint64_t ABC_UINT64_T;
 
 #ifdef LIN
   #define ABC_CONST(number) number ## ULL 
