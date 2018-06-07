@@ -132,6 +132,12 @@ typedef int    cla;
 
 typedef char               lbool;
 
+// CryptoMinisat defines it's own var_Undef values.
+// When it's included we prefer the ABC version instead.
+#ifdef var_Undef
+#undef var_Undef
+#endif
+
 static const int   var_Undef = -1;
 static const lit   lit_Undef = -2;
 

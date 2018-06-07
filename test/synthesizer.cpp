@@ -17,7 +17,7 @@ int main(void)
         synth_spec<static_truth_table<2>> spec;
         spec.set_nr_in(2);
         spec.set_nr_out(1);
-        spec.verbosity = 3;
+        spec.verbosity = 0;
 
         auto synth = new_std_synth();
         chain<2> c;
@@ -52,7 +52,7 @@ int main(void)
     {
         // Create the truth table specification object. It has three inputs and two outputs.
         synth_spec<static_truth_table<3>> spec(3, 2);
-        spec.verbosity = 1;
+        spec.verbosity = 0;
 
         // Instantiate a new standard synthesizer.
         auto synth = new_std_synth();

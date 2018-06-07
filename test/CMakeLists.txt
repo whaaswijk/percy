@@ -11,7 +11,42 @@ foreach(FILENAME ${FILENAMES})
 
     set(TARGET_NAME ${BASENAME})
 
+
     add_executable(${TARGET_NAME} ${FILENAME})
+    if (WIN32)
+        file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/cryptominisat/cmsat5-src/Debug")
+        file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/cryptominisat/cmsat5-src/Release")
+        file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/test/Debug")
+        file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/test/Release")
+        set(DEBUG_DLL "${PROJECT_BINARY_DIR}/cryptominisat/cmsat5-src/Debug/cryptominisat5win.dll")
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} 
+                -E touch
+                ${DEBUG_DLL}
+        )
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} 
+                -E copy_if_different
+                ${DEBUG_DLL}
+                "${PROJECT_BINARY_DIR}/test/Debug/"
+        )
+        set(RELEASE_DLL "${PROJECT_BINARY_DIR}/cryptominisat/cmsat5-src/Release/cryptominisat5win.dll")
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} 
+            -E touch
+            ${RELEASE_DLL}
+        )
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} 
+            -E copy_if_different
+            ${RELEASE_DLL}
+            "${PROJECT_BINARY_DIR}/test/Release/"
+        )
+    endif()
     target_link_libraries(${TARGET_NAME} percy)
     add_test(${TARGET_NAME} ${TARGET_NAME})
 endforeach()
