@@ -24,6 +24,7 @@ endif()
 # Glucose and Glucose-Syrup don't build properly on Windows
 if (UNIX)
     if (PERCY_USE_SYRUP)
+        find_package(Threads REQUIRED)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_SYRUP")
         add_subdirectory(syrup)
     else()
