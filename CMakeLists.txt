@@ -18,7 +18,7 @@ option(PERCY_BUILD_CMS "Enables support for CryptoMinisat" OFF)
 option(STATIC_LIBABC "Builds libabc as a static library" ON)
 
 if (${TRAVIS_BUILD})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD -Wno-sign-compare -Wno-parentheses")
 endif()
 
 # Glucose and Glucose-Syrup don't build properly on Windows
