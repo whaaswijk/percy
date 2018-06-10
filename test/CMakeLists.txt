@@ -11,7 +11,6 @@ foreach(FILENAME ${FILENAMES})
 
     set(TARGET_NAME ${BASENAME})
 
-
     add_executable(${TARGET_NAME} ${FILENAME})
     if (WIN32)
         file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/cryptominisat/cmsat5-src/Debug")
@@ -47,7 +46,11 @@ foreach(FILENAME ${FILENAMES})
             "${PROJECT_BINARY_DIR}/test/Release/"
         )
     endif()
-    target_link_libraries(${TARGET_NAME} percy)
+    if (PERCY_BUILD_CMS)
+        target_link_libraries(${TARGET_NAME} percy libcryptominisat5)
+    else()
+        target_link_libraries(${TARGET_NAME} percy)
+    endif()
     add_test(${TARGET_NAME} ${TARGET_NAME})
 endforeach()
 
