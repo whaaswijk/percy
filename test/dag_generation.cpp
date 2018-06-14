@@ -8,8 +8,8 @@ using namespace percy;
 int main(void)
 {
     dag<2> g;
-    sat_dag_generator<sat_solver*> gen;
-    unbounded_dag_generator<sat_solver*> ugen;
+    sat_dag_generator gen;
+    unbounded_dag_generator ugen;
 
     int nr_vars = 2;
     int nr_vertices = 1;

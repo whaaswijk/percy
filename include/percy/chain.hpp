@@ -28,57 +28,62 @@
 *******************************************************************************/
 namespace percy
 {
-	using std::vector;
-	using std::unique_ptr;
-	using kitty::static_truth_table;
 	using kitty::dynamic_truth_table;
 	using kitty::create_nth_var;
 
-    template<int FI=2>
-    class chain : public dag<FI>
+    class chain
     {
-        public:
-            using OpTT = static_truth_table<FI>;
-            using fanin = typename dag<FI>::fanin;
-            using dag<FI>::nr_inputs;
-            using dag<FI>::nr_vertices;
-
         private:
-            static const int OperandTTSize = (1 << FI);
-            std::vector<OpTT> operators;
+            int nr_in;
+            int fanin;
+            int op_tt_size; // The truth table size of operands in the chain (depends on fanin)
+            std::vector<std::vector<int>> steps;
+            std::vector<dynamic_truth_table> operators;
             std::vector<int> outputs;
 
         public:
-            chain() { }
+            chain() 
+            { 
+                reset(0, 0, 0, 0);
+            }
             chain(const chain& c) = delete;
 
+            /*
             chain(chain&& c)
             {
-                dag<FI>::dag(c);
+                vertices = std::move(c.vertices);
+                operators = std::move(c.operators);
                 outputs = std::move(c.outputs);
             }
+            */
 
-            void reset(int nr_in, int nr_out, int nr_steps)
+            void reset(int nr_in, int nr_out, int nr_steps, int fanin)
             {
-                dag<FI>::reset(nr_in, nr_steps);
+                assert(nr_steps >= 0);
+                assert(fanin <= MAX_FANIN);
+
+                this->nr_in = nr_in;
+                this->fanin = fanin;
+                this->op_tt_size = (1 << fanin);
+                steps.resize(nr_steps);
+                for (auto& step : steps) {
+                    step.resize(fanin);
+                }
                 operators.resize(nr_steps);
                 outputs.resize(nr_out);
             }
 
+            int get_fanin() const { return fanin; }
+            int get_nr_steps() const { return steps.size(); }
             int get_nr_outputs() const { return outputs.size(); }
             const std::vector<int>& get_outputs() const { return outputs; }
 
-            const OpTT& get_operator(int i) const
+            const dynamic_truth_table& get_operator(int i) const
             {
               return operators.at(i);
             }
 
             std::vector<int>& get_outputs() { return outputs; }
-
-            OpTT& get_operator(int i)
-            {
-              return operators.at(i);
-            }
 
             bool
             is_output_inverted(int out_idx)
@@ -88,23 +93,42 @@ namespace percy
             }
 
             void
-            set_step(int i, const fanin* const in, const OpTT& op)
+            set_step(int i, const int* const in, const dynamic_truth_table& op)
             {
-                dag<FI>::set_vertex(i, in);
+                for (int j = 0; j < fanin; j++) {
+                    steps[i][j] = in[j];
+                }
                 operators[i] = op;
             }
 
             void
-            set_step(int i, const std::array<fanin, FI>& in, const OpTT& op)
+            set_step(int i, const std::vector<int>& in, const dynamic_truth_table& op)
             {
-                dag<FI>::set_vertex(i, in);
+                for (int j = 0; j < fanin; j++) {
+                    steps[i][j] = in[j];
+                }
                 operators[i] = op;
             }
 
             void
-            add_step(const fanin* const in, const OpTT& op)
+            add_step(const int* const in, const dynamic_truth_table& op)
             {
-                dag<FI>::add_vertex(in);
+                std::vector<int> step(fanin);
+                for (int j = 0; j < fanin; j++) {
+                    step[j] = in[j];
+                }
+                steps.push_back(step);
+                operators.push_back(op);
+            }
+
+            void
+            add_step(const std::vector<int>& in, const dynamic_truth_table& op)
+            {
+                std::vector<int> step(fanin);
+                for (int j = 0; j < fanin; j++) {
+                    step[j] = in[j];
+                }
+                steps.push_back(step);
                 operators.push_back(op);
             }
 
@@ -148,24 +172,24 @@ namespace percy
                     return;
                 }
 
-                std::vector<int> refcount(nr_vertices);
-                std::vector<dynamic_truth_table> tmps(nr_vertices);
+                std::vector<int> refcount(steps.size());
+                std::vector<dynamic_truth_table> tmps(steps.size());
                 std::vector<dynamic_truth_table> ins;
                 std::vector<dynamic_truth_table> fs(outputs.size());
 
-                for (int i = 1; i < nr_vertices; i++) {
-                    const auto& v = dag<FI>::get_vertex(i);
-                    dag<FI>::foreach_fanin(v, [&refcount, nr_in=nr_inputs] (auto fid, int j) {
+                for (int i = 1; i < steps.size(); i++) {
+                    const auto& v = steps[i];
+                    for (const auto fid : v) {
                         if (fid > nr_in) {
                             refcount[fid - nr_in - 1]++;
                         }
-                    });
+                    }
                 }
 
                 for (int i = 0; i < outputs.size(); i++) {
                     const auto step_idx = outputs[i] >> 1;
-                    if (step_idx > nr_inputs) {
-                        refcount[step_idx - nr_inputs - 1]++;
+                    if (step_idx > nr_in) {
+                        refcount[step_idx - nr_in - 1]++;
                     }
                 }
 
@@ -173,33 +197,32 @@ namespace percy
                     assert(count > 0);
                 }
 
-                for (auto i = 0; i < nr_inputs; ++i) {
-                    auto in_tt = kitty::create<dynamic_truth_table>(nr_inputs);
+                for (auto i = 0; i < nr_in; ++i) {
+                    auto in_tt = kitty::create<dynamic_truth_table>(nr_in);
                     ins.push_back(in_tt);
                 }
 
-                auto tt_step = kitty::create<dynamic_truth_table>(nr_inputs);
-                auto tt_compute = kitty::create<dynamic_truth_table>(nr_inputs);
+                auto tt_step = kitty::create<dynamic_truth_table>(nr_in);
+                auto tt_compute = kitty::create<dynamic_truth_table>(nr_in);
                 
-                for (int i = 0; i < nr_vertices; i++) {
-                    const auto& step = dag<FI>::get_vertex(i);
+                for (int i = 0; i < steps.size(); i++) {
+                    const auto& step = steps[i];
 
-                    dag<FI>::foreach_fanin(step,
-                            [&ins, &tmps, nr_inputs=nr_inputs]
-                            (auto fanin, int j) {
-                        if (fanin < nr_inputs) {
+                    for (int j = 0; j < fanin; j++) {
+                        const auto fanin = step[j];
+                        if (fanin < nr_in) {
                             create_nth_var(ins[j], fanin);
                         } else {
-                            ins[j] = tmps[fanin - nr_inputs];
+                            ins[j] = tmps[fanin - nr_in];
                         }
-                    });
+                    }
 
                     kitty::clear(tt_step);
-                    for (int j = 1; j < OperandTTSize; j++) {
+                    for (int j = 1; j < op_tt_size; j++) {
                         kitty::clear(tt_compute);
                         tt_compute = ~tt_compute;
                         if (get_bit(operators[i], j)) {
-                            for (int k = 0; k < FI; k++) {
+                            for (int k = 0; k < fanin; k++) {
                                 if ((j >> k) & 1) {
                                     tt_compute &= ins[k];
                                 } else {
@@ -215,7 +238,7 @@ namespace percy
                         const auto out = outputs[h];
                         const auto var = out >> 1;
                         const auto inv = out & 1;
-                        if (var - nr_inputs - 1 == i) {
+                        if (var - nr_in - 1 == i) {
                             fs[h] = inv ? ~tt_step : tt_step;
                         }
                     }
@@ -225,11 +248,11 @@ namespace percy
                     auto step_idx = outputs[i] >> 1;
                     const auto invert = outputs[i] & 1;
 
-                    if (!invert || step_idx <= nr_inputs) {
+                    if (!invert || step_idx <= nr_in) {
                         continue;
                     }
 
-                    step_idx -= (nr_inputs + 1);
+                    step_idx -= (nr_in + 1);
                     assert(refcount[step_idx] >= 1);
                     if (refcount[step_idx] == 1) {
                         operators[step_idx] = ~operators[step_idx];
@@ -239,23 +262,23 @@ namespace percy
                         // exists somewhere in the chain, we need to add a new
                         // step.
                         bool inv_step_found = false;
-                        for (int j = 0; j < nr_vertices; j++) {
+                        for (int j = 0; j < steps.size(); j++) {
                             if (tmps[j] == fs[i]) {
-                                set_output(i, j + nr_inputs + 1, false);
+                                set_output(i, j + nr_in + 1, false);
                                 inv_step_found = true;
                             }
                         }
                         if (inv_step_found) {
                             continue;
                         }
-                        fanin fanins[FI];
-                        const auto& v = dag<FI>::get_vertex(step_idx);
-                        dag<FI>::foreach_fanin(v, [&fanins] (auto fid, int j) {
-                            fanins[j] = fid;
-                        });
+                        std::vector<int> fanins(fanin);
+                        const auto& v = steps[step_idx];
+                        for (int j = 0; j < fanin; j++) {
+                            fanins[j] = v[j];
+                        };
 
                         add_step(fanins, ~operators[step_idx]);
-                        set_output(i, nr_inputs + nr_vertices, false);
+                        set_output(i, nr_in + steps.size(), false);
                         tmps.push_back(fs[i]);
 
                         refcount[step_idx]--;
@@ -266,20 +289,19 @@ namespace percy
             /*******************************************************************
                 Derive truth tables from the chain, one for each output.
             *******************************************************************/
-            template<typename TT>
-            std::vector<TT>
-            simulate(const synth_spec<TT>& spec) const
+            std::vector<dynamic_truth_table>
+            simulate(const spec& spec) const
             {
-                std::vector<TT> fs(outputs.size());
-                std::vector<TT> tmps(nr_vertices);
-                std::vector<TT> ins;
+                std::vector<dynamic_truth_table> fs(outputs.size());
+                std::vector<dynamic_truth_table> tmps(steps.size());
+                std::vector<dynamic_truth_table> ins;
 
-                for (auto i = 0; i < nr_inputs; ++i) {
-                    ins.push_back(kitty::create<TT>(nr_inputs));
+                for (auto i = 0; i < nr_in; ++i) {
+                    ins.push_back(kitty::create<dynamic_truth_table>(nr_in));
                 }
 
-                auto tt_step = kitty::create<TT>(nr_inputs);
-                auto tt_compute = kitty::create<TT>(nr_inputs);
+                auto tt_step = kitty::create<dynamic_truth_table>(nr_in);
+                auto tt_compute = kitty::create<dynamic_truth_table>(nr_in);
 
                 // Some outputs may be simple constants or projections.
                 for (int h = 0; h < outputs.size(); h++) {
@@ -289,31 +311,30 @@ namespace percy
                     if (var == 0) {
                         clear(tt_step);
                         fs[h] = inv ? ~tt_step : tt_step;
-                    } else if (var <= nr_inputs) {
+                    } else if (var <= nr_in) {
                         create_nth_var(tt_step, var-1, inv);
                         fs[h] = tt_step;
                     }
                 }
 
-                for (int i = 0; i < nr_vertices; i++) {
-                    const auto& step = dag<FI>::get_vertex(i);
+                for (int i = 0; i < steps.size(); i++) {
+                    const auto& step = steps[i];
 
-                    dag<FI>::foreach_fanin(step,
-                            [&ins, &tmps, nr_inputs=nr_inputs]
-                            (auto fanin, int j) {
-                        if (fanin < nr_inputs) {
+                    for (int j = 0; j < fanin; j++) {
+                        const auto fanin = step[j];
+                        if (fanin < nr_in) {
                             create_nth_var(ins[j], fanin);
                         } else {
-                            ins[j] = tmps[fanin - nr_inputs];
+                            ins[j] = tmps[fanin - nr_in];
                         }
-                    });
+                    }
 
                     kitty::clear(tt_step);
-                    for (int j = 0; j < OperandTTSize; j++) {
+                    for (int j = 0; j < op_tt_size; j++) {
                         kitty::clear(tt_compute);
                         tt_compute = ~tt_compute;
                         if (get_bit(operators[i], j)) {
-                            for (int k = 0; k < FI; k++) {
+                            for (int k = 0; k < fanin; k++) {
                                 if ((j >> k) & 1) {
                                     tt_compute &= ins[k];
                                 } else {
@@ -329,7 +350,7 @@ namespace percy
                         const auto out = outputs[h];
                         const auto var = out >> 1;
                         const auto inv = out & 1;
-                        if (var - nr_inputs - 1 == i) {
+                        if (var - nr_in - 1 == i) {
                             fs[h] = inv ? ~tt_step : tt_step;
                         }
                     }
@@ -342,20 +363,19 @@ namespace percy
             /*******************************************************************
                 Checks if a chain satisfies the given specification. This
                 checks not just if the chain computes the correct function, but
-                also other requirements such as co-lexicogrpahic order (if
+                also other requirements such as co-lexicographic order (if
                 specified).
             *******************************************************************/
-            template<typename TT>
             bool
-            satisfies_spec(const synth_spec<TT>& spec)
+            satisfies_spec(const spec& spec)
             {
                 if (spec.nr_triv == spec.get_nr_out()) {
                     return true;
                 }
                 auto tts = simulate(spec);
-                static_truth_table<FI> op_tt;
+                dynamic_truth_table op_tt(fanin);
 
-                if (spec.nr_steps != nr_vertices) {
+                if (spec.nr_steps != steps.size()) {
                     assert(false);
                     return false;
                 }
@@ -365,7 +385,7 @@ namespace percy
                     if ((spec.triv_flag >> i) & 1) {
                         continue;
                     }
-                    if (tts[nr_nontriv++] != *spec.functions[i]) {
+                    if (tts[nr_nontriv++] != spec[i]) {
                         assert(false);
                         return false;
                     }
@@ -379,7 +399,7 @@ namespace percy
                             assert(false);
                             return false;
                         }
-                        for (int i = 0; i < FI; i++) {
+                        for (int i = 0; i < fanin; i++) {
                             create_nth_var(op_tt, i);
                             if (op == op_tt) {
                                 assert(false);
@@ -391,22 +411,20 @@ namespace percy
 
                 if (spec.add_alonce_clauses) {
                     // Ensure that each step is used at least once.
-                    std::vector<int> nr_uses(nr_vertices);
+                    std::vector<int> nr_uses(steps.size());
 
-                    for (int i = 1; i < nr_vertices; i++) {
-                        const auto& vertex = dag<FI>::get_vertex(i);
-                        dag<FI>::foreach_fanin(vertex, [&nr_uses, nr_inputs=nr_inputs]
-                            (auto fid, int j) {
-                                if (fid >= nr_inputs) {
-                                    nr_uses[fid-nr_inputs]++;
+                    for (int i = 1; i < steps.size(); i++) {
+                        const auto& step = steps[i];
+                        for (const auto fid : step) {
+                            if (fid >= nr_in) {
+                                    nr_uses[fid-nr_in]++;
                                 }
-                            }
-                        );
+                        }
                     }
                     for (auto output : outputs) {
                         const auto step_idx = output >> 1;
-                        if (step_idx > nr_inputs) {
-                            nr_uses[step_idx-nr_inputs-1]++;
+                        if (step_idx > nr_in) {
+                            nr_uses[step_idx-nr_in-1]++;
                         }
                     }
 
@@ -420,25 +438,15 @@ namespace percy
 
                 if (spec.add_noreapply_clauses) {
                     // Ensure there is no re-application of operands.
-                    for (int i = 0; i < nr_vertices - 1; i++) {
-                        fanin fanins1[FI];
-                        const auto& v = dag<FI>::get_vertex(i);
-                        dag<FI>::foreach_fanin(v, [&fanins1] (auto fid, int j) {
-                            fanins1[j] = fid;
-                        });
-
-                        for (int ip = i + 1; ip < nr_vertices; ip++) {
-                            fanin fanins2[FI];
-                            const auto& v2 = dag<FI>::get_vertex(i);
-                            dag<FI>::foreach_fanin(v2, 
-                                    [&fanins2] (auto fid, int j) {
-                                fanins2[j] = fid;
-                            });
+                    for (int i = 0; i < steps.size() - 1; i++) {
+                        const auto & fanins1 = steps[i];
+                        for (int ip = i + 1; ip < steps.size(); ip++) {
+                            const auto& fanins2 = steps[ip];
 
                             auto is_subsumed = true;
                             auto has_fanin_i = false;
                             for (auto j : fanins2) {
-                                if (j == i + nr_inputs) {
+                                if (j == i + nr_in) {
                                     has_fanin_i = true;
                                     continue;
                                 }
@@ -463,20 +471,10 @@ namespace percy
                 if (spec.add_colex_clauses) {
                     // Ensure that steps are in co-lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = dag<FI>::get_vertex(i);
-                        const auto& v2 = dag<FI>::get_vertex(i + 1);
+                        const auto& v1 = steps[i];
+                        const auto& v2 = steps[i + 1];
                         
-                        fanin fanins1[FI];
-                        dag<FI>::foreach_fanin(v1, [&fanins1] (auto fid, int j) {
-                            fanins1[j] = fid;
-                        });
-
-                        fanin fanins2[FI];
-                        dag<FI>::foreach_fanin(v2, [&fanins2] (auto fid, int j) {
-                            fanins2[j] = fid;
-                        });
-
-                        if (colex_compare<fanin, FI>(fanins1, fanins2) == 1) {
+                        if (colex_compare(v1, v2) == 1) {
                             assert(false);
                             return false;
                         }
@@ -486,20 +484,10 @@ namespace percy
                 if (spec.add_lex_clauses) {
                     // Ensure that steps are in lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = dag<FI>::get_vertex(i);
-                        const auto& v2 = dag<FI>::get_vertex(i + 1);
+                        const auto& v1 = steps[i];
+                        const auto& v2 = steps[i + 1];
                         
-                        fanin fanins1[FI];
-                        dag<FI>::foreach_fanin(v1, [&fanins1] (auto fid, int j) {
-                            fanins1[j] = fid;
-                        });
-
-                        fanin fanins2[FI];
-                        dag<FI>::foreach_fanin(v2, [&fanins2] (auto fid, int j) {
-                            fanins2[j] = fid;
-                        });
-
-                        if (lex_compare<fanin, FI>(fanins1, fanins2) == 1) {
+                        if (lex_compare(v1, v2) == 1) {
                             assert(false);
                             return false;
                         }
@@ -509,20 +497,10 @@ namespace percy
                 if (spec.add_lex_func_clauses) {
                     // Ensure that step operators are in lexicographical order.
                     for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        const auto& v1 = dag<FI>::get_vertex(i);
-                        const auto& v2 = dag<FI>::get_vertex(i + 1);
+                        const auto& v1 = steps[i];
+                        const auto& v2 = steps[i + 1];
 
-                        fanin fanins1[FI];
-                        dag<FI>::foreach_fanin(v1, [&fanins1] (auto fid, int j) {
-                            fanins1[j] = fid;
-                        });
-
-                        fanin fanins2[FI];
-                        dag<FI>::foreach_fanin(v2, [&fanins2] (auto fid, int j) {
-                            fanins2[j] = fid;
-                        });
-
-                        if (colex_compare<fanin, FI>(fanins1, fanins2) == 0) {
+                        if (colex_compare(v1, v2) == 0) {
                             // The operator of step i must be lexicographically
                             // less than that of i + 1.
                             const auto& op1 = operators[i];
@@ -541,8 +519,8 @@ namespace percy
                         for (int p = 0; p < q; p++) {
                             auto symm = true;
                             for (int i = 0; i < spec.get_nr_out(); i++) {
-                                auto outfunc = spec.functions[i];
-                                if (!(swap(*outfunc, p, q) == *outfunc)) {
+                                auto outfunc = spec[i];
+                                if (!(swap(outfunc, p, q) == outfunc)) {
                                     symm = false;
                                     break;
                                 }
@@ -551,35 +529,31 @@ namespace percy
                                 continue;
                             }
                             for (int i = 1; i < spec.nr_steps; i++) {
-                                const auto& v1 = dag<FI>::get_vertex(i);
+                                const auto& v1 = steps[i];
                                 auto has_fanin_p = false;
                                 auto has_fanin_q = false;
 
-                                dag<FI>::foreach_fanin(v1, 
-                                        [p, q, &has_fanin_p, &has_fanin_q] 
-                                        (auto fid, int j) {
-                                            if (fid == p) {
-                                                has_fanin_p = true;
-                                            } else if (fid == q) {
-                                                has_fanin_q = true;
-                                            }
-                                        }
-                                );
+                                for (const auto fid : v1) {
+                                    if (fid == p) {
+                                        has_fanin_p = true;
+                                    } else if (fid == q) {
+                                        has_fanin_q = true;
+                                    }
+                                }
+
                                 if (!has_fanin_q || has_fanin_p) {
                                     continue;
                                 }
                                 auto p_in_prev_step = false;
                                 for (int ip = 0; ip < i; ip++) {
-                                    const auto& v2 = dag<FI>::get_vertex(ip);
+                                    const auto& v2 = steps[ip];
                                     has_fanin_p = false;
 
-                                    dag<FI>::foreach_fanin(v2, [p, q, &has_fanin_p] 
-                                        (auto fid, int j) {
-                                            if (fid == p) {
-                                                has_fanin_p = true;
-                                            }
+                                    for (const auto fid : v2) {
+                                        if (fid == p) {
+                                            has_fanin_p = true;
                                         }
-                                    );
+                                    }
                                     if (has_fanin_p) {
                                         p_in_prev_step = true;
                                     }   
@@ -597,9 +571,13 @@ namespace percy
             }
 
             void
-            copy(const chain<FI>& c)
+            copy(const chain& c)
             {
-                copy_dag(c);
+                nr_in = c.nr_in;
+                fanin = c.fanin;
+                op_tt_size = c.op_tt_size;
+                steps = c.steps;
+                operators = c.operators;
                 outputs = c.outputs;
             }
 
@@ -613,21 +591,21 @@ namespace percy
                 s << "graph {\n";
                 s << "rankdir = BT\n";
                 s << "x0 [shape=none,label=<\u22A5>];\n";
-                for (int i = 0; i < dag<FI>::nr_inputs; i++) {
+                for (int i = 0; i < nr_in; i++) {
                     const auto idx = i + 1;
                     s << "x" << idx << " [shape=none,label=<x<sub>" << idx
                         << "</sub>>];\n";
                 }
 
                 s << "node [shape=circle];\n";
-                for (size_t i = 0; i < dag<FI>::nr_vertices; i++) {
-                    const auto& step = dag<FI>::vertices[i];
-                    const auto idx = dag<FI>::nr_inputs + i + 1;
+                for (size_t i = 0; i < steps.size(); i++) {
+                    const auto& step = steps[i];
+                    const auto idx = nr_in + i + 1;
                     s << "x" << idx << " [label=<";
                     kitty::print_binary(operators[i], s);
                     s << ">];\n";
-                    for (int j = 0; j < FI; j++) {
-                        s << "x" << step.inputs[j]+1 << " -- x" << idx << ";\n";
+                    for (int j = 0; j < fanin; j++) {
+                        s << "x" << step[j]+1 << " -- x" << idx << ";\n";
                     }
                 }
 
@@ -643,7 +621,7 @@ namespace percy
 
                 // Group inputs on same level.
                 s << "{rank = same; x0; ";
-                for (int i = 0; i < dag<FI>::nr_inputs; i++) {
+                for (int i = 0; i < nr_in; i++) {
                     s << "x" << i+1 << "; ";
                 }
                 s << "}\n";
@@ -657,7 +635,7 @@ namespace percy
 
                 // Add invisible edges between PIs and POs to enforce order.
                 s << "edge[style=invisible];\n";
-                for (int i = dag<FI>::nr_inputs; i > 0; i--) {
+                for (int i = nr_in; i > 0; i--) {
                     s << "x" << i-1 << " -- x" << i << ";\n";
                 }
                 for (size_t h = outputs.size(); h > 1; h--) {
@@ -682,14 +660,16 @@ namespace percy
             void
             step_to_expression(std::ostream& s, int step_idx)
             {
-                if (step_idx < dag<FI>::nr_inputs) {
+                assert(fanin == 2);
+
+                if (step_idx < nr_in) {
                     s << char(('a' + step_idx));
                     return;
                 }
-                const auto& step = dag<FI>::get_vertex(step_idx - nr_inputs);
+                const auto& step = steps[step_idx - nr_in];
                 auto word = 0;
                 for (int i = 0; i < 4; i++) {
-                    if (kitty::get_bit(operators[step_idx - nr_inputs], i)) {
+                    if (kitty::get_bit(operators[step_idx - nr_in], i)) {
                         word |= (1 << i);
                     }
                 }
@@ -697,34 +677,34 @@ namespace percy
                 switch (word) {
                     case 2:
                         s << "(";
-                        step_to_expression(s, step.first);
+                        step_to_expression(s, step[0]);
                         s << "!";
-                        step_to_expression(s, step.second);
+                        step_to_expression(s, step[1]);
                         s << ")";
                         break;
                     case 4:
                         s << "(";
                         s << "!";
-                        step_to_expression(s, step.first);
-                        step_to_expression(s, step.second);
+                        step_to_expression(s, step[0]);
+                        step_to_expression(s, step[1]);
                         s << ")";
                         break;
                     case 6:
                         s << "[";
-                        step_to_expression(s, step.first);
-                        step_to_expression(s, step.second);
+                        step_to_expression(s, step[0]);
+                        step_to_expression(s, step[1]);
                         s << "]";
                         break;
                     case 8:
                         s << "(";
-                        step_to_expression(s, step.first);
-                        step_to_expression(s, step.second);
+                        step_to_expression(s, step[0]);
+                        step_to_expression(s, step[1]);
                         s << ")";
                         break;
                     case 14:
                         s << "{";
-                        step_to_expression(s, step.first);
-                        step_to_expression(s, step.second);
+                        step_to_expression(s, step[0]);
+                        step_to_expression(s, step[1]);
                         s << "}";
                         break;
                     default:
@@ -738,7 +718,7 @@ namespace percy
             void
             to_expression(std::ostream& s)
             {
-                assert(outputs.size() == 1 && FI == 2);
+                assert(outputs.size() == 1 && fanin == 2);
                 const auto outlit = outputs[0];
                 if (outlit & 1) {
                     s << "!";
@@ -757,6 +737,7 @@ namespace percy
                 to_expression(std::cout);
             }
 
+            template<int FI>
             void
             extract_dag(dag<FI>& g) const
             {

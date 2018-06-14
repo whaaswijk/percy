@@ -1,21 +1,14 @@
 #pragma once
 
-#include "encoder_base.hpp"
+#include "encoder.hpp"
 #include "../io.hpp"
 
 namespace percy
 {
-    template<typename Dag, typename Solver=sat_solver*>
-    class dag_encoder
+    template<int FI>
+    class knuth_dag_encoder : public dag_encoder<FI>
     {
-        using fanin = typename Dag::fanin;
-
-        private:
-            // We only keep a reference to the solver. Since we don't own it,
-            // we should never use encoders outside of the synthesizer objects
-            // that own them and the solvers.
-            Solver* solver;
-
+        protected:
             int nr_op_vars;
             int nr_sim_vars;
             int nr_op_vars_per_step;
@@ -23,49 +16,38 @@ namespace percy
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
-            dag_encoder()
+            knuth_dag_encoder()
             {
                 vLits = abc::Vec_IntAlloc(128);
             }
 
-            ~dag_encoder()
+            ~knuth_dag_encoder()
             {
                 abc::Vec_IntFree(vLits);
             }
 
-            void 
-            set_solver(Solver* s)
-            {
-                solver = s;
-            }
-
             int
-            get_op_var(const Dag& dag, int step_idx, int var_idx)
+            get_op_var(const spec& spec, int step_idx, int var_idx)
             {
-                assert(step_idx < dag.get_nr_vertices());
+                assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
                 assert(var_idx <= nr_op_vars_per_step);
 
                 return step_idx * nr_op_vars_per_step + var_idx - 1;
             }
 
-            template<typename TT>
             int
-            get_sim_var(
-                    const synth_spec<TT>& spec, const Dag& dag,
-                    int step_idx, 
-                    int t)
+            get_sim_var(const spec& spec, const dag<FI>& dag, int step_idx, int t)
             {
                 assert(step_idx < dag.get_nr_vertices());
 
                 return nr_op_vars + spec.get_tt_size() * step_idx + t;
             }
 
-            template<typename TT>
             void
-            create_variables(const synth_spec<TT>& spec, const Dag& dag)
+            create_variables(const spec& spec, const dag<FI>& dag)
             {
-                nr_op_vars_per_step = ((1u << Dag::NrFanin) - 1);
+                nr_op_vars_per_step = ((1u << FI) - 1);
                 nr_op_vars = dag.get_nr_vertices() * nr_op_vars_per_step;
                 nr_sim_vars = dag.get_nr_vertices() * spec.get_tt_size();
                 if (spec.verbosity > 1) {
@@ -74,24 +56,23 @@ namespace percy
                     printf("nr_sim_vars=%d\n", nr_sim_vars);
                 }
 
-                solver_set_nr_vars(*solver, nr_op_vars + nr_sim_vars);
+                solver->set_nr_vars(nr_op_vars + nr_sim_vars);
             }
 
-            template<typename TT>
             bool
             add_simulation_clause(
-                    const synth_spec<TT>& spec,
-                    const Dag& dag,
+                    const spec& spec,
+                    const dag<FI>& dag,
                     const int t, 
                     const int i, 
                     const int output, 
                     const int opvar_idx,
-                    const fanin* const fanins,
-                    const std::bitset<Dag::NrFanin>& fanin_asgn)
+                    const int* const fanins,
+                    const std::vector<int>& fanin_asgn)
             {
                 int ctr = 0;
 
-                for (int j = 0; j < Dag::NrFanin; j++) {
+                for (int j = 0; j < FI; j++) {
                     auto child = fanins[j];
                     auto assign = fanin_asgn[j];
                     if (child < spec.get_nr_in()) {
@@ -110,10 +91,10 @@ namespace percy
 
                 if (opvar_idx > 0) {
                     abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(
-                                get_op_var(dag, i, opvar_idx), 1 - output));
+                                get_op_var(spec, i, opvar_idx), 1 - output));
                 }
 
-                auto status =  solver_add_clause(*solver,
+                auto status =  solver->add_clause(
                         abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + ctr); 
 
@@ -122,7 +103,7 @@ namespace percy
                     printf(" %sx_%d_%d ", output ? "!" : "", 
                             spec.get_nr_in() + i + 1, t + 2);
 
-                    for (int j = 0; j < Dag::NrFanin; j++) {
+                    for (int j = 0; j < FI; j++) {
                         auto child = fanins[j];
                         auto assign = fanin_asgn[j];
                         if (child < spec.get_nr_in()) {
@@ -142,15 +123,11 @@ namespace percy
                 return status;
             }
 
-            template<typename TT>
             bool
-            create_tt_clauses(
-                    const synth_spec<TT>& spec, 
-                    const Dag& dag, 
-                    int t)
+            create_tt_clauses(const spec& spec, const dag<FI>& dag, int t)
             {
-                fanin fanins[Dag::NrFanin];
-                std::bitset<Dag::NrFanin> fanin_asgn;
+                int fanins[FI];
+                std::vector<int> fanin_asgn(FI);
 
                 for (int i = 0; i < dag.get_nr_vertices(); i++) {
                     auto v = dag.get_vertex(i);
@@ -161,10 +138,10 @@ namespace percy
                     // First add clauses for all cases where the operator i
                     // computes zero.
                     int opvar_idx = 0;
-                    clear_assignment<Dag::NrFanin>(fanin_asgn);
+                    clear_assignment(fanin_asgn);
                     while (true) {
-                        next_assignment<Dag::NrFanin>(fanin_asgn);
-                        if (is_zero<Dag::NrFanin>(fanin_asgn)) {
+                        next_assignment(fanin_asgn);
+                        if (is_zero(fanin_asgn)) {
                             break;
                         }
                         opvar_idx++;
@@ -181,8 +158,8 @@ namespace percy
                         return false;
                     }
                     while (true) {
-                        next_assignment<Dag::NrFanin>(fanin_asgn);
-                        if (is_zero<Dag::NrFanin>(fanin_asgn)) {
+                        next_assignment(fanin_asgn);
+                        if (is_zero(fanin_asgn)) {
                             break;
                         }
                         opvar_idx++;
@@ -197,13 +174,13 @@ namespace percy
                     // the specified output function.
                     if (i == dag.get_nr_vertices()-1) {
                         int pLits[1];
-                        auto outbit = kitty::get_bit(*spec.functions[0], t+1);
+                        auto outbit = kitty::get_bit(spec[0], t+1);
                         if (spec.out_inv & 1) {
                             outbit = 1 - outbit;
                         }
                         pLits[0] = abc::Abc_Var2Lit(get_sim_var(spec, dag, i,
                                     t), 1 - outbit);
-                        if (!solver_add_clause(*solver,pLits,pLits+1)) {
+                        if (!solver->add_clause(pLits, pLits + 1)) {
                             return false;
                         }
 
@@ -217,9 +194,8 @@ namespace percy
                 return true;
             }
 
-            template<typename TT>
             bool
-            create_main_clauses(const synth_spec<TT>& spec, const Dag& dag)
+            create_main_clauses(const spec& spec, const dag<FI>& dag)
             {
                 for (int t = 0; t < spec.get_tt_size(); t++) {
                     if (!create_tt_clauses(spec, dag, t)) {
@@ -230,9 +206,8 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in standard synthesis flow.
-            template<typename TT>
             bool 
-            encode(const synth_spec<TT>& spec, const Dag& dag)
+            encode(const spec& spec, const dag<FI>& dag)
             {
                 bool success = true;
                 create_variables(spec, dag);
@@ -242,9 +217,8 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in CEGAR based synthesis flow.
-            template<typename TT>
             bool 
-            cegar_encode(const synth_spec<TT>& spec, const Dag& dag)
+            cegar_encode(const spec& spec, const dag<FI>& dag)
             {
                 create_variables(spec, dag);
                 for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
@@ -257,21 +231,20 @@ namespace percy
             }
 
             /// Extracts chain from encoded CNF solution.
-            template<typename TT>
             void 
             extract_chain(
-                    const synth_spec<TT>& spec, 
-                    const Dag& dag, 
-                    chain<Dag::NrFanin>& chain)
+                    const spec& spec, 
+                    const dag<2>& dag, 
+                    chain& chain)
             {
-                fanin op_inputs[Dag::NrFanin];
+                std::vector<int> op_inputs(spec.fanin);
 
-                chain.reset(spec.get_nr_in(), 1, dag.get_nr_vertices());
+                chain.reset(spec.get_nr_in(), 1, spec.nr_steps, 2);
 
-                for (int i = 0; i < dag.get_nr_vertices(); i++) {
-                    kitty::static_truth_table<Dag::NrFanin> op;
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    kitty::dynamic_truth_table op(2);
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        if (solver_var_value(*solver, get_op_var(dag, i, j))) {
+                        if (solver->var_value(get_op_var(spec, i, j))) {
                             kitty::set_bit(op, j); 
                         }
                     }
@@ -297,7 +270,7 @@ namespace percy
 
                 // TODO: support multiple outputs
                 chain.set_output(0, 
-                        ((dag.get_nr_vertices() + spec.get_nr_in()) << 1) +
+                        ((spec.nr_steps + spec.get_nr_in()) << 1) +
                         ((spec.out_inv) & 1));
 
                 /*

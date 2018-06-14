@@ -5,7 +5,7 @@
 #include <fstream>
 
 using namespace percy;
-using kitty::static_truth_table;
+using kitty::dynamic_truth_table;
 
 /*******************************************************************************
     Tests the generation of multiple solutions from a single specification
@@ -16,117 +16,111 @@ int main(void)
 {
     
     {
-        synth_spec<static_truth_table<2>> spec2(2, 1);
-        spec2.verbosity = 0;
+        spec spec;
+        spec.verbosity = 0;
 
-        auto synth1 = new_std_synth();
-        auto synth2 = new_std_synth<2, abc::sat_solver*, epfl_encoder<2, abc::sat_solver*>>();
-        chain<2> c;
+        bsat_wrapper solver;
+        knuth_encoder enc_knuth(solver);
+        epfl_encoder enc_epfl(solver);
+        chain c;
 
-        static_truth_table<2> tt2;
+        dynamic_truth_table tt2(2);
 
         for (int i = 0; i < 16; i++) {
             kitty::create_from_words(tt2, &i, &i+1);
-            spec2.functions[0] = &tt2;
+            spec[0] = tt2;
 
             printf("Generating solutions for function ");
             kitty::print_binary(tt2);
             printf("\n");
 
-            synth1->reset();
-            synth2->reset();
+            enc_knuth.reset();
+            enc_epfl.reset();
             auto solutions1 = 0;
-            while (synth1->next_solution(spec2, c) == success) {
-                assert(c.get_nr_vertices() <= 1);
+            while (next_solution(spec, c, solver, enc_knuth) == success) {
+                assert(c.get_nr_steps() <= 1);
 
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
 
-                assert(c.satisfies_spec(spec2));
+                assert(c.satisfies_spec(spec));
                 solutions1++;
             }
 
             auto solutions2 = 0;
-            while (synth2->next_solution(spec2, c) == success) {
-                assert(c.get_nr_vertices() <= 1);
+            while (next_solution(spec, c, solver, enc_epfl) == success) {
+                assert(c.get_nr_steps() <= 1);
 
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
 
-                assert(c.satisfies_spec(spec2));
+                assert(c.satisfies_spec(spec));
                 solutions2++;
             }
             assert(solutions1 == solutions2);
         }
 
-        synth_spec<static_truth_table<3>> spec3(3, 1);
-   
-        static_truth_table<3> tt3;
-
+        dynamic_truth_table tt3(3);
         for (int i = 0; i < 256; i++) {
             kitty::create_from_words(tt3, &i, &i+1);
-            spec3.functions[0] = &tt3;
+            spec[0] = tt3;
 
             printf("Generating solutions for function ");
             kitty::print_binary(tt3);
             printf("\n");
 
-            synth1->reset();
+            enc_knuth.reset();
+            enc_epfl.reset();
             auto solutions1 = 0;
             printf("=== SYNTH 1 ===\n");
-            while (synth1->next_solution(spec3, c) == success) {
+            while (next_solution(spec, c, solver, enc_knuth) == success) {
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
                 
-                assert(c.satisfies_spec(spec3));
+                assert(c.satisfies_spec(spec));
                 solutions1++;
             }
-            synth2->reset();
             auto solutions2 = 0;
             printf("=== SYNTH 2 ===\n");
-            while (synth2->next_solution(spec3, c) == success) {
+            while (next_solution(spec, c, solver, enc_epfl) == success) {
                 printf("Next solution: ");
                 c.to_expression(std::cout);
                 printf("\n");
                 
-                assert(c.satisfies_spec(spec3));
+                assert(c.satisfies_spec(spec));
                 solutions2++;
             }
 
             assert(solutions1 == solutions2);
         }
 
-        auto synth31 = new_std_synth<3>();
-        auto synth32 = new_std_synth<3, abc::sat_solver*, epfl_encoder<3, abc::sat_solver*>>();
-        chain<3> c3;
-        synth_spec<static_truth_table<4>> spec4(4, 1);
+        spec.fanin = 3;
         
-        static_truth_table<4> tt4;
-
+        dynamic_truth_table tt4(4);
         for (int i = 0; i < 256; i++) {
             kitty::create_from_words(tt4, &i, &i+1);
-            spec4.functions[0] = &tt4;
+            spec[0] = tt4;
 
             printf("Generating solutions for function ");
             kitty::print_binary(tt4);
             printf("\n");
 
-            synth31->reset();
+            enc_knuth.reset();
+            enc_epfl.reset();
             auto solutions1 = 0;
-            while (synth31->next_solution(spec4, c3) == success) {
-                printf("Next solution: (%d vertices)\n", c3.get_nr_vertices());
-                assert(c3.satisfies_spec(spec4));
+            while (next_solution(spec, c, solver, enc_knuth) == success) {
+                printf("Next solution: (%d vertices)\n", c.get_nr_steps());
+                assert(c.satisfies_spec(spec));
                 solutions1++;
             }
 
-            synth32->reset();
             auto solutions2 = 0;
-            while (synth32->next_solution(spec4, c3) == success) {
-                printf("Next solution: (%d vertices)\n", c3.get_nr_vertices());
-                assert(c3.satisfies_spec(spec4));
+            while (next_solution(spec, c, solver, enc_epfl) == success) {
+                printf("Next solution: (%d vertices)\n", c.get_nr_steps());
+                assert(c.satisfies_spec(spec));
                 solutions2++;
             }
 

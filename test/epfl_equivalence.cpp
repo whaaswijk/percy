@@ -5,14 +5,15 @@
 #define MAX_TESTS 256
 
 using namespace percy;
-using kitty::static_truth_table;
+using kitty::dynamic_truth_table;
 
-template<int nr_in, int FI=2>
-void check_equivalence(bool full_coverage)
+void check_equivalence(int nr_in, int FI, bool full_coverage)
 {
-    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
-    std_synthesizer<FI, knuth_encoder<FI, sat_solver*>, sat_solver*> synth1;
-    std_synthesizer<FI, epfl_encoder<FI, sat_solver*>, sat_solver*> synth2;
+    spec spec;
+
+    bsat_wrapper solver;
+    knuth_encoder knuth_enc(solver);
+    epfl_encoder epfl_enc(solver);
 
     spec.verbosity = 0;
 
@@ -21,36 +22,36 @@ void check_equivalence(bool full_coverage)
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
-    static_truth_table<nr_in> tt;
+    dynamic_truth_table tt(nr_in);
 
-    chain<FI> c1, c1_cegar, c2, c2_cegar;
+    chain c1, c1_cegar, c2, c2_cegar;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
 
-        spec.functions[0] = &tt;
-        auto res1 = synth1.synthesize(spec, c1);
+        spec[0] = tt;
+        auto res1 = synthesize(spec, c1, solver, knuth_enc);
         assert(res1 == success);
         auto sim_tts1 = c1.simulate(spec);
-        auto c1_nr_vertices = c1.get_nr_vertices();
+        auto c1_nr_vertices = c1.get_nr_steps();
         assert(c1.satisfies_spec(spec));
 
-        auto res1_cegar = synth1.cegar_synthesize(spec, c1_cegar);
+        auto res1_cegar = synthesize(spec, c1_cegar, solver, knuth_enc, SYNTH_STD_CEGAR);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate(spec);
-        auto c1_cegar_nr_vertices = c1_cegar.get_nr_vertices();
+        auto c1_cegar_nr_vertices = c1_cegar.get_nr_steps();
         assert(c1_cegar.satisfies_spec(spec));
 
-        auto res2 = synth2.synthesize(spec, c2);
+        auto res2 = synthesize(spec, c2, solver, epfl_enc);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate(spec);
-        auto c2_nr_vertices = c2.get_nr_vertices();
+        auto c2_nr_vertices = c2.get_nr_steps();
         assert(c2.satisfies_spec(spec));
 
-        auto res2_cegar = synth2.cegar_synthesize(spec, c2_cegar);
+        auto res2_cegar = synthesize(spec, c2_cegar, solver, epfl_enc, SYNTH_STD_CEGAR);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate(spec);
-        auto c2_cegar_nr_vertices = c2.get_nr_vertices();
+        auto c2_cegar_nr_vertices = c2.get_nr_steps();
         assert(c2_cegar.satisfies_spec(spec));
 
         assert(c1_nr_vertices == c2_nr_vertices);
@@ -81,11 +82,11 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    check_equivalence<2>(full_coverage);
-    check_equivalence<3>(full_coverage);
-    check_equivalence<4>(full_coverage);
-    check_equivalence<3, 3>(full_coverage);
-    check_equivalence<4, 3>(full_coverage);
+    check_equivalence(2, 2, full_coverage);
+    check_equivalence(3, 2, full_coverage);
+    check_equivalence(3, 4, full_coverage);
+    check_equivalence(4, 3, full_coverage);
+    check_equivalence(4, 4, full_coverage);
 
     return 0;
 }

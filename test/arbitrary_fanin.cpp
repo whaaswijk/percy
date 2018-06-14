@@ -11,12 +11,12 @@ using namespace percy;
 int
 main(void)
 {
-    std::array<int, 2> init_test;
+    std::vector<int> init_test = { 0, 0 };
     fanin_init(init_test, 1);
     assert(init_test[0] == 0);
     assert(init_test[1] == 1);
 
-    std::array<int, 2> fanin2 = { 0, 1 };
+    std::vector<int> fanin2 = { 0, 1 };
     assert(fanin_inc(fanin2, 1) == false);
 
     assert(fanin_inc(fanin2, 2) == true);
@@ -29,7 +29,7 @@ main(void)
 
     assert(fanin_inc(fanin2, 2) == false);
 
-    std::array<int, 3> fanin3 = { 0, 1, 2 };
+    std::vector<int> fanin3 = { 0, 1, 2 };
     assert(fanin_inc(fanin3, 2) == false);
     
     assert(fanin_inc(fanin3, 3) == true);

@@ -12,7 +12,7 @@ int main(void)
 {
     int ctr = 0;
     binary_dag g;
-    unbounded_dag_generator<sat_solver*> ugen;
+    unbounded_dag_generator ugen;
 
     ugen.reset(3);
     ctr = 0;

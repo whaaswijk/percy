@@ -1,21 +1,15 @@
 #pragma once
 
-#include "encoder_base.hpp"
+#include "encoder.hpp"
 #include "../io.hpp"
 #include "../floating_dag.hpp"
 
 namespace percy
 {
-    template<int FI=2, typename Solver=sat_solver*>
     class floating_dag_encoder
     {
-        using fanin = typename floating_dag<FI>::fanin;
-
-        private:
-            // We only keep a reference to the solver. Since we don't own it,
-            // we should never use encoders outside of the synthesizer objects
-            // that own them and the solvers.
-            Solver* solver;
+        protected:
+            solver_wrapper * solver;
 
             int nr_op_vars;
             int nr_sim_vars;
@@ -34,10 +28,10 @@ namespace percy
                 abc::Vec_IntFree(vLits);
             }
 
-            void 
-            set_solver(Solver* s)
+            void
+            set_solver(solver_wrapper * solver) 
             {
-                solver = s;
+                this->solver = solver;
             }
 
             int
@@ -45,6 +39,7 @@ namespace percy
             {
             }
 
+            template<int FI>
             int
             get_op_var(const floating_dag<FI>& dag, int step_idx, int var_idx)
             {
@@ -55,10 +50,10 @@ namespace percy
                 return step_idx * nr_op_vars_per_step + var_idx - 1;
             }
 
-            template<typename TT>
+            template<int FI>
             int
             get_sim_var(
-                    const synth_spec<TT>& spec, 
+                    const spec& spec, 
                     const floating_dag<FI>& dag,
                     int step_idx, 
                     int t)
@@ -68,11 +63,9 @@ namespace percy
                 return nr_op_vars + spec.get_tt_size() * step_idx + t;
             }
 
-            template<typename TT>
+            template<int FI>
             void
-            create_variables(
-                    const synth_spec<TT>& spec, 
-                    const floating_dag<FI>& dag)
+            create_variables(const spec& spec, const floating_dag<FI>& dag)
             {
                 auto nr_sel_vars = 0;
                 dag.foreach_vertex([&dag, &nr_sel_vars] (auto v, int v_idx) {
@@ -96,17 +89,17 @@ namespace percy
                 solver_set_nr_vars(*solver, nr_op_vars + nr_sim_vars);
             }
 
-            template<typename TT>
+            template<int FI>
             bool
             add_simulation_clause(
-                    const synth_spec<TT>& spec,
+                    const spec& spec,
                     const floating_dag<FI>& dag,
                     const int t, 
                     const int i, 
                     const int output, 
                     const int opvar_idx,
-                    const fanin* const fanins,
-                    const std::bitset<FI>& fanin_asgn)
+                    const int* const fanins,
+                    const std::vector<int>& fanin_asgn)
             {
                 int ctr = 0;
 
@@ -161,10 +154,10 @@ namespace percy
                 return status;
             }
 
-            template<typename TT>
+            template<int FI>
             bool
             create_tt_clauses(
-                    const synth_spec<TT>& spec, 
+                    const spec& spec, 
                     const floating_dag<FI>& dag, 
                     int t)
             {
@@ -236,9 +229,9 @@ namespace percy
                 return true;
             }
 
-            template<typename TT>
+            template<int FI>
             bool
-            create_main_clauses(const synth_spec<TT>& spec, const floating_dag<FI>& dag)
+            create_main_clauses(const spec& spec, const floating_dag<FI>& dag)
             {
                 for (int t = 0; t < spec.get_tt_size(); t++) {
                     if (!create_tt_clauses(spec, dag, t)) {
@@ -248,9 +241,9 @@ namespace percy
                 return true;
             }
 
-            template<typename TT>
+            template<int FI>
             bool 
-            encode(const synth_spec<TT>& spec, const floating_dag<FI>& dag)
+            encode(const spec& spec, const floating_dag<FI>& dag)
             {
                 bool success = true;
                 create_variables(spec, dag);
@@ -259,9 +252,9 @@ namespace percy
                 return success;
             }
 
-            template<typename TT>
+            template<int FI>
             bool 
-            cegar_encode(const synth_spec<TT>& spec, const floating_dag<FI>& dag)
+            cegar_encode(const spec& spec, const floating_dag<FI>& dag)
             {
                 create_variables(spec, dag);
                 for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
@@ -273,13 +266,14 @@ namespace percy
                 return true;
             }
 
-            template<typename TT>
+            template<int FI>
             void 
             extract_chain(
-                    const synth_spec<TT>& spec, 
+                    const spec& spec, 
                     const floating_dag<FI>& dag, 
-                    chain<FI>& chain)
+                    chain& chain)
             {
+                assert(chain.get_fanin() == FI);
                 fanin op_inputs[FI];
 
                 chain.reset(spec.get_nr_in(), 1, dag.get_nr_vertices());

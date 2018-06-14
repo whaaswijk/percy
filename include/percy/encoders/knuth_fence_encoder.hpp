@@ -1,19 +1,13 @@
 #pragma once
 
-#include "encoder_base.hpp"
+#include "encoder.hpp"
+#include "../fence.hpp"
 
 namespace percy
 {
-    using abc::Abc_Var2Lit;
-
-    template<int FI=2, typename Solver=sat_solver*>
-    class fence_encoder
+    class knuth_fence_encoder : public fence_encoder
     {
-        using fanin = typename dag<FI>::fanin;
-
         private:
-            Solver* solver;
-
             int level_dist[65]; // How many steps are below a certain level
             int nr_levels; // The number of levels in the Boolean fence
             int nr_op_vars_per_step;
@@ -28,31 +22,25 @@ namespace percy
             int fence_offset;
 
             abc::Vec_Int_t* vLits; // Dynamic vector of literals
-            std::vector<std::array<fanin, FI>> svar_map;
+            std::vector<std::vector<int>> svar_map;
             std::vector<int> nr_svar_map;
 
 
         public:
-            fence_encoder()
+            knuth_fence_encoder(solver_wrapper& solver)
             {
                 // TODO: compute better upper bound on number of literals
                 vLits = abc::Vec_IntAlloc(128);
+                set_solver(solver);
             }
 
-            ~fence_encoder()
+            ~knuth_fence_encoder()
             {
                 abc::Vec_IntFree(vLits);
             }
 
-            void
-            set_solver(Solver* s)
-            {
-                solver = s;
-            }
-
-            template<typename TT>
             void 
-            update_level_map(const synth_spec<TT>& spec, const fence& f)
+            update_level_map(const spec& spec, const fence& f)
             {
                 nr_levels = f.nr_levels();
                 level_dist[0] = spec.get_nr_in();
@@ -64,9 +52,8 @@ namespace percy
             /*******************************************************************
                 Returns the level (in the Boolean chain) of the specified step.
             *******************************************************************/
-            template<typename TT>
             int 
-            get_level(const synth_spec<TT>& spec, int step_idx) const
+            get_level(const spec& spec, int step_idx) const
             {
                 // PIs are considered to be on level zero.
                 if (step_idx < spec.get_nr_in()) {
@@ -99,9 +86,8 @@ namespace percy
                 return first_step_on_level(level + 1) - 1;
             }
 
-            template<typename TT>
             int
-            get_op_var(const synth_spec<TT>& spec, int step_idx, int var_idx) const
+            get_op_var(const spec& spec, int step_idx, int var_idx) const
             {
                 assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
@@ -118,9 +104,8 @@ namespace percy
                 return sel_offset + var_idx;
             }
 
-            template<typename TT>
             int
-            get_sim_var(const synth_spec<TT>& spec, int step_idx, int t) const
+            get_sim_var(const spec& spec, int step_idx, int t) const
             {
                 assert(step_idx < spec.nr_steps);
                 assert(t < spec.get_tt_size());
@@ -128,9 +113,8 @@ namespace percy
                 return sim_offset + spec.get_tt_size() * step_idx + t;
             }
 
-            template<typename TT>
             int 
-            get_out_var(const synth_spec<TT>& spec, int h, int i) const
+            get_out_var(const spec& spec, int h, int i) const
             {
                 assert(h < spec.nr_nontriv);
                 assert(i < spec.nr_steps);
@@ -138,13 +122,12 @@ namespace percy
                 return out_offset + spec.nr_steps * h + i;
             }
 
-            template<typename TT>
             void 
-            create_variables(const synth_spec<TT>& spec)
+            create_variables(const spec& spec)
             {
-                std::array<int, FI> fanins;
+                std::vector<int> fanins(spec.fanin);
 
-                nr_op_vars_per_step = ((1u << FI) - 1);
+                nr_op_vars_per_step = ((1u << spec.fanin) - 1);
                 nr_op_vars = spec.nr_steps * nr_op_vars_per_step;
                 nr_out_vars = spec.nr_nontriv * spec.nr_steps;
                 nr_sim_vars = spec.nr_steps * spec.get_tt_size();
@@ -160,11 +143,11 @@ namespace percy
                     assert(level > 0);
                     for (auto z = first_step_on_level(level-1); 
                             z < first_step_on_level(level); z++) {
-                        fanin_init<FI>(fanins, FI-1);
+                        fanin_init(fanins, spec.fanin - 1);
                         do  {
                             svar_map.push_back(fanins);
                             nr_svars_for_i++;
-                        } while (fanin_inc<FI>(fanins, z));
+                        } while (fanin_inc(fanins, z));
                     }
                     nr_sel_vars += nr_svars_for_i;
                     nr_svar_map[i] = nr_svars_for_i;
@@ -177,13 +160,11 @@ namespace percy
                 fence_offset = nr_sel_vars + nr_op_vars + nr_out_vars +
                     nr_sim_vars;
 
-                solver_set_nr_vars(*solver, nr_op_vars + nr_out_vars +
-                        nr_sim_vars + nr_sel_vars);
+                solver->set_nr_vars(nr_op_vars + nr_out_vars + nr_sim_vars + nr_sel_vars);
             }
 
-            template<typename TT>
             bool
-            create_main_clauses(const synth_spec<TT>& spec)
+            create_main_clauses(const spec& spec)
             {
                 for (int t = 0; t < spec.get_tt_size(); t++) {
                     if (!create_tt_clauses(spec, t)) {
@@ -193,9 +174,8 @@ namespace percy
                 return true;
             }
 
-            template<typename TT>
             void
-            create_output_clauses(const synth_spec<TT>& spec)
+            create_output_clauses(const spec& spec)
             {
                 // Every output points to an operand.
                 if (spec.nr_nontriv > 1) {
@@ -208,7 +188,7 @@ namespace percy
                                         h+1, spec.get_nr_in()+i+1);
                             }
                         }
-                        solver_add_clause(*solver,abc::Vec_IntArray(vLits), 
+                        solver->add_clause(abc::Vec_IntArray(vLits), 
                                 abc::Vec_IntArray(vLits) + spec.nr_steps);
                     }
                 }
@@ -220,7 +200,7 @@ namespace percy
                     abc::Vec_IntSetEntry(vLits, h, 
                             Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
                 }
-                solver_add_clause(*solver, abc::Vec_IntArray(vLits), 
+                solver->add_clause(abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + spec.nr_nontriv);
             }
 
@@ -228,11 +208,10 @@ namespace percy
                 Add clauses that prevent trivial variable projection and
                 constant operators from being synthesized.
             *******************************************************************/
-            template<typename TT>
             void 
-            create_nontriv_clauses(const synth_spec<TT>& spec)
+            create_nontriv_clauses(const spec& spec)
             {
-                static_truth_table<FI> triv_op;
+                percy::dynamic_truth_table triv_op(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps; i++) {
                     kitty::clear(triv_op);
@@ -242,29 +221,28 @@ namespace percy
                         abc::Vec_IntSetEntry(vLits, j-1,
                                 Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
-                    solver_add_clause(*solver, abc::Vec_IntArray(vLits),
+                    solver->add_clause(abc::Vec_IntArray(vLits),
                             abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
                     
                     // Dissallow all variable projection operators.
-                    for (int n = 0; n < FI; n++) {
+                    for (int n = 0; n < spec.fanin; n++) {
                         kitty::create_nth_var(triv_op, n);
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
                             abc::Vec_IntSetEntry(vLits, j-1,
                                     abc::Abc_Var2Lit(get_op_var(spec, i, j), 
                                         kitty::get_bit(triv_op, j)));
                         }
-                        solver_add_clause(*solver, abc::Vec_IntArray(vLits),
+                        solver->add_clause(abc::Vec_IntArray(vLits),
                                 abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
                     }
                 }
             }
 
-            template<typename TT>
             bool 
-            create_tt_clauses(const synth_spec<TT>& spec, int t)
+            create_tt_clauses(const spec& spec, int t)
             {
                 auto ret = true;
-                std::bitset<FI> fanin_asgn;
+                std::vector<int> fanin_asgn(spec.fanin);
                 int pLits[2];
 
                 int svar_offset = 0;
@@ -281,10 +259,10 @@ namespace percy
                         // First add clauses 
                         // operator i computes zero.
                         int opvar_idx = 0;
-                        clear_assignment<FI>(fanin_asgn);
+                        clear_assignment(fanin_asgn);
                         while (true) {
-                            next_assignment<FI>(fanin_asgn);
-                            if (is_zero<FI>(fanin_asgn)) {
+                            next_assignment(fanin_asgn);
+                            if (is_zero(fanin_asgn)) {
                                 break;
                             }
                             opvar_idx++;
@@ -297,8 +275,8 @@ namespace percy
                         ret &= add_simulation_clause(spec, t, i, svar, 1,
                                 opvar_idx, fanins, fanin_asgn);
                         while (true) {
-                            next_assignment<FI>(fanin_asgn);
-                            if (is_zero<FI>(fanin_asgn)) {
+                            next_assignment(fanin_asgn);
+                            if (is_zero(fanin_asgn)) {
                                 break;
                             }
                             opvar_idx++;
@@ -313,14 +291,14 @@ namespace percy
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         auto outbit = kitty::get_bit(
-                                *spec.functions[spec.synth_functions[h]], t+1);
-                        if ((spec.out_inv >> spec.synth_functions[h]) & 1) {
+                                spec[spec.synth_func(h)], t+1);
+                        if ((spec.out_inv >> spec.synth_func(h)) & 1) {
                             outbit = 1 - outbit;
                         }
                         pLits[0] = abc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
                         pLits[1] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), 
                                 1 - outbit);
-                        ret &= solver_add_clause(*solver, pLits, pLits+2);
+                        ret &= solver->add_clause(pLits, pLits+2);
                         if (spec.verbosity > 1) {
                             printf("  (g_%d_%d --> %sx_%d_%d)\n", h+1, 
                                     spec.get_nr_in()+i+1, 
@@ -336,9 +314,8 @@ namespace percy
             /*******************************************************************
                 Ensure that each gate has FI operands.
             *******************************************************************/
-            template<typename TT>
             void
-            create_op_clauses(const synth_spec<TT>& spec)
+            create_op_clauses(const spec& spec)
             {
                 auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
@@ -353,7 +330,7 @@ namespace percy
                                     0));
                     }
 
-                    solver_add_clause(*solver, abc::Vec_IntArray(vLits), 
+                    solver->add_clause(abc::Vec_IntArray(vLits), 
                             abc::Vec_IntArray(vLits) + nr_svars_for_i);
 
                     svar_offset += nr_svars_for_i;
@@ -363,9 +340,8 @@ namespace percy
             /*******************************************************************
               Add clauses which ensure that every step is used at least once.
             *******************************************************************/
-            template<typename TT>
             void 
-            create_alonce_clauses(const synth_spec<TT>& spec)
+            create_alonce_clauses(const spec& spec)
             {
                 for (int i = 0; i < spec.nr_steps; i++) {
                     auto ctr = 0;
@@ -404,28 +380,24 @@ namespace percy
                         }
 
                     }
-                    solver_add_clause(
-                            *solver, 
-                            abc::Vec_IntArray(vLits),
-                            abc::Vec_IntArray(vLits) + ctr);
+                    solver->add_clause(abc::Vec_IntArray(vLits), abc::Vec_IntArray(vLits) + ctr);
                 }
             }
 
-            template<typename TT>
             bool 
             add_simulation_clause(
-                    const synth_spec<TT>& spec, 
+                    const spec& spec, 
                     const int t, 
                     const int i, 
                     const int svar, 
                     const int output, 
                     const int opvar_idx,
-                    const std::array<fanin, FI>& fanins,
-                    const std::bitset<FI>& fanin_asgn)
+                    const std::vector<int>& fanins,
+                    const std::vector<int>& fanin_asgn)
             {
                 int ctr = 0;
 
-                for (int j = 0; j < FI; j++) {
+                for (int j = 0; j < spec.fanin; j++) {
                     auto child = fanins[j];
                     auto assign = fanin_asgn[j];
                     if (child < spec.get_nr_in()) {
@@ -449,14 +421,12 @@ namespace percy
                                 get_op_var(spec, i, opvar_idx), 1 - output));
                 }
 
-                return solver_add_clause(*solver, abc::Vec_IntArray(vLits),
-                        abc::Vec_IntArray(vLits) + ctr); 
+                return solver->add_clause(abc::Vec_IntArray(vLits), abc::Vec_IntArray(vLits) + ctr); 
             }
 
 /*
-            template<typename TT>
             void 
-            create_noreapply_clauses(const synth_spec<TT>& spec)
+            create_noreapply_clauses(const spec& spec)
             {
                 int pLits[2];
 
@@ -502,19 +472,18 @@ namespace percy
 */
 
             /// Extracts chain from encoded CNF solution.
-            template<typename TT>
             void 
-            extract_chain(synth_spec<TT>& spec, chain<FI>& chain)
+            extract_chain(const spec& spec, chain& chain)
             {
-                fanin op_inputs[FI];
+                std::vector<int> op_inputs(spec.fanin);
 
-                chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps);
+                chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
 
                 auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    kitty::static_truth_table<FI> op;
+                    kitty::dynamic_truth_table op(spec.fanin);
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        if (solver_var_value(*solver, get_op_var(spec, i, j))) {
+                        if (solver->var_value(get_op_var(spec, i, j))) {
                             kitty::set_bit(op, j); 
                         }
                     }
@@ -529,11 +498,11 @@ namespace percy
                     const auto nr_svars_for_i = nr_svar_map[i];
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
-                        if (solver_var_value(*solver, sel_var)) {
+                        if (solver->var_value(sel_var)) {
                             const auto& fanins = svar_map[svar_offset + j];
                             if (spec.verbosity) {
                                 printf("  with operands ");
-                                for (int k = 0; k < FI; k++) {
+                                for (int k = 0; k < spec.fanin; k++) {
                                     printf("x_%d ", fanins[k] + 1);
                                 }
                             }
@@ -552,13 +521,12 @@ namespace percy
                 auto triv_count = 0, nontriv_count = 0;
                 for (int h = 0; h < spec.get_nr_out(); h++) {
                     if ((spec.triv_flag >> h) & 1) {
-                        chain.set_output(h, (spec.triv_functions[triv_count++] << 1) +
+                        chain.set_output(h, (spec.triv_func(triv_count++) << 1) +
                                 ((spec.out_inv >> h) & 1));
                         continue;
                     }
                     for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(*solver, 
-                                    get_out_var(spec, nontriv_count, i))) {
+                        if (solver->var_value(get_out_var(spec, nontriv_count, i))) {
                             chain.set_output(h, ((i + spec.get_nr_in() + 1) << 1) +
                                     ((spec.out_inv >> h) & 1));
                             nontriv_count++;
@@ -569,9 +537,8 @@ namespace percy
             }
 
 /*
-            template<typename TT>
             void 
-            create_colex_clauses(const synth_spec<TT>& spec)
+            create_colex_clauses(const spec& spec)
             {
                 int pLits[2];
 
@@ -620,9 +587,8 @@ namespace percy
                 }
             }
 
-            template<typename TT>
             void 
-            create_colex_func_clauses(const synth_spec<TT>& spec)
+            create_colex_func_clauses(const spec& spec)
             {
                 for (int i = 0; i < spec.nr_steps-1; i++) {
                     for (int k = 1; k < spec.get_nr_in()+i; k++) {
@@ -661,9 +627,8 @@ namespace percy
                 }
             }
 
-            template<typename TT>
             void 
-            create_symvar_clauses(const synth_spec<TT>& spec)
+            create_symvar_clauses(const spec& spec)
             {
                 for (int q = 1; q < spec.get_nr_in(); q++) {
                     for (int p = 0; p < q; p++) {
@@ -722,10 +687,9 @@ namespace percy
             }
 */
 
-			/// Encodes specifciation for use in standard synthesis flow.
-            template<typename TT>
+			/// Encodes specifciation for use in fence-based synthesis flow.
             bool 
-            encode(const synth_spec<TT>& spec, const fence& f)
+            encode(const spec& spec, const fence& f)
             {
                 assert(spec.nr_steps <= MAX_STEPS);
 
@@ -767,9 +731,8 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in CEGAR based synthesis flow.
-            template<typename TT>
             bool 
-            cegar_encode(const synth_spec<TT>& spec, const fence& f)
+            cegar_encode(const spec& spec, const fence& f)
             {
                 assert(spec.nr_steps <= MAX_STEPS);
 
@@ -811,9 +774,8 @@ namespace percy
             /// Assumes that a solution has been found by the current encoding.
             /// Blocks the current solution such that the solver is forced to
             /// find different ones (if they exist).
-            template<typename TT>
             bool
-            block_solution(const synth_spec<TT>& spec)
+            block_solution(const spec& spec)
             {
                 int ctr = 0;
                 int svar_offset = 0;
@@ -822,7 +784,7 @@ namespace percy
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
                         int invert = 0;
                         const auto op_var = get_op_var(spec, i, j);
-                        if (solver_var_value(*solver, op_var)) {
+                        if (solver->var_value(op_var)) {
                             invert = 1;
                         }
                         abc::Vec_IntSetEntry(vLits, ctr++,
@@ -833,7 +795,7 @@ namespace percy
                     const auto nr_svars_for_i = nr_svar_map[i];
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
-                        if (solver_var_value(*solver, sel_var)) {
+                        if (solver->var_value(sel_var)) {
                             abc::Vec_IntSetEntry(vLits, ctr++,
                                     abc::Abc_Var2Lit(sel_var, 1));
                             break;
@@ -843,19 +805,15 @@ namespace percy
                     svar_offset += nr_svars_for_i;
                 }
                 
-                return solver_add_clause(
-                            *solver,
-                            abc::Vec_IntArray(vLits), 
-                            abc::Vec_IntArray(vLits) + ctr);
+                return solver->add_clause(abc::Vec_IntArray(vLits), abc::Vec_IntArray(vLits) + ctr);
             }
 
 
             /// Similar to block_solution, but blocks all solutions with the
             /// same structure. This is more restrictive, since the other
             /// method allows for the same structure but different operators.
-            template<typename TT>
             bool
-            block_struct_solution(const synth_spec<TT>& spec)
+            block_struct_solution(const spec& spec)
             {
                 int ctr = 0;
                 int svar_offset = 0;
@@ -864,7 +822,7 @@ namespace percy
                     const auto nr_svars_for_i = nr_svar_map[i];
                     for (int j = 0; j < nr_svars_for_i; j++) {
                         const auto sel_var = get_sel_var(svar_offset + j);
-                        if (solver_var_value(*solver, sel_var)) {
+                        if (solver->var_value(sel_var)) {
                             abc::Vec_IntSetEntry(vLits, ctr++,
                                     abc::Abc_Var2Lit(sel_var, 1));
                             break;
@@ -874,13 +832,8 @@ namespace percy
                     svar_offset += nr_svars_for_i;
                 }
 
-                return solver_add_clause(
-                            *solver,
-                            abc::Vec_IntArray(vLits), 
-                            abc::Vec_IntArray(vLits) + ctr);
+                return solver->add_clause(abc::Vec_IntArray(vLits), abc::Vec_IntArray(vLits) + ctr);
             }
-
-            
     };
 }
 

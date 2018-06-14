@@ -1,4 +1,4 @@
-#include <percy/sat_circuits.hpp>
+#include <percy/percy.hpp>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -11,23 +11,22 @@ using namespace percy;
 using std::vector;
 
 int
-block_solution(sat_solver* s, vector<int> sum_vars)
+block_solution(solver_wrapper* s, vector<int> sum_vars)
 {
     int lits[MAX_SUM_VARS];
 
     for (int i = 0; i < sum_vars.size(); i++) {
         const auto sum_var = sum_vars[i];
-        lits[i] = abc::Abc_Var2Lit(sum_var, solver_var_value(s, sum_var));
+        lits[i] = abc::Abc_Var2Lit(sum_var, s->var_value(sum_var));
     }
-    return solver_add_clause(s, lits, lits + sum_vars.size());
+    return s->add_clause(lits, lits + sum_vars.size());
 }
 
 void
 enumerate_solutions(int nr_svars, int C)
 {
     assert(nr_svars <= MAX_SUM_VARS);
-    sat_solver* s;
-    solver_alloc(&s);
+    auto s = get_solver(SLV_BSAT2);
 
     vector<int> sum_vars;
     vector<int> res_vars;
@@ -36,7 +35,7 @@ enumerate_solutions(int nr_svars, int C)
     printf("C = %d\n", C);
     printf("nr_svars = %d\n", nr_svars);
     printf("nr_res_vars = %d\n", nr_res_vars);
-    solver_set_nr_vars(s, nr_svars + nr_res_vars);
+    s->set_nr_vars(nr_svars + nr_res_vars);
 
     for (int i = 0; i < nr_svars; i++) {
         sum_vars.push_back(i);
@@ -44,11 +43,11 @@ enumerate_solutions(int nr_svars, int C)
     for (int i = 0; i < nr_res_vars; i++) {
         res_vars.push_back(nr_svars + i);
     }
-    create_cardinality_circuit(s, sum_vars, res_vars, C);
+    create_cardinality_circuit(s.get(), sum_vars, res_vars, C);
 
     int nr_valid_cardinality_solutions = 0;
     while (true) {
-        auto status = solver_solve(s);
+        auto status = s->solve();
         if (status != success) {
             break;
         }
@@ -57,7 +56,7 @@ enumerate_solutions(int nr_svars, int C)
         }
         printf("\n");
         for (int i = 0; i < nr_svars; i++) {
-            printf("  %d ", solver_var_value(s, i));
+            printf("  %d ", s->var_value(i));
         }
         printf("\n");
 
@@ -67,22 +66,20 @@ enumerate_solutions(int nr_svars, int C)
             }
             printf("\n");
             for (int j = 0; j < C + 2; j++) {
-                printf("   %d    ", solver_var_value(s, nr_svars + i * (C + 2) + j));
+                printf("   %d    ", s->var_value(nr_svars + i * (C + 2) + j));
             }
             printf("\n");
 
-            if (i == nr_svars && solver_var_value(s, nr_svars + i * (C + 2) + C)) {
+            if (i == nr_svars && s->var_value(nr_svars + i * (C + 2) + C)) {
                 ++nr_valid_cardinality_solutions;
             }
         }
         printf("\n");
-        auto res = block_solution(s, sum_vars);
+        auto res = block_solution(s.get(), sum_vars);
         if (!res) {
             break;
         }
     }
-
-    solver_dealloc(&s);
 
     // Verify that the number of solutions where res[C] == 1 is (sum_vars.size() choose C)
     assert(nr_valid_cardinality_solutions == binomial_coeff(sum_vars.size(), C));

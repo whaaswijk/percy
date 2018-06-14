@@ -55,11 +55,26 @@ namespace percy
         return 0;
     }
 
-    template<typename fanin, int FI>
     int
-    colex_compare(const fanin* const fanins1, const fanin* const fanins2)
+    colex_compare(const int* const fanins1, const int* const fanins2, int fanin)
     {
-        for (int i = FI-1; i >= 0; i--) {
+        for (int i = fanin-1; i >= 0; i--) {
+            if (fanins1[i] < fanins2[i]) {
+                return -1;
+            } else if (fanins1[i] > fanins2[i]) {
+                return 1;
+            }
+        }
+
+        // All fanins are equal
+        return 0;
+    }
+
+    int
+    colex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
+    {
+        assert(fanins1.size() == fanins2.size());
+        for (int i = fanins1.size() - 1; i >= 0; i--) {
             if (fanins1[i] < fanins2[i]) {
                 return -1;
             } else if (fanins1[i] > fanins2[i]) {
@@ -109,5 +124,21 @@ namespace percy
         return 0;
     }
 
+    int
+    lex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
+    {
+        assert(fanins1.size() == fanins2.size());
+
+        for (int i = 0; i < fanins1.size(); i++) {
+            if (fanins1[i] < fanins2[i]) {
+                return -1;
+            } else if (fanins1[i] > fanins2[i]) {
+                return 1;
+            }
+        }
+
+        // All fanins are equal
+        return 0;
+    }
 }
 

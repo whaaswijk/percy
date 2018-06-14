@@ -4,11 +4,10 @@
 #define MAX_TESTS 256
 
 using namespace percy;
-using kitty::static_truth_table;
+using kitty::dynamic_truth_table;
 
-
-template<int nr_in>
-void gen_check_equivalence(bool full_coverage)
+#if 0
+void gen_check_equivalence(int nr_in, bool full_coverage)
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
@@ -16,7 +15,7 @@ void gen_check_equivalence(bool full_coverage)
     auto synth1 = new_std_synth();
     auto synth2 = new_dag_synth();
 
-    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec spec;
     spec.verbosity = 0;
 
 
@@ -25,10 +24,10 @@ void gen_check_equivalence(bool full_coverage)
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
-    static_truth_table<nr_in> tt;
+    dynamic_truth_table tt(nr_in);
 
-    chain<2> c1;
-    chain<2> c2;
+    chain c1;
+    chain c2;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -37,17 +36,17 @@ void gen_check_equivalence(bool full_coverage)
         if (is_trivial(tt)) {
             continue;
         }
-        spec.functions[0] = &tt;
+        spec[0] = tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = chain_simulate(c1, spec);
-        auto c1_nr_steps = c1.get_nr_vertices();
+        auto c1_nr_steps = c1.get_nr_steps();
 
         const auto dag_found = find_dag(spec, g, nr_in);
         assert(dag_found == success);
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
-        auto c2_nr_steps = c2.get_nr_vertices();
+        auto c2_nr_steps = c2.get_nr_steps();
         auto sim_tts2 = chain_simulate(c2, spec);
         assert(c1_nr_steps == c2_nr_steps);
         assert(sim_tts1[0] == sim_tts2[0]);
@@ -58,8 +57,7 @@ void gen_check_equivalence(bool full_coverage)
     printf("\n");
 }
 
-template<int nr_in>
-void check_equivalence(bool full_coverage)
+void check_equivalence(int nr_in, bool full_coverage)
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
@@ -67,7 +65,7 @@ void check_equivalence(bool full_coverage)
     auto synth1 = new_std_synth();
     auto synth2 = new_dag_synth();
        
-    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec spec;
 
     spec.verbosity = 0;
 
@@ -76,10 +74,10 @@ void check_equivalence(bool full_coverage)
     if (!full_coverage) {
         max_tests = std::min(max_tests, MAX_TESTS);
     }
-    static_truth_table<nr_in> tt;
+    dynamic_truth_table tt(nr_in);
 
-    chain<2> c1;
-    chain<2> c2;
+    chain c1;
+    chain c2;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -88,12 +86,12 @@ void check_equivalence(bool full_coverage)
         if (is_trivial(tt)) {
             continue;
         }
-        spec.functions[0] = &tt;
+        spec[0] = tt;
 
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = chain_simulate(c1, spec);
-        auto c1_nr_steps = c1.get_nr_vertices();
+        auto c1_nr_steps = c1.get_nr_steps();
 
         ugen.reset(nr_in);
         int min_size = -1;
@@ -103,7 +101,7 @@ void check_equivalence(bool full_coverage)
             }
             auto result = synth2->synthesize(spec, g, c2);
             if (result == success) {
-                auto c2_nr_steps = c2.get_nr_vertices();
+                auto c2_nr_steps = c2.get_nr_steps();
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
@@ -119,7 +117,7 @@ void check_equivalence(bool full_coverage)
     }
     printf("\n");
 }
-
+/*
 template<int nr_in>
 auto
 get_npn_classes()
@@ -147,11 +145,38 @@ get_npn_classes()
 
     return classes;
 }
+*/
 
-template<int nr_in>
-void check_npn_equivalence()
+auto
+get_npn_classes(int nr_in)
 {
-    auto npn_set = get_npn_classes<nr_in>();
+    std::unordered_set<dynamic_truth_table, kitty::hash<dynamic_truth_table>> classes;
+    dynamic_truth_table map(1 << nr_in);
+    std::transform(map.cbegin(), map.cend(), map.begin(), 
+            []( auto w ) { return ~w; } );
+
+    int64_t index = 0;
+    dynamic_truth_table tt(nr_in);
+    while (index != -1) {
+        kitty::create_from_words(tt, &index, &index + 1);
+        const auto res = kitty::exact_npn_canonization(
+                tt, [&map]( const auto& tt ) { 
+                    kitty::clear_bit( map, *tt.cbegin() ); 
+                } 
+            );
+        classes.insert( std::get<0>( res ) );
+        index = find_first_one_bit( map );
+    }
+
+    printf("[i] enumerated %lu functions into %lu classes\n",
+            map.num_bits(), classes.size());
+
+    return classes;
+}
+
+void check_npn_equivalence(int nr_in)
+{
+    auto npn_set = get_npn_classes(nr_in);
 
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
@@ -159,15 +184,15 @@ void check_npn_equivalence()
     auto synth1 = new_std_synth();
     auto synth2 = new_dag_synth();
 
-    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec spec;
     spec.verbosity = 0;
 
-    chain<2> c1;
-    chain<2> c2;
+    chain c1;
+    chain c2;
 
     int i = 0;
     for (auto& npn_tt : npn_set) {
-        static_truth_table<nr_in> tt = npn_tt;
+        auto tt = npn_tt;
 
         // We skip the trivial functions
         if (is_trivial(tt)) {
@@ -179,11 +204,11 @@ void check_npn_equivalence()
         }
         expand_inplace(tt, support);
 
-        spec.functions[0] = &tt;
+        spec.functions[0] = tt;
         auto res1 = synth1->synthesize(spec, c1);
         assert(res1 == success);
         auto sim_tts1 = chain_simulate(c1, spec);
-        auto c1_nr_steps = c1.get_nr_vertices();
+        auto c1_nr_steps = c1.get_nr_steps();
 
         ugen.reset(nr_in);
         int min_size = -1;
@@ -193,7 +218,7 @@ void check_npn_equivalence()
             }
             auto result = synth2->synthesize(spec, g, c2);
             if (result == success) {
-                auto c2_nr_steps = c2.get_nr_vertices();
+                auto c2_nr_steps = c2.get_nr_steps();
                 if (min_size == -1) {
                     min_size = c2_nr_steps;
                 }
@@ -206,7 +231,7 @@ void check_npn_equivalence()
         assert(dag_found == success);
         auto result = synth2->synthesize(spec, g, c2);
         assert(result == success);
-        auto c2_nr_steps = c2.get_nr_vertices();
+        auto c2_nr_steps = c2.get_nr_steps();
         auto sim_tts2 = chain_simulate(c2, spec);
         assert(c1_nr_steps == c2_nr_steps);
         assert(sim_tts1[0] == sim_tts2[0]);
@@ -225,16 +250,17 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    check_equivalence<2>(full_coverage);
-    check_equivalence<3>(full_coverage);
+    check_equivalence(2, full_coverage);
+    check_equivalence(3, full_coverage);
     
-    gen_check_equivalence<2>(full_coverage);
-    gen_check_equivalence<3>(full_coverage);
+    gen_check_equivalence(2, full_coverage);
+    gen_check_equivalence(3, full_coverage);
 
     if (full_coverage) {
-        check_npn_equivalence<4>();
+        check_npn_equivalence(4);
     }
 
     return 0;
 }
-
+#endif
+int main() { return 0; }

@@ -1,22 +1,67 @@
 #pragma once
 
 #include <chrono>
+#include <vector>
 #include "tt_utils.hpp"
 
-#define MAX_OUT 64 // The maximum supported number of outputs
 
 namespace percy
 {
-    template<typename TT>
-    class synth_spec
+    const int MAX_STEPS = 20; /// The maximum number of steps we'll synthesize
+    const int MAX_FANIN =  5; /// The maximum number of fanins per step we'll synthesize
+
+    /// The various methods types of synthesis supported by percy.
+    enum SynthMethod
     {
-        private:
-            int nr_in; ///< The number of inputs to the function 
-            int tt_size; ///< The size of the truth table
-            int nr_out; ///< The number of outputs to synthesize
+        SYNTH_STD,
+        SYNTH_STD_CEGAR,
+        SYNTH_FENCE,
+        SYNTH_FENCE_CEGAR,
+        SYNTH_DAG,
+        SYNTH_FDAG,
+        SYNTH_TOTAL
+    };
+
+    enum EncoderType
+    {
+        ENC_KNUTH,
+        ENC_EPFL,
+        ENC_FENCE,
+        ENC_DAG,
+        ENC_TOTAL
+    };
+
+    enum SolverType
+    {
+        SLV_BSAT2,
+        SLV_CMSAT,
+        SLV_GLUCOSE,
+        SLV_SYRUP_MULTI,
+        SLV_TOTAL,
+    };
+
+
+    /// Used to gather data on synthesis experiments.
+    struct synth_stats
+    {
+        double overhead = 0;
+        double total_synth_time = 0;
+        double time_to_first_synth = 0;
+    }; 
+
+    class spec
+    {
+        protected:
+            int capacity; ///< Maximum number of output functions this specification can support
+            int tt_size; ///< Size of the truth tables to synthesize (in nr. of bits)
+            std::vector<kitty::dynamic_truth_table> functions; ///< Functions to synthesize
+            std::vector<int> triv_functions; ///< Trivial outputs
+            std::vector<int> synth_functions; ///< Nontrivial outputs
 
         public:
+            int fanin = 2; ///< The fanin of the Boolean chain steps
             int nr_steps; ///< The number of Boolean operators to use
+            int initial_steps = 1; ///< The number of steps from which to start synthesis
             int verbosity = 0; ///< Verbosity level for debugging purposes
             uint64_t out_inv; ///< Is 1 at index i if output i must be inverted
             uint64_t triv_flag; ///< Is 1 at index i if output i is constant zero or one or a projection.
@@ -32,44 +77,35 @@ namespace percy
             bool add_symvar_clauses = true; ///< Symmetry break: impose order on symmetric variables
             bool add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
 
-            const TT* functions[MAX_OUT]; ///< The functions to synthesize
-            int triv_functions[MAX_OUT]; ///< Trivial outputs
-            int synth_functions[MAX_OUT]; ///< Nontrivial outputs
-
-            /// A place for synthesizers to log elapsed synthesis time.
-            /// Measured in microseconds.
-            int64_t synth_time;
+            int64_t synth_time;  ///< A place to log elapsed synthesis time (in us)
   
             /// Limit on the number of SAT conflicts. Zero means no limit.
             int conflict_limit = 0;
             
-            /// Default constructor leaves default settings untouched.
-            synth_spec() { }
-
-            /// Construct a spec with nr_in inputs and nr_out outputs.
-            synth_spec(int nr_in, int nr_out)
+            /// Constructs a spec with one output
+            spec()
             {
-                set_nr_in(nr_in);
+                set_nr_out(1);
+            }
+
+            /// Constructs a spec with nr_out outputs.
+            spec(int nr_out)
+            {
                 set_nr_out(nr_out);
             }
 
             void
-            set_nr_in(const int n)
+            set_nr_out(int n)
             {
-                nr_in = n;
-                tt_size = (1 << nr_in) - 1;
+                capacity = n;
+                functions.resize(n);
+                triv_functions.resize(n);
+                synth_functions.resize(n);
             }
 
-            void
-            set_nr_out(const int n)
-            {
-                assert(n <= MAX_OUT);
-                nr_out = n;
-            }
-
-            int get_nr_in() const { return nr_in; }
+            int get_nr_in() const { return functions[0].num_vars(); }
             int get_tt_size() const { return tt_size; }
-            int get_nr_out() const { return nr_out; }
+            int get_nr_out() const { return capacity; }
 
             /// Normalizes outputs by converting them to normal functions. Also
             /// checks for trivial outputs, such as constant functions or
@@ -84,22 +120,33 @@ namespace percy
             {
                 assert(!add_colex_clauses || !add_lex_clauses);
 
+                // Verify that all functions have the same number of variables
+                const auto num_vars = functions[0].num_vars();
+                for (int i = 1; i < capacity; i++) {
+                    if (functions[i].num_vars() != num_vars) {
+                        assert(false);
+                        exit(1);
+                    }
+                }
+
+                tt_size = (1 << functions[0].num_vars()) - 1;
+
                 if (verbosity) {
                     printf("\n");
                     printf("========================================"
                             "========================================\n");
-                    printf("  Pre-processing for %s:\n", nr_out > 1 ? 
+                    printf("  Pre-processing for %s:\n", capacity > 1 ? 
                             "functions" : "function");
-                    for (int h = 0; h < nr_out; h++) {
+                    for (int h = 0; h < capacity; h++) {
                         printf("  ");
-                        kitty::print_binary(*functions[h], std::cout);
+                        kitty::print_binary(functions[h], std::cout);
                         printf("\n");
                     }
                     printf("========================================"
                             "========================================\n");
                     printf("  SPEC:\n");
-                    printf("\tnr_in=%d\n", nr_in);
-                    printf("\tnr_out=%d\n", nr_out);
+                    printf("\tnr_in=%d\n", functions[0].num_vars());
+                    printf("\tnr_out=%d\n", capacity);
                     printf("\ttt_size=%d\n", tt_size);
                 }
 
@@ -111,23 +158,23 @@ namespace percy
                 nr_nontriv = 0;
                 out_inv = 0;
                 triv_flag = 0;
-                for (int h = 0; h < nr_out; h++) {
-                    if (is_const0(*functions[h])) {
+                for (int h = 0; h < capacity; h++) {
+                    if (is_const0(functions[h])) {
                         triv_flag |= (1 << h);
                         triv_functions[nr_triv++] = 0;
-                    } else if (is_const0(~(*functions[h]))) {
+                    } else if (is_const0(~(functions[h]))) {
                         triv_flag |= (1 << h);
                         triv_functions[nr_triv++] = 0;
                         out_inv |= (1 << h);
                     } else {
-                        auto tt_var = functions[0]->construct();
-                        for (int i = 0; i < nr_in; i++) {
+                        auto tt_var = functions[0].construct();
+                        for (int i = 0; i < get_nr_in(); i++) {
                             create_nth_var(tt_var, i);
-                            if (*functions[h] == tt_var) {
+                            if (functions[h] == tt_var) {
                                 triv_flag |= (1 << h);
                                 triv_functions[nr_triv++] = i+1;
                                 break;
-                            } else if (*functions[h] == ~(tt_var)) {
+                            } else if (functions[h] == ~(tt_var)) {
                                 triv_flag |= (1 << h);
                                 triv_functions[nr_triv++] = i+1;
                                 out_inv |= (1 << h);
@@ -137,7 +184,7 @@ namespace percy
                         // Even when the output is not trivial, we still need
                         // to ensure that it's normal.
                         if (!((triv_flag >> h) & 1)) {
-                            if (!is_normal(*functions[h])) {
+                            if (!is_normal(functions[h])) {
                                 out_inv |= (1 << h);
                             }
                             synth_functions[nr_nontriv++] = h;
@@ -146,7 +193,7 @@ namespace percy
                 }
 
                 if (verbosity) {
-                    for (int h = 0; h < nr_out; h++) {
+                    for (int h = 0; h < capacity; h++) {
                         if ((triv_flag >> h) & 1) {
                             printf("  Output %d is trivial\n", h+1);
                         }
@@ -155,11 +202,49 @@ namespace percy
                         }
                     }
                     printf("  Trivial outputs=%d\n", nr_triv);
-                    printf("  Non-trivial outputs=%d\n", nr_out-nr_triv);
+                    printf("  Non-trivial outputs=%d\n", capacity - nr_triv);
                     printf("========================================"
                             "========================================\n");
                     printf("\n");
                 }
+            }
+
+            kitty::dynamic_truth_table& 
+            operator[](std::size_t idx)
+            {
+                if (static_cast<int>(idx) >= capacity) {
+                    set_nr_out(idx + 1);
+                }
+                return functions[idx];
+            }
+
+            const kitty::dynamic_truth_table& 
+            operator[](std::size_t idx) const
+            {
+                assert (static_cast<int>(idx) < capacity);
+                return functions[idx];
+            }
+
+            template<class TT>
+            void set_output(int i, const TT& tt)
+            {
+                assert(i < capacity);
+                functions[i] = tt;
+            }
+
+
+            int
+            triv_func(int i) const
+            {
+                assert(i < capacity);
+                return triv_functions[i];
+            }
+
+            int
+            synth_func(int i) const
+            {
+                assert(i < capacity);
+                return synth_functions[i];
             }
 
     };

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "sat_interface.hpp"
 #include "dag.hpp"
 #include <thread>
 #include <functional>
@@ -362,11 +361,10 @@ namespace percy
     /***************************************************************************
         A DAG generator based on a SAT formulation.
     ***************************************************************************/
-    template<typename Solver>
     class sat_dag_generator
     {
         private:
-            Solver _solver;
+            bsat_wrapper _solver;
             abc::Vec_Int_t* _vLits; // Dynamic vector of literals for clauses.
             int _nr_vars;
             int _nr_vertices;
@@ -416,7 +414,7 @@ namespace percy
                     printf("creating %d svars\n", nr_sel_vars);
                 }
                 */
-                solver_set_nr_vars(_solver, nr_sel_vars);
+                _solver.set_nr_vars(nr_sel_vars);
                 abc::Vec_IntGrowResize(_vLits, nr_sel_vars);
             }
 
@@ -435,8 +433,9 @@ namespace percy
                                     abc::Abc_Var2Lit(dag_get_sel_var(i, j, k ), 0 ));
                         }
                     }
-                    solver_add_clause(_solver, abc::Vec_IntArray(_vLits), 
-                            abc::Vec_IntArray(_vLits) + ctr);
+                    _solver.add_clause(
+                        abc::Vec_IntArray(_vLits), 
+                        abc::Vec_IntArray(_vLits) + ctr);
                 }
             }
 
@@ -479,8 +478,7 @@ namespace percy
                                         dag_get_sel_var(ip, _nr_vars+i, j), 0));
                         }
                     }
-                    solver_add_clause(_solver, abc::Vec_IntArray(_vLits),
-                            abc::Vec_IntArray(_vLits) + ctr);
+                    _solver.add_clause(abc::Vec_IntArray(_vLits), abc::Vec_IntArray(_vLits) + ctr);
                 }
             }
 
@@ -500,7 +498,7 @@ namespace percy
                                         abc::Abc_Var2Lit(dag_get_sel_var(i,j,k),1);
                                     pLits[1] = abc::Abc_Var2Lit(
                                             dag_get_sel_var(i,jp,kp),1);
-                                    solver_add_clause(_solver, pLits, pLits+2);
+                                    _solver.add_clause(pLits, pLits+2);
                                 }
                             }
                         }
@@ -525,7 +523,7 @@ namespace percy
                                         dag_get_sel_var(i, j, k), 1);
                                 pLits[1] = abc::Abc_Var2Lit(
                                         dag_get_sel_var(i+1, jp, k), 1);
-                                solver_add_clause(_solver, pLits, pLits+2);
+                                _solver.add_clause(pLits, pLits+2);
                             }
                         }
                         for (int j = 0; j < k; j++) {
@@ -535,7 +533,7 @@ namespace percy
                                             dag_get_sel_var(i, j, k), 1);
                                     pLits[1] = abc::Abc_Var2Lit(
                                             dag_get_sel_var(i+1, jp, kp),1);
-                                    solver_add_clause(_solver, pLits, pLits+2);
+                                    _solver.add_clause(pLits, pLits + 2);
                                 }
                             }
                         }
@@ -560,10 +558,10 @@ namespace percy
                                         dag_get_sel_var(i, j, k), 1);
                                 pLits[1] = abc::Abc_Var2Lit(
                                         dag_get_sel_var(ip, j, _nr_vars+i),1);
-                                solver_add_clause(_solver, pLits, pLits+2);
+                                _solver.add_clause(pLits, pLits + 2);
                                 pLits[1] = abc::Abc_Var2Lit(
                                         dag_get_sel_var(ip, k, _nr_vars+i),1);
-                                solver_add_clause(_solver, pLits, pLits+2);
+                                _solver.add_clause(pLits, pLits+2);
                             }
                         }
                     }
@@ -578,8 +576,7 @@ namespace percy
                     int found = 0;
                     for (int k = 1; (k < _nr_vars + i); k++) {
                         for (int j = 0; j < k; j++) {
-                            if (solver_var_value(_solver,
-                                        dag_get_sel_var(i, j, k)))
+                            if (_solver.var_value(dag_get_sel_var(i, j, k)))
                             {
                                 g.set_vertex(i, j, k);
                                 found++;
@@ -598,8 +595,7 @@ namespace percy
                     int found = 0;
                     for (int k = 1; (k < (_nr_vars + i)); k++) {
                         for (int j = 0; j < k; j++) {
-                            if (solver_var_value(_solver,
-                                        dag_get_sel_var(i, j, k)))
+                            if (_solver.var_value(dag_get_sel_var(i, j, k)))
                             {
                                 abc::Vec_IntSetEntry(_vLits, ctr++,
                                         abc::Abc_Var2Lit(dag_get_sel_var(i, j, k),
@@ -612,13 +608,12 @@ namespace percy
                 }
                 assert(ctr == _nr_vertices);
 
-                auto status = solver_add_clause(_solver, abc::Vec_IntArray(_vLits),
-                        abc::Vec_IntArray(_vLits) + ctr);
+                auto status = _solver.add_clause(
+                    abc::Vec_IntArray(_vLits),
+                    abc::Vec_IntArray(_vLits) + ctr);
 
                 if (_verbosity > 1) {
-                    printf("nr vars=%d, nr clauses=%d\n", 
-                            solver_nr_vars(_solver), 
-                            solver_nr_clauses(_solver));
+                    printf("nr vars=%d, nr clauses=%d\n", _solver.nr_vars(), _solver.nr_clauses());
                 }
                 return status;
             }
@@ -626,13 +621,11 @@ namespace percy
         public:
             sat_dag_generator()
             {
-                solver_alloc(&_solver);
                 _vLits = abc::Vec_IntAlloc(0);
             }
 
             ~sat_dag_generator()
             {
-                solver_dealloc(&_solver);
                 abc::Vec_IntFree(_vLits);
             }
 
@@ -678,7 +671,7 @@ namespace percy
                 _reset = true;
                 _nr_vars = nr_vars;
                 _nr_vertices = nr_vertices;
-                solver_restart(&_solver);
+                _solver.restart();
                 create_variables();
                 create_op_clauses();
                 create_unique_fanin_clauses();
@@ -695,8 +688,8 @@ namespace percy
 
                 if (_verbosity) {
                     printf("starting with %d vars, %d clauses\n", 
-                            solver_nr_vars(_solver), 
-                            solver_nr_clauses(_solver));
+                            _solver.nr_vars(), 
+                            _solver.nr_clauses());
                 }
             }
 
@@ -709,7 +702,7 @@ namespace percy
                     }
                 }
                 _reset = false;
-                auto status = solver_solve(_solver, 0, 0, 0);
+                auto status = _solver.solve(0, 0, 0);
                 if (status == success) {
                     dag_extract(g);
 
@@ -740,12 +733,11 @@ namespace percy
             }
     };
 
-    template<typename Solver>
     class unbounded_dag_generator
     {
         private:
             int nr_inputs;
-            sat_dag_generator<Solver> gen;
+            sat_dag_generator gen;
 
         public:
             unbounded_dag_generator()
@@ -773,12 +765,12 @@ namespace percy
 
     };
 
-    template<typename Solver>
+#if !defined(_WIN32) && !defined(_WIN64)
     class nonisomorphic_dag_generator
     {
         private:
             int _nr_vars;
-            unbounded_dag_generator<Solver> _gen;
+            unbounded_dag_generator _gen;
             std::vector<dag<2>> _dags;
 
         public:
@@ -826,7 +818,7 @@ namespace percy
             }
 
     };
-
+#endif
     
     /***************************************************************************
         Generates DAGs using a recursive backtrack search.
@@ -1224,12 +1216,11 @@ namespace percy
                 }
             }
 
-            template<typename TT, typename Enc, typename S>
+            // TODO: fix this function to work with new synthesis API
             void search_dags(
-                    synth_spec<TT>& spec, 
+                    spec& spec, 
                     dag<2>& g, 
-                    dag_synthesizer<2, Enc, S>& synth,
-                    chain<2>& chain)
+                    chain& chain)
             {
                 // We can terminate early if a solution has already been found.
                 if (_nr_solutions > 0) {
@@ -1240,7 +1231,7 @@ namespace percy
                         const auto k = _ks[i];
                         g.set_vertex(i-1, j, k);
                     }
-                    const auto result = synth.synthesize(spec, g, chain);
+                    const auto result = success; // TODO: fix! dag_synthesize(spec, g, chain);
                     if (result == success) {
                         ++_nr_solutions;
                         if (_verbosity) {
@@ -1299,7 +1290,7 @@ namespace percy
 
                         ++_level;
                         _js[_level] = j;
-                        search_dags(spec, g, synth, chain);
+                        search_dags(spec, g, chain);
                     }
                     for (int k = start_k+1; (k < _nr_vars+_level && 
                             !_nr_solutions); k++) {
@@ -1330,7 +1321,7 @@ namespace percy
                             _js[_level] = j;
                             _ks[_level] = k;
 
-                            search_dags(spec, g, synth, chain);
+                            search_dags(spec, g, chain);
                         }
                     }
 
@@ -1502,7 +1493,7 @@ namespace percy
             {
                 assert(_initialized);
                 dag<2> g;
-                vector<dag<2>> dags;
+                std::vector<dag<2>> dags;
                 
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
@@ -1527,17 +1518,15 @@ namespace percy
                 function. Fails if no DAG of the current size can implement
                 the function.
             *******************************************************************/
-            template<typename TT, typename Enc, typename S>
             synth_result 
             find_dag(
-                    synth_spec<TT>& spec, 
+                    spec& spec, 
                     dag<2>& g, 
-                    chain<2>& chain, 
-                    dag_synthesizer<2, Enc, S>& synth)
+                    chain& chain)
             {
                 assert(_initialized);
 
-                search_dags(spec, g, synth, chain);
+                search_dags(spec, g, chain);
 
                 if (_nr_solutions > 0) {
                     return success;

@@ -1,32 +1,35 @@
 #pragma once
 
-#include "synthesizer_base.hpp"
+#include "synthesizer.hpp"
 
 namespace percy
 {
+   
     /***************************************************************************
         Extends the colex_func_synthesizer and adds clauses that constrain the 
         synthesized Boolbean chain to specific graph topologies.
-    ***************************************************************************/
-    template<
-        int FI=2, 
-        typename Encoder=fence_encoder<FI>,
-        typename Solver=sat_solver*>
-    class fence_synthesizer : 
-        public synthesizer<Encoder, Solver>
+    class fence_synthesizer
     {
-        using synthesizer<Encoder, Solver>::solver;
-        using synthesizer<Encoder, Solver>::encoder;
+        std::unique_ptr<solver_wrapper> solver;
+        std::unique_ptr<fence_encoder> encoder;
 
         public:
-            template<typename TT>
-            synth_result 
-            synthesize(
-                    synth_spec<TT>& spec, 
-                    chain<FI>& chain,
-                    const int initial_steps = 1)
+            fence_synthesizer(solver_wrapper* solver)
             {
-                assert(spec.get_nr_in() >= FI);
+                this->solver.reset(solver);
+                encoder->set_solver(this->solver.get());
+            }
+
+            fence_synthesizer(std::unique_ptr<solver_wrapper> solver)
+            {
+                this->solver = std::move(solver);
+                encoder->set_solver(this->solver.get());
+            }
+
+            synth_result 
+            synthesize(spec& spec, chain& chain, const int initial_steps = 1)
+            {
+                assert(spec.get_nr_in() >= spec.fanin);
 
                 spec.preprocess();
 
@@ -48,7 +51,7 @@ namespace percy
                 fence f;
                 po_filter<unbounded_generator> g(
                         unbounded_generator(initial_steps), 
-                        spec.get_nr_out(), FI);
+                        spec.get_nr_out(), spec.fanin);
                 int old_nnodes = 1;
                 while (true) {
                     g.next_fence(f);
@@ -61,8 +64,8 @@ namespace percy
                         old_nnodes = spec.nr_steps;
                     }
 
-                    solver_restart(&solver);
-                    if (!encoder.encode(spec, f)) {
+                    solver->restart();
+                    if (!encoder->encode(spec, f)) {
                         continue;
                     }
 
@@ -76,12 +79,12 @@ namespace percy
                             printf("f[%d] = %d\n", i, f[i]);
                         }
                     }
-                    auto status = solver_solve(solver, spec.conflict_limit);
+                    auto status = solver->solve(spec.conflict_limit);
                     if (status == success) {
-                        encoder.extract_chain(spec, chain);
+                        encoder->extract_chain(spec, chain);
                         return success;
                     } else if (status == failure) {
-                        total_conflicts += solver_nr_conflicts(solver);
+                        total_conflicts += solver->nr_conflicts();
                         if (spec.conflict_limit &&
                                 total_conflicts > spec.conflict_limit) {
                             return timeout;
@@ -93,11 +96,11 @@ namespace percy
                 }
             }
 
-            template<typename TT>
             synth_result 
-            synthesize(synth_spec<TT>& spec, const fence& f, chain<FI>& chain)
+            synthesize(spec& spec, const fence& f, chain& chain)
             {
-                assert(spec.get_nr_in() >= FI);
+                assert(spec.get_nr_in() >= spec.fanin);
+                assert(chain.get_fanin() == spec.fanin);
 
                 spec.preprocess();
 
@@ -114,8 +117,8 @@ namespace percy
                 
                 spec.nr_steps = f.nr_nodes();
 
-                solver_restart(&solver);
-                if (!encoder.encode(spec, f)) {
+                solver->restart();
+                if (!encoder->encode(spec, f)) {
                     return failure;
                 }
 
@@ -130,9 +133,9 @@ namespace percy
                     }
                 }
 
-                auto status = solver_solve(solver, spec.conflict_limit);
+                auto status = solver->solve(spec.conflict_limit);
                 if (status == success) {
-                    encoder.extract_chain(spec, chain);
+                    encoder->extract_chain(spec, chain);
                     return success;
                 } else if (status == failure) {
                     return failure;
@@ -141,14 +144,11 @@ namespace percy
                 }
             }
 
-            template<typename TT>
             synth_result
-            cegar_synthesize(
-                    synth_spec<TT>& spec, 
-                    chain<FI>& chain,
-                    const int initial_steps = 1)
+            cegar_synthesize(spec& spec, chain& chain, const int initial_steps = 1)
             {
-                assert(spec.get_nr_in() >= FI);
+                assert(spec.get_nr_in() >= spec.fanin);
+                assert(chain.get_fanin() == spec.fanin);
 
                 spec.preprocess();
 
@@ -157,7 +157,7 @@ namespace percy
                 if (spec.nr_triv == spec.get_nr_out()) {
                     chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
                     for (int h = 0; h < spec.get_nr_out(); h++) {
-                        chain.set_output(h, (spec.triv_functions[h] << 1) +
+                        chain.set_output(h, (spec.triv_func(h) << 1) +
                                 ((spec.out_inv >> h) & 1));
                     }
                     return success;
@@ -168,7 +168,7 @@ namespace percy
                 fence f;
                 po_filter<unbounded_generator> g(
                         unbounded_generator(initial_steps), 
-                        spec.get_nr_out(), FI);
+                        spec.get_nr_out(), spec.fanin);
                 int total_conflicts = 0;
                 int old_nnodes = 1;
                 while (true) {
@@ -193,16 +193,16 @@ namespace percy
                         }
                     }
 
-                    solver_restart(&solver);
-                    if (!encoder.cegar_encode(spec, f)) {
+                    solver->restart();
+                    if (!encoder->cegar_encode(spec, f)) {
                         continue;
                     }
                     while (true) {
-                        auto status = solver_solve(solver, spec.conflict_limit);
+                        auto status = solver->solve(spec.conflict_limit);
                         if (status == success) {
-                            encoder.extract_chain(spec, chain);
+                            encoder->extract_chain(spec, chain);
                             auto sim_tts = chain_simulate(chain, spec);
-                            auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
+                            auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                             auto first_one = kitty::find_first_one_bit(xor_tt);
                             if (first_one == -1) {
                                 if (spec.verbosity) {
@@ -215,7 +215,7 @@ namespace percy
                                 printf("  CEGAR difference at tt index %ld\n", 
                                         first_one);
                             }
-                            if (!encoder.create_tt_clauses(spec, first_one-1)) {
+                            if (!encoder->create_tt_clauses(spec, first_one-1)) {
                                 break;
                             }
                         } else if (status == failure) {
@@ -227,14 +227,11 @@ namespace percy
                 }
             }
 
-            template<typename TT>
             synth_result
-            cegar_synthesize(
-                    synth_spec<TT>& spec, 
-                    const fence& f, 
-                    chain<FI>& chain)
+            cegar_synthesize(spec& spec, const fence& f, chain& chain)
             {
-                assert(spec.get_nr_in() >= FI);
+                assert(spec.get_nr_in() >= spec.fanin);
+                assert(chain.get_fanin() == spec.fanin);
 
                 spec.preprocess();
 
@@ -243,7 +240,7 @@ namespace percy
                 if (spec.nr_triv == spec.get_nr_out()) {
                     chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
                     for (int h = 0; h < spec.get_nr_out(); h++) {
-                        chain.set_output(h, (spec.triv_functions[h] << 1) +
+                        chain.set_output(h, (spec.triv_func(h) << 1) +
                                 ((spec.out_inv >> h) & 1));
                     }
                     return success;
@@ -262,16 +259,16 @@ namespace percy
                     }
                 }
 
-                solver_restart(&solver);
-                if (!encoder.cegar_encode(spec, f)) {
+                solver->restart();
+                if (!encoder->cegar_encode(spec, f)) {
                     return failure;
                 }
                 while (true) {
-                    auto status = solver_solve(solver, spec.conflict_limit);
+                    auto status = solver->solve(spec.conflict_limit);
                     if (status == success) {
-                        encoder.extract_chain(spec, chain);
+                        encoder->extract_chain(spec, chain);
                         auto sim_tts = chain_simulate(chain, spec);
-                        auto xor_tt = (sim_tts[0]) ^ (*spec.functions[0]);
+                        auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                         auto first_one = kitty::find_first_one_bit(xor_tt);
                         if (first_one == -1) {
                             if (spec.verbosity) {
@@ -284,7 +281,7 @@ namespace percy
                             printf("  CEGAR difference at tt index %ld\n", 
                                     first_one);
                         }
-                        if (!encoder.create_tt_clauses(spec, first_one-1)) {
+                        if (!encoder->create_tt_clauses(spec, first_one-1)) {
                             break;
                         }
                     } else if (status == failure) {
@@ -295,6 +292,7 @@ namespace percy
                 }
             }
     };
+    ***************************************************************************/
 
 }
 

@@ -7,7 +7,6 @@
 #include <kitty/kitty.hpp>
 #include "fence.hpp"
 #include "chain.hpp"
-#include "sat_interface.hpp"
 #include "dag_generation.hpp"
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
@@ -36,15 +35,7 @@ namespace percy
 	using std::chrono::duration;
 	using std::chrono::time_point;
 
-    /***************************************************************************
-        Used to gather data on synthesis experiments.
-    ***************************************************************************/
-    struct synth_stats
-    {
-        double overhead = 0;
-        double total_synth_time = 0;
-        double time_to_first_synth = 0;
-    };    
+       
     
     /***************************************************************************
         We consider a truth table to be trivial if it is equal to (or the
@@ -87,268 +78,12 @@ namespace percy
         return false;
     }
 
-    /*
-    template<typename TT>
-    static inline int 
-    get_sim_var(const synth_spec<TT>& spec, int i, int t)
-    {
-        assert(i < spec.nr_steps);
-        assert(t < spec.nr_sim_vars );
-
-        return spec.sim_offset + spec.tt_size * i + t;
-    }
-
-    template<typename TT>
-    static inline int 
-    get_out_var(const synth_spec<TT>& spec, int h, int i)
-    {
-        assert(h < spec.nr_nontriv);
-        assert(i < spec.nr_steps);
-
-        return spec.out_offset + spec.nr_steps * h + i;
-    }
-
     template<typename TT>
     static inline int
-    get_op_var(const synth_spec<TT>& spec, int i, int c, int b)
-    {
-        assert(i < spec.nr_steps);
-        assert(b < 2 );
-        assert(c < 2 );
-        assert(b > 0 || c > 0);
-
-        return spec.steps_offset + i * 3 + ( c << 1 ) + b - 1;
-    }
-
-    template<typename TT>
-    static inline int
-    get_op_var(const synth_spec<TT>& spec, int i, int d, int c, int b)
-    {
-        assert(i < spec.nr_steps);
-        assert(b < 2 );
-        assert(c < 2 );
-        assert(d < 2 );
-        assert(b > 0 || c > 0 || d > 0);
-
-        return spec.steps_offset + i * 7 + (d << 2) + ( c << 1 ) + b - 1;
-    }
-
-    template<typename TT>
-    static inline int
-    get_sel_var(const synth_spec<TT>& spec, int i, int j, int k)
-    {
-        int offset = 0;
-
-        assert(i < spec.nr_steps);
-        assert(k < spec.nr_in + i);
-        assert(j < k);
-
-        offset = spec.sel_offset;
-        for (int a = spec.nr_in; a < spec.nr_in + i; a++)
-            offset += a * ( a - 1 ) / 2;
-
-        return offset + (-j * ( 1 + j - 2 * ( spec.nr_in + i ) ) ) / 2 +
-            (k - j - 1);
-    }
-
-    template<typename TT>
-    static inline int
-    get_sel_var(const synth_spec<TT>& spec, int i, int j, int k, int l)
-    {
-        int offset = 0;
-
-        assert(i < spec.nr_steps);
-        assert(l < spec.nr_in + i);
-        assert(k < l);
-        assert(j < k);
-
-        offset = spec.sel_offset;
-        for (int a = spec.nr_in; a < spec.nr_in + i; a++) {
-            offset += (a * (a - 1) * (a - 2)) / 6;
-        }
-        
-        for (int lp = 2; lp < spec.nr_in+i; lp++) {
-            for (int kp = 1; kp < lp; kp++) {
-                for (int jp = 0; jp < kp; jp++) {
-                    if ((lp < l) || ((lp == l) && (kp < k)) || 
-                            ((lp == l) && (kp == k) && (jp < j))) {
-                        offset++;
-                    }
-                }
-            }
-        }
-
-        return offset;
-    }
-    */
-
-    template<typename TT>
-    static inline int
-    get_fence_var(const synth_spec<TT>& spec, int idx)
+    get_fence_var(const spec& spec, int idx)
     {
         return spec.fence_offset + idx;
     }
-
-    /*
-    template<typename Solver>
-    void spec_preprocess(synth_spec<dynamic_truth_table>& spec) 
-    {
-        spec.tt_size = (1 << spec.nr_in) - 1;
-
-        if (spec.verbosity) {
-            printf("\n");
-            printf("========================================"
-                   "========================================\n");
-            printf("  Pre-processing for %s:\n", spec.nr_out > 1 ? 
-                    "functions" : "function");
-            for (int h = 0; h < spec.nr_out; h++) {
-                printf("  ");
-                kitty::print_binary(*spec.functions[h], std::cout);
-                printf("\n");
-            }
-            printf("========================================"
-                   "========================================\n");
-            printf("  SPEC:\n");
-            printf("\tnr_in=%d\n", spec.nr_in);
-            printf("\tnr_out=%d\n", spec.nr_out);
-            printf("\ttt_size=%d\n", spec.tt_size);
-        }
-
-        // Detect any trivial outputs.
-        spec.nr_triv = 0;
-        spec.nr_nontriv = 0;
-        spec.out_inv = 0;
-        spec.triv_flag = 0;
-        for (int h = 0; h < spec.nr_out; h++) {
-            if (is_const0(*spec.functions[h])) {
-                spec.triv_flag |= (1 << h);
-                spec.triv_functions[spec.nr_triv++] = 0;
-            } else if (is_const0(~(*spec.functions[h]))) {
-                spec.triv_flag |= (1 << h);
-                spec.triv_functions[spec.nr_triv++] = 1;
-            } else {
-                dynamic_truth_table tt_var(spec.nr_in);
-                for (int i = 0; i < spec.nr_in; i++) {
-                    create_nth_var(tt_var, i);
-                    if (*spec.functions[h] == tt_var) {
-                        spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = (i+1) << 1;
-                        break;
-                    } else if (*spec.functions[h] == ~(tt_var)) {
-                        spec.triv_flag |= (1 << h);
-                        spec.triv_functions[spec.nr_triv++] = ((i+1) << 1) + 1;
-                        break;
-                    }
-                }
-                // Even when the output is not trivial, we still need to ensure
-                // that it's normal.
-                if (!((spec.triv_flag >> h) & 1)) {
-                    if (!is_normal(*spec.functions[h])) {
-                        spec.out_inv |= (1 << h);
-                    }
-                    spec.synth_functions[spec.nr_nontriv++] = h;
-                }
-            }
-        }
-
-        if (spec.verbosity) {
-            for (int h = 0; h < spec.nr_out; h++) {
-                if ((spec.triv_flag >> h) & 1) {
-                    printf("  Output %d is trivial\n", h+1);
-                }
-                if ((spec.out_inv >> h) & 1) {
-                    printf("  Inverting output %d\n", h+1);
-                }
-            }
-            printf("  Trivial outputs=%d\n", spec.nr_triv);
-            printf("  Non-trivial outputs=%d\n", spec.nr_out-spec.nr_triv);
-            printf("========================================"
-                    "========================================\n");
-            printf("\n");
-        }
-    }
-    
-
-    template<typename T, typename TT>
-    synth_result 
-    chain_exists(T* synth, synth_spec<TT>& spec)
-    {
-        if (spec.verbosity) {
-            printf("  Existence check with %d steps...\n", spec.nr_steps);
-        }
-
-        synth->restart_solver();
-        synth->add_clauses(spec);
-
-        auto status = synth->solve(spec.conflict_limit);
-
-        if (spec.verbosity) {
-            if (status == success) {
-                printf("  SUCCESS\n\n"); 
-            } else if (status == failure) {
-                printf("  FAILURE\n\n"); 
-            } else {
-                printf("  TIMEOUT\n\n"); 
-            }
-        }
-
-        return status;
-    }
-
-    template<typename T, typename TT>
-    synth_result 
-    cegar_chain_exists(
-            T* synth, synth_spec<TT>& spec, chain<TT,2>& chain)
-    {
-        if (spec.verbosity) {
-            printf("  Existence check with %d steps...\n", spec.nr_steps);
-        }
-
-        synth->restart_solver();
-        synth->cegar_add_clauses(spec);
-        for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-            if (!synth->create_tt_clauses(spec, rand() % spec.tt_size)) {
-                return failure;
-            }
-        }
-
-        while (true) {
-            auto status = synth->solve(spec.conflict_limit);
-            if (status == success) {
-                if (spec.verbosity > 1) {
-                    synth->print_solver_state(spec);
-                }
-                synth->chain_extract(spec, chain);
-                auto sim_tts = chain.simulate();
-                auto xor_tt = (*sim_tts[0]) ^ (*spec.functions[0]);
-                auto first_one = kitty::find_first_one_bit(xor_tt);
-                if (first_one == -1) {
-                    if (spec.verbosity) {
-                        printf("  SUCCESS\n\n"); 
-                    }
-                    return success;
-                }
-                // Add additional constraint.
-                if (spec.verbosity) {
-                    printf("  CEGAR difference at tt index %ld\n", first_one);
-                }
-                if (!synth->create_tt_clauses(spec, first_one-1)) {
-                    return failure;
-                }
-            } else {
-                if (spec.verbosity) {
-                    if (status == failure) {
-                        printf("  FAILURE\n\n"); 
-                    } else {
-                        printf("  TIMEOUT\n\n"); 
-                    }
-                }
-                return status;
-            }
-        }
-    }
-*/
-
 
     /***************************************************************************
         A parallel version which periodically checks if a solution has been
@@ -356,7 +91,7 @@ namespace percy
     template<typename T, typename TT>
     synth_result 
     pcegar_chain_exists(
-            T* synth, synth_spec<TT>& spec, chain<2>& chain,
+            T* synth, spec& spec, chain<2>& chain,
             bool* found)
     {
         if (spec.verbosity) {
@@ -408,61 +143,17 @@ namespace percy
     }
     ***************************************************************************/
 
-    /***************************************************************************
-        The following are constructor functions that allocate new synthesizer
-        objects. This is the preferred way of instantiating new synthesizers.
-    ***************************************************************************/
-    template<
-        int FI=2, 
-        typename S=sat_solver*, 
-        typename E=knuth_encoder<FI, S>>
-    auto
-    new_std_synth()
-    {
-        return std::make_unique<std_synthesizer<FI, E, S>>();
-    }
-
-    template<
-        int FI=2, 
-        typename S=sat_solver*, 
-        typename E=fence_encoder<FI, S>>
-    auto
-    new_fence_synth()
-    {
-        return std::make_unique<fence_synthesizer<FI, E, S>>();
-    }
-
-    template<
-        int FI=2,
-        typename S=sat_solver*,
-        typename E=dag_encoder<dag<FI>,S>>
-    auto
-    new_dag_synth()
-    {
-        return std::make_unique<dag_synthesizer<FI, E, S>>();
-    }
-
-    template<
-        int FI=2, 
-        typename S=sat_solver*,
-        typename E=floating_dag_encoder<FI, S>> 
-    auto
-    new_floating_dag_synth()
-    {
-        return std::make_unique<floating_dag_synthesizer<FI, E, S>>();
-    }
-
     /*
     template<typename TT, typename Solver, typename Generator>
     void
     fence_synthesize_parallel(
-            const synth_spec<TT>& main_spec, chain<2>& chain, 
+            const spec& main_spec, chain<2>& chain, 
             synth_result& result, bool& stop, Generator& gen, 
             std::mutex& gen_mutex)
     {
         // We cannot directly copy the spec. We need each thread to have its
         // own specification and solver to avoid threading issues.
-        synth_spec<TT> spec;
+        spec spec;
         spec.nr_in = main_spec.nr_in;
         spec.nr_out = main_spec.nr_out;
         spec.verbosity = main_spec.verbosity;
@@ -581,13 +272,13 @@ namespace percy
     template<typename TT, typename Solver, typename Generator>
     void 
     cegar_fence_synthesize_parallel(
-            const synth_spec<TT>& main_spec, chain<TT>& chain, 
+            const spec& main_spec, chain<TT>& chain, 
             synth_result& result, bool& stop, Generator& gen, 
             std::mutex& gen_mutex)
     {
         // We cannot directly copy the spec. We need each thread to have its own
         // specification and solver to avoid threading issues.
-        synth_spec<TT> spec;
+        spec spec;
         spec.nr_in = main_spec.nr_in;
         spec.nr_out = main_spec.nr_out;
         spec.verbosity = main_spec.verbosity;
@@ -707,7 +398,7 @@ namespace percy
     template<typename TT, typename Solver>
     synth_result 
     synthesize_parallel(
-            const synth_spec<TT>& spec, const int nr_threads, 
+            const spec& spec, const int nr_threads, 
             chain<TT>& chain)
     {
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
@@ -760,7 +451,7 @@ namespace percy
     template<typename TT, typename Solver>
     synth_result 
     cegar_synthesize_parallel(
-            const synth_spec<TT>& spec, const int nr_threads, 
+            const spec& spec, const int nr_threads, 
             chain<TT>& chain)
     {
         po_filter<unbounded_generator> g(unbounded_generator(), 1, 2);
@@ -815,8 +506,8 @@ namespace percy
         Finds the smallest possible DAG that can implement the specified
         function.
     ***************************************************************************/
-    template<typename TT, int FI=2>
-    synth_result find_dag(synth_spec<TT>& spec, dag<FI>& g, int nr_vars)
+    template<int FI=2>
+    synth_result find_dag(spec& spec, dag<FI>& g, int nr_vars)
     {
         chain<FI> chain;
         rec_dag_generator gen;
@@ -839,29 +530,27 @@ namespace percy
         Finds a DAG of the specified size that can implement the given
         function (if one exists).
     ***************************************************************************/
-    template<typename TT, int FI=2>
+    /*
     synth_result 
     find_dag(
-            synth_spec<TT>& spec, 
-            dag<FI>& g, 
+            spec& spec, 
+            dag<2>& g, 
             const int nr_vars, 
             const int nr_vertices)
     {
-        chain<FI> chain;
+        chain chain;
         rec_dag_generator gen;
-        dag_synthesizer<FI> synth;
+        knuth_dag_synthesizer<2> synth;
 
         gen.reset(nr_vars, nr_vertices);
         g.reset(nr_vars, nr_vertices);
         return gen.find_dag(spec, g, chain, synth);
     }
+    */
 
-
-
-    template<typename TT>
     synth_result 
     qpfind_dag(
-            synth_spec<TT>& spec, 
+            spec& spec, 
             dag<2>& g, 
             int nr_vars,
             bool verbose=false)
@@ -872,7 +561,7 @@ namespace percy
                 fprintf(stderr, "Trying with %d vertices\n", nr_vertices);
                 fflush(stderr);
             }
-            const auto status = qpfind_dag<TT>(spec, g, nr_vars, nr_vertices);
+            const auto status = qpfind_dag(spec, g, nr_vars, nr_vertices);
             if (status == success) {
                 return success;
             }
@@ -882,15 +571,15 @@ namespace percy
         return failure;
     }
 
-    template<typename TT, int FI=2>
+    /*
     synth_result 
     qpfind_dag(
-            synth_spec<TT>& spec, 
+            spec& spec, 
             dag<2>& g, 
             const int nr_vars, 
             const int nr_vertices)
     {
-        vector<std::thread> threads;
+        std::vector<std::thread> threads;
        
         const auto nr_threads = std::thread::hardware_concurrency() - 1;
         
@@ -911,7 +600,7 @@ namespace percy
             threads.push_back(
                 std::thread([&spec, pfinished, pfound, &found_mutex, &g, &q] {
                     dag<2> local_dag;
-                    chain<FI> local_chain;
+                    chain local_chain;
                     auto synth = new_dag_synth();
 
                     while (!(*pfound)) {
@@ -953,7 +642,7 @@ namespace percy
         // for another thread (if no solution was found yet.)
         if (!found) {
             dag<2> local_dag;
-            chain<FI> local_chain;
+            chain local_chain;
             auto synth = new_dag_synth();
 
             while (!found) {
@@ -983,18 +672,17 @@ namespace percy
         return found ? success : failure;
     }
 
-    template<typename TT, class Dag=dag<2>>
     synth_result 
     qpfence_synth(
             synth_stats* stats,
-            const TT& function,
-            Dag& g,
+            const dynamic_truth_table& function,
+            dag<2>& g,
             int nr_vars,
             int conflict_limit)
     {
         int nr_vertices = 1;
         while (true) {
-            const auto status = qpfence_synth<TT>(
+            const auto status = qpfence_synth(
                     stats, function, g, nr_vars, nr_vertices, conflict_limit);
             if (status == success) {
                 return success;
@@ -1004,18 +692,19 @@ namespace percy
         
         return failure;
     }
+    */
 
-    template<typename TT, int FI=2>
+    /*
     synth_result 
     qpfence_synth(
             synth_stats* stats,
-            const TT& f, 
-            dag<FI>& g, 
+            const dynamic_truth_table& f, 
+            dag<2>& g, 
             int nr_vars, 
             int nr_vertices,
             int conflict_limit)
     {
-        vector<std::thread> threads;
+        std::vector<std::thread> threads;
         moodycamel::ConcurrentQueue<fence> q(1u << (nr_vertices - 1));
         
         const auto nr_threads = std::thread::hardware_concurrency() - 1;
@@ -1037,14 +726,14 @@ namespace percy
             threads.push_back(
                 std::thread([&f, pfinished, pfound, &found_mutex, &g, &q, 
                     nr_vars, nr_vertices, &first_synth_time, conflict_limit] {
-                    chain<FI> chain;
+                    chain chain;
                     fence local_fence;
-                    fence_synthesizer<FI> synth;
+                    fence_synthesizer synth(new bsat_wrapper);
 
-                    synth_spec<TT> local_spec(nr_vars, 1);
+                    spec local_spec(nr_vars, 1);
                     local_spec.verbosity = 0;
                     local_spec.nr_steps = nr_vertices;
-                    local_spec.functions[0] = &f;
+                    local_spec.functions[0] = f;
                     local_spec.nr_rand_tt_assigns = 2 * local_spec.get_nr_in();
                     local_spec.conflict_limit = conflict_limit;
 
@@ -1082,14 +771,14 @@ namespace percy
         // After the generating thread has finished, we have room to spare
         // for another thread (if no solution was found yet.)
         {
-            chain<FI> chain;
+            chain chain;
             fence local_fence;
-            fence_synthesizer<FI> synth;
+            fence_synthesizer synth(new bsat_wrapper);
 
-            synth_spec<TT> local_spec(nr_vars, 1);
+            spec local_spec(nr_vars, 1);
             local_spec.verbosity = 0;
             local_spec.nr_steps = nr_vertices;
-            local_spec.functions[0] = &f;
+            local_spec.functions[0] = f;
             local_spec.nr_rand_tt_assigns = 2 * local_spec.get_nr_in();
             local_spec.conflict_limit = conflict_limit;
 
@@ -1134,30 +823,21 @@ namespace percy
             stats->overhead = overhead;
             stats->time_to_first_synth = time_to_first_synth;
             stats->total_synth_time = total_synth_time;
-
-
-            /*
-            printf("Time to first synth: %.2fms\n", 
-                    std::chrono::duration<double,std::milli>(
-                        time_to_synth-start).count());
-            printf("Total synth time: %.2fms\n", 
-                    std::chrono::duration<double,std::milli>(
-                        total_synth_time-start).count());
-                        */
         }
 
 
         return found ? success : failure;
     }
+    */
 
     uint64_t 
     parallel_dag_count(int nr_vars, int nr_vertices, int nr_threads)
     {
         printf("Initializing %d-thread parallel DAG count\n", nr_threads);
-        vector<std::thread> threads;
+        std::vector<std::thread> threads;
 
         int nr_branches = 0;
-        vector<std::pair<int,int>> starting_points;
+        std::vector<std::pair<int,int>> starting_points;
         for (int k = 1; k < nr_vars; k++) {
             for (int j = 0; j < k; j++) {
                 ++nr_branches;
@@ -1206,20 +886,20 @@ namespace percy
         return total_nsols;
     }
 
-    vector<dag<2>> 
+    std::vector<dag<2>> 
     parallel_dag_gen(int nr_vars, int nr_vertices, int nr_threads)
     {
         printf("Initializing %d-thread parallel DAG gen\n", nr_threads);
         printf("nr_vars=%d, nr_vertices=%d\n", nr_vars, nr_vertices);
-        vector<std::thread> threads;
+        std::vector<std::thread> threads;
 
         // Each thread will write the DAGs it has found to this vector.
-        vector<dag<2>> dags;
+        std::vector<dag<2>> dags;
 
         // First estimate the number of solutions down each branch by looking
         // at DAGs with small numbers of vertices.
         int nr_branches = 0;
-        vector<std::pair<int,int>> starting_points;
+        std::vector<std::pair<int,int>> starting_points;
         for (int k = 1; k < nr_vars; k++) {
             for (int j = 0; j < k; j++) {
                 ++nr_branches;
@@ -1264,6 +944,467 @@ namespace percy
         return dags;
     }
 
+    synth_result 
+    std_synthesize(spec& spec, chain& chain, solver_wrapper& solver, std_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+        encoder.set_dirty(true);
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            solver.restart();
+            if (!encoder.encode(spec)) {
+                spec.nr_steps++;
+                continue;
+            }
+
+            auto begin = std::chrono::steady_clock::now();
+            const auto status = solver.solve(spec.conflict_limit);
+            auto end = std::chrono::steady_clock::now();
+            auto synth_time =
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    end - begin
+                    ).count();
+            spec.synth_time = synth_time;
+
+            if (status == success) {
+                encoder.extract_chain(spec, chain);
+                if (spec.verbosity > 2) {
+                    //    encoder.print_solver_state(spec);
+                }
+                return success;
+            } else if (status == failure) {
+                spec.nr_steps++;
+            } else {
+                return timeout;
+            }
+        }
+    }
+
+    synth_result
+    std_cegar_synthesize(spec& spec, chain& chain, solver_wrapper& solver, std_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+        encoder.set_dirty(true);
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            solver.restart();
+            if (!encoder.cegar_encode(spec)) {
+                spec.nr_steps++;
+                continue;
+            }
+            while (true) {
+                auto stat = solver.solve(spec.conflict_limit);
+                if (stat == success) {
+                    encoder.extract_chain(spec, chain);
+                    auto sim_tts = chain_simulate(chain, spec);
+                    auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                    auto first_one = kitty::find_first_one_bit(xor_tt);
+                    if (first_one == -1) {
+                        return success;
+                    }
+                    // Add additional constraint.
+                    if (spec.verbosity) {
+                        printf("  CEGAR difference at tt index %ld\n",
+                            first_one);
+                    }
+                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
+                        spec.nr_steps++;
+                        break;
+                    }
+                } else if (stat == failure) {
+                    spec.nr_steps++;
+                    break;
+                } else {
+                    return timeout;
+                }
+            }
+        }
+    }
+
+    std::unique_ptr<solver_wrapper>
+    get_solver(SolverType type = SLV_BSAT2)
+    {
+        solver_wrapper * solver = nullptr;
+        std::unique_ptr<solver_wrapper> res;
+
+        switch (type) {
+        case SLV_BSAT2:
+            solver = new bsat_wrapper;
+            break;
+        case SLV_CMSAT:
+            solver = new cmsat_wrapper;
+            break;
+#if !defined(_WIN32) && !defined(_WIN64)
+        case SLV_GLUCOSE:
+            solver = new glucose_wrapper;
+            break;
+#endif
+        default:
+            fprintf(stderr, "Error: solver type %d not found", type);
+            exit(1);
+        }
+
+        res.reset(solver);
+        return res;
+    }
+
+    std::unique_ptr<encoder>
+    get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
+    {
+        encoder * enc = nullptr;
+        std::unique_ptr<encoder> res;
+
+        switch (enc_type) {
+        case ENC_KNUTH:
+            enc = new knuth_encoder(solver);
+            break;
+        case ENC_EPFL:
+            enc = new epfl_encoder(solver);
+            break;
+        case ENC_FENCE:
+            enc = new knuth_fence_encoder(solver);
+            break;
+        case ENC_DAG:
+            enc = new knuth_dag_encoder<2>();
+            break;
+        default:
+            fprintf(stderr, "Error: encoder type %d not found\n", enc_type);
+            exit(1);
+        }
+
+        res.reset(enc);
+        return res;
+    }
+
+    std::unique_ptr<enumerating_encoder>
+    get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
+    {
+        enumerating_encoder * enc = nullptr;
+        std::unique_ptr<enumerating_encoder> res;
+
+        switch (enc_type) {
+        case ENC_KNUTH:
+            enc = new knuth_encoder(solver);
+            break;
+        case ENC_EPFL:
+            enc = new epfl_encoder(solver);
+            break;
+        case ENC_FENCE:
+            enc = new knuth_fence_encoder(solver);
+            break;
+        default:
+            fprintf(stderr, "Error: enumerating encoder of ctype %d not found\n", enc_type);
+            exit(1);
+        }
+
+        res.reset(enc);
+        return res;
+    }
+
+
+    synth_result 
+    fence_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+        encoder.set_dirty(true);
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        // As the topological synthesizer decomposes the synthesis
+        // problem, to fairly count the total number of conflicts we
+        // should keep track of all conflicts in existence checks.
+        int total_conflicts = 0;
+        fence f;
+        po_filter<unbounded_generator> g(
+            unbounded_generator(spec.initial_steps),
+            spec.get_nr_out(), spec.fanin);
+        int old_nnodes = 1;
+        while (true) {
+            g.next_fence(f);
+            spec.nr_steps = f.nr_nodes();
+
+            if (spec.nr_steps > old_nnodes) {
+                // Reset conflict count, since this is where other
+                // synthesizers reset it.
+                total_conflicts = 0;
+                old_nnodes = spec.nr_steps;
+            }
+
+            solver.restart();
+            if (!encoder.encode(spec, f)) {
+                continue;
+            }
+
+            if (spec.verbosity) {
+                printf("  next fence:\n");
+                print_fence(f);
+                printf("\n");
+                printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(),
+                    f.nr_levels());
+                for (int i = 0; i < f.nr_levels(); i++) {
+                    printf("f[%d] = %d\n", i, f[i]);
+                }
+            }
+            auto status = solver.solve(spec.conflict_limit);
+            if (status == success) {
+                encoder.extract_chain(spec, chain);
+                return success;
+            } else if (status == failure) {
+                total_conflicts += solver.nr_conflicts();
+                if (spec.conflict_limit &&
+                    total_conflicts > spec.conflict_limit) {
+                    return timeout;
+                }
+                continue;
+            } else {
+                return timeout;
+            }
+        }
+    }
+    
+    synth_result 
+    fence_cegar_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+
+        spec.preprocess();
+        encoder.set_dirty(true);
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+
+        fence f;
+        po_filter<unbounded_generator> g(
+            unbounded_generator(spec.initial_steps),
+            spec.get_nr_out(), spec.fanin);
+        int total_conflicts = 0;
+        int old_nnodes = 1;
+        while (true) {
+            g.next_fence(f);
+            spec.nr_steps = f.nr_nodes();
+
+            if (spec.nr_steps > old_nnodes) {
+                // Reset conflict count, since this is where other
+                // synthesizers reset it.
+                total_conflicts = 0;
+                old_nnodes = spec.nr_steps;
+            }
+
+            if (spec.verbosity) {
+                printf("  next fence:\n");
+                print_fence(f);
+                printf("\n");
+                printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(),
+                    f.nr_levels());
+                for (int i = 0; i < f.nr_levels(); i++) {
+                    printf("f[%d] = %d\n", i, f[i]);
+                }
+            }
+
+            solver.restart();
+            if (!encoder.cegar_encode(spec, f)) {
+                continue;
+            }
+            while (true) {
+                auto status = solver.solve(spec.conflict_limit);
+                if (status == success) {
+                    encoder.extract_chain(spec, chain);
+                    auto sim_tts = chain_simulate(chain, spec);
+                    auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                    auto first_one = kitty::find_first_one_bit(xor_tt);
+                    if (first_one == -1) {
+                        if (spec.verbosity) {
+                            printf("  SUCCESS\n\n");
+                        }
+                        return success;
+                    }
+                    // Add additional constraint.
+                    if (spec.verbosity) {
+                        printf("  CEGAR difference at tt index %ld\n",
+                            first_one);
+                    }
+                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
+                        break;
+                    }
+                } else if (status == failure) {
+                    break;
+                } else {
+                    return timeout;
+                }
+            }
+        }
+    }
+
+    ///< TODO: implement
+    synth_result
+    dag_synthesize(spec& spec, chain& chain, solver_wrapper& solver, dag_encoder<2>& encoder)
+    {
+        return failure;
+    }
+
+    synth_result 
+    synthesize(spec& spec, chain& chain, solver_wrapper& solver, encoder& encoder, SynthMethod synth_method = SYNTH_STD)
+    {
+        switch (synth_method) {
+        case SYNTH_STD:
+            return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+        case SYNTH_STD_CEGAR:
+            return std_cegar_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+        case SYNTH_FENCE:
+            return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+        case SYNTH_FENCE_CEGAR:
+            return fence_cegar_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+        case SYNTH_DAG:
+            return dag_synthesize(spec, chain, solver, static_cast<dag_encoder<2>&>(encoder));
+        default:
+            fprintf(stderr, "Error: synthesis method %d not found\n", synth_method);
+            exit(1);
+        }
+    }
+
+    synth_result
+    synthesize(
+        spec& spec, 
+        chain& chain, 
+        SolverType slv_type = SLV_BSAT2, 
+        EncoderType enc_type = ENC_KNUTH, 
+        SynthMethod method = SYNTH_STD)
+    {
+        auto solver = get_solver(slv_type);
+        auto encoder = get_encoder(*solver, enc_type);
+        return synthesize(spec, chain, *solver, *encoder, method);
+    }
+
+    synth_result
+    next_solution(
+        spec& spec, 
+        chain& chain, 
+        solver_wrapper& solver, 
+        enumerating_encoder& encoder, 
+        SynthMethod synth_method = SYNTH_STD)
+    {
+        if (!encoder.is_dirty()) {
+            switch (synth_method) {
+            case SYNTH_STD:
+            case SYNTH_STD_CEGAR:
+                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+            case SYNTH_FENCE:
+                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+            default:
+                fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
+                exit(1);
+            }
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        // In this case, only one solution exists.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            return failure;
+        }
+
+        if (encoder.block_solution(spec)) {
+            const auto status = solver.solve(spec.conflict_limit);
+
+            if (status == success) {
+                encoder.extract_chain(spec, chain);
+                return success;
+            } else {
+                return status;
+            }
+        }
+
+        return failure;
+    }
+
+    synth_result
+    next_struct_solution(
+        spec& spec, 
+        chain& chain, 
+        solver_wrapper& solver, 
+        enumerating_encoder& encoder,
+        SynthMethod synth_method = SYNTH_STD)
+    {
+        if (!encoder.is_dirty()) {
+            switch (synth_method) {
+            case SYNTH_STD:
+            case SYNTH_STD_CEGAR:
+                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+            case SYNTH_FENCE:
+                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+            default:
+                fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
+                exit(1);
+            }
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        // In this case, only one solution exists.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            return failure;
+        }
+
+        if (encoder.block_solution(spec)) {
+            const auto status = solver.solve(spec.conflict_limit);
+
+            if (status == success) {
+                encoder.extract_chain(spec, chain);
+                return success;
+            } else {
+                return status;
+            }
+        }
+
+        return failure;
+    }
 
 }
 

@@ -10,7 +10,7 @@ using namespace percy;
 int
 main(void)
 {
-    std::bitset<2> asgn;
+    std::vector<int> asgn{ 0, 0 };
 
     // Verify that bitset assignment is initialized to zero.
     assert(is_zero(asgn));

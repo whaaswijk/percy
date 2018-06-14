@@ -1,8 +1,10 @@
 #include <percy/percy.hpp>
 #include <cassert>
 #include <cstdio>
+#include <vector>
 
 using namespace percy;
+using std::vector;
 
 
 /*******************************************************************************

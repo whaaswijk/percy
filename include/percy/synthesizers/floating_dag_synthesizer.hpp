@@ -1,26 +1,28 @@
 #pragma once
 
-#include "synthesizer_base.hpp"
+#include "synthesizer.hpp"
 
 namespace percy
 {
-    template<
-        int FI=2, 
-        typename Encoder=floating_dag_encoder<FI>, 
-        typename Solver=sat_solver*>
-    class floating_dag_synthesizer :
-        public synthesizer<Encoder, Solver>
+    template<int FI=2>
+    class floating_dag_synthesizer
     {
-        using synthesizer<Encoder, Solver>::solver;
-        using synthesizer<Encoder, Solver>::encoder;
+        std::unique_ptr<solver_wrapper> solver;
+        std::unique_ptr<floating_dag_encoder> encoder;
 
         public:
-            template<typename TT>
+            floating_dag_synthesizer(std::unique_ptr<solver_wrapper> solver)
+            {
+                this->solver = std::move(solver);
+                encoder->set_solver(this->solver.get());
+            }
+
+            template<int FI>
             synth_result 
             synthesize(
-                    const synth_spec<TT>& spec, 
+                    const spec& spec, 
                     const floating_dag<FI>& dag, 
-                    chain<FI>& chain,
+                    chain& chain,
                     bool preprocess_spec=true)
             {
                 if (preprocess_spec) {
