@@ -1,7 +1,7 @@
 add_library(percy INTERFACE)
 target_include_directories(percy INTERFACE ${PROJECT_SOURCE_DIR}/include)
 
-target_link_libraries(percy INTERFACE kitty libabc)
+target_link_libraries(percy INTERFACE kitty libabcsat)
 if (UNIX)
     target_link_libraries(percy INTERFACE nauty)
     if (PERCY_USE_SYRUP)
