@@ -11,16 +11,6 @@
 #include "spec.hpp"
 #include "misc.hpp"
 
-/// A hack to get around differences in member template specialization between
-/// GCC and Visual Studio.
-/// See https://stackoverflow.com/questions/1840253/template-member-function-of-template-class-called-from-template-function
-
-#ifdef _WIN32
-#define chain_simulate(chain, spec) chain.simulate(spec)
-#else
-#define chain_simulate(chain, spec) chain.template simulate(spec)
-#endif
-
 /*******************************************************************************
     Definition of Boolean chain. A Boolean chain is a sequence of steps. Each
     step applies a Boolean operator to a fixed number of previous steps. The

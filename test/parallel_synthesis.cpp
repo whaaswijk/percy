@@ -6,17 +6,15 @@ using namespace percy;
 
 
 /*******************************************************************************
-    Tests if parallel fence based synthesis works correctly.
-*******************************************************************************/
+    Tests if parallel DAG-based synthesis works correctly.
 
-template<int nr_in>
-void check_equivalence()
+void check_equivalence(int nr_in)
 {
     dag<2> g;
     unbounded_dag_generator<sat_solver*> ugen;
 
     synth_stats stats;
-    synth_spec<static_truth_table<nr_in>> spec(nr_in, 1);
+    spec spec;
 
     auto synth1 = new_std_synth();
     auto synth2 = new_dag_synth();
@@ -61,6 +59,7 @@ void check_equivalence()
     } 
     printf("\n");
 }
+*******************************************************************************/
 
 
 int main(void)

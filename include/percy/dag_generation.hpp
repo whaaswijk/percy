@@ -6,7 +6,9 @@
 #include <mutex>
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
-#include "synthesizers.hpp"
+#include "solvers.hpp"
+#include <abc/vecInt.h>
+#include <vector>
 
 namespace percy
 {
@@ -1555,7 +1557,7 @@ namespace percy
             {
                 assert(_initialized);
                 dag<2> g;
-                vector<dag<2>> dags;
+                std::vector<dag<2>> dags;
                 const auto nr_vars = _nr_vars;
                 const auto nr_vertices = _nr_vertices;
 
@@ -1583,7 +1585,7 @@ namespace percy
                 return uint64_t(dags.size());
             }
 
-            vector<dag<2>> 
+            std::vector<dag<2>> 
             gen_non_isomorphic_dags()
             {
                 assert(_initialized);

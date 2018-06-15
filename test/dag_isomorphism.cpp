@@ -8,8 +8,8 @@ int main(void)
 {
 #ifndef DISABLE_NAUTY
     dag<2> g1, g2;
-    sat_dag_generator<sat_solver*> gen;
-    unbounded_dag_generator<sat_solver*> ugen;
+    sat_dag_generator gen;
+    unbounded_dag_generator ugen;
 
     int nr_vars = 3;
     int nr_vertices = 4;

@@ -4,10 +4,10 @@
 
 #ifdef USE_SYRUP
 #include <syrup/parallel/MultiSolvers.h>
-#define SolverType Glucose::MultiSolvers
+#define GWType Glucose::MultiSolvers
 #else
 #include <glucose/core/Solver.h>
-#define SolverType Glucose::Solver
+#define GWType Glucose::Solver
 #endif
 
 namespace percy
@@ -16,11 +16,12 @@ namespace percy
     class glucose_wrapper : public solver_wrapper
     {
     private:
+        GWType* solver;
         
     public:
         glucose_wrapper()
         {
-            solver = new SolverType;
+            solver = new GWType;
         }
 
         ~glucose_wrapper()
@@ -32,7 +33,7 @@ namespace percy
         void restart()
         {
             delete solver;
-            solver = new SolverType;
+            solver = new GWType;
         }
 
 
@@ -45,7 +46,7 @@ namespace percy
 
         int nr_vars()
         {
-            return s->nVars();
+            return solver->nVars();
         }
 
         int nr_clauses()
@@ -55,8 +56,8 @@ namespace percy
 
         int nr_conflicts()
         {
-#ifdef USE_SYRUP
-            return s->conflicts;
+#ifndef USE_SYRUP
+            return solver->conflicts;
 #else
             // Currently not supported by Glucose::MultiSolvers
             return 0;
@@ -79,7 +80,11 @@ namespace percy
 
         int var_value(int var)
         {
+#ifndef USE_SYRUP
             return solver->modelValue(var) == l_True;
+#else
+            return solver->model[var] == l_True;
+#endif
         }
 
         synth_result solve(int cl)
@@ -141,7 +146,7 @@ namespace percy
                 return timeout;
             }
 #else
-            return solve(s, cl);
+            return solve(cl);
         }
 #endif
     };

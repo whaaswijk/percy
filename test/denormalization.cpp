@@ -35,7 +35,7 @@ int main(void)
 
         // For one OR gate and one AND gate we need exactly 2 steps.
         assert(c.get_nr_steps() == 2);
-        auto tts = chain_simulate(c, spec);
+        auto tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
 
@@ -43,7 +43,7 @@ int main(void)
         // inverted outputs.
         c.denormalize();
         assert(c.get_nr_steps() == 2);
-        tts = chain_simulate(c, spec);
+        tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
 
@@ -54,7 +54,7 @@ int main(void)
         result = synthesize(spec, c);
         assert(result == success);
         assert(c.get_nr_steps() == 1);
-        tts = chain_simulate(c, spec);
+        tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
 
@@ -62,7 +62,7 @@ int main(void)
         // inverted output should have been removed.
         c.denormalize();
         assert(c.get_nr_steps() == 2);
-        tts = chain_simulate(c, spec);
+        tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
 
@@ -77,14 +77,14 @@ int main(void)
         result = synthesize(spec, c);
         assert(result == success);
         assert(c.get_nr_steps() == 1);
-        tts = chain_simulate(c, spec);
+        tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
         assert(tts[2] == f2);
 
         c.denormalize();
         assert(c.get_nr_steps() == 2);
-        tts = chain_simulate(c, spec);
+        tts = c.simulate(spec);
         assert(tts[0] == f1);
         assert(tts[1] == f2);
         assert(tts[2] == f2);

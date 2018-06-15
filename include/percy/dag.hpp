@@ -165,6 +165,15 @@ namespace percy
             }
 
             void 
+            set_vertex(int v_idx, const std::vector<fanin>& fanins)
+            {
+                assert(v_idx < nr_vertices);
+                for (int i = 0; i < FI; i++) {
+                    vertices[v_idx][i] = fanins[i];
+                }
+            }
+
+            void 
             add_vertex(const fanin* const fanins)
             {
                 vertex newv;
@@ -318,6 +327,14 @@ namespace percy
 
             void 
             set_vertex(int v_idx, const std::array<fanin, 2>& fanins)
+            {
+                assert(v_idx < nr_vertices);
+                _js[v_idx] = fanins[0];
+                _ks[v_idx] = fanins[1];
+            }
+
+            void 
+            set_vertex(int v_idx, const std::vector<fanin>& fanins)
             {
                 assert(v_idx < nr_vertices);
                 _js[v_idx] = fanins[0];

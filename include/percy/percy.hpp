@@ -11,8 +11,9 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "spec.hpp"
-#include "synthesizers.hpp"
 #include "floating_dag.hpp"
+#include "solvers.hpp"
+#include "encoders.hpp"
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
@@ -35,8 +36,6 @@ namespace percy
 	using std::chrono::duration;
 	using std::chrono::time_point;
 
-       
-    
     /***************************************************************************
         We consider a truth table to be trivial if it is equal to (or the
         complement of) a primary input or constant zero.
@@ -78,12 +77,6 @@ namespace percy
         return false;
     }
 
-    template<typename TT>
-    static inline int
-    get_fence_var(const spec& spec, int idx)
-    {
-        return spec.fence_offset + idx;
-    }
 
     /***************************************************************************
         A parallel version which periodically checks if a solution has been
@@ -113,7 +106,7 @@ namespace percy
                     synth->print_solver_state(spec);
                 }
                 synth->chain_extract(spec, chain);
-                auto sim_tts = chain.simulate<TT>();
+                auto sim_tts = chain.simulate(spec);
                 auto xor_tt = (*sim_tts[0]) ^ (*spec.functions[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -505,13 +498,11 @@ namespace percy
     /***************************************************************************
         Finds the smallest possible DAG that can implement the specified
         function.
-    ***************************************************************************/
     template<int FI=2>
     synth_result find_dag(spec& spec, dag<FI>& g, int nr_vars)
     {
-        chain<FI> chain;
+        chain chain;
         rec_dag_generator gen;
-        dag_synthesizer<FI> synth;
 
         int nr_vertices = 1;
         while (true) {
@@ -525,12 +516,11 @@ namespace percy
         }
         return failure;
     }
+    ***************************************************************************/
 
     /***************************************************************************
         Finds a DAG of the specified size that can implement the given
         function (if one exists).
-    ***************************************************************************/
-    /*
     synth_result 
     find_dag(
             spec& spec, 
@@ -546,7 +536,6 @@ namespace percy
         g.reset(nr_vars, nr_vertices);
         return gen.find_dag(spec, g, chain, synth);
     }
-    */
 
     synth_result 
     qpfind_dag(
@@ -570,6 +559,7 @@ namespace percy
         
         return failure;
     }
+    ***************************************************************************/
 
     /*
     synth_result 
@@ -1023,7 +1013,7 @@ namespace percy
                 auto stat = solver.solve(spec.conflict_limit);
                 if (stat == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain_simulate(chain, spec);
+                    auto sim_tts = chain.simulate(spec);
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
@@ -1256,7 +1246,7 @@ namespace percy
                 auto status = solver.solve(spec.conflict_limit);
                 if (status == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain_simulate(chain, spec);
+                    auto sim_tts = chain.simulate(spec);
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {

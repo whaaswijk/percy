@@ -70,7 +70,7 @@ namespace percy
                 auto nr_sel_vars = 0;
                 dag.foreach_vertex([&dag, &nr_sel_vars] (auto v, int v_idx) {
                     dag.foreach_fanin(v, 
-                        [&nr_sel_vars] (fanin fanin, int fanin_idx) {
+                        [&nr_sel_vars] (int fanin, int fanin_idx) {
                             if (fanin == pi_fanin) {
                                 // Can refer to any PI or previous step
                             }
@@ -86,7 +86,7 @@ namespace percy
                     printf("nr_sim_vars=%d\n", nr_sim_vars);
                 }
 
-                solver_set_nr_vars(*solver, nr_op_vars + nr_sim_vars);
+                solver->set_nr_vars(nr_op_vars + nr_sim_vars);
             }
 
             template<int FI>
@@ -125,7 +125,7 @@ namespace percy
                                 get_op_var(dag, i, opvar_idx), 1 - output));
                 }
 
-                auto status =  solver_add_clause(*solver,
+                auto status =  solver->add_clause(
                         abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + ctr); 
 
@@ -161,8 +161,8 @@ namespace percy
                     const floating_dag<FI>& dag, 
                     int t)
             {
-                fanin fanins[FI];
-                std::bitset<FI> fanin_asgn;
+                std::vector<int> fanins(FI);
+                std::vector<int> fanin_asgn(FI);
 
                 for (int i = 0; i < dag.get_nr_vertices(); i++) {
                     auto v = dag.get_vertex(i);
@@ -173,10 +173,10 @@ namespace percy
                     // First add clauses for all cases where the operator i
                     // computes zero.
                     int opvar_idx = 0;
-                    clear_assignment<FI>(fanin_asgn);
+                    clear_assignment(fanin_asgn);
                     while (true) {
-                        next_assignment<FI>(fanin_asgn);
-                        if (is_zero<FI>(fanin_asgn)) {
+                        next_assignment(fanin_asgn);
+                        if (is_zero(fanin_asgn)) {
                             break;
                         }
                         opvar_idx++;
@@ -193,8 +193,8 @@ namespace percy
                         return false;
                     }
                     while (true) {
-                        next_assignment<FI>(fanin_asgn);
-                        if (is_zero<FI>(fanin_asgn)) {
+                        next_assignment(fanin_asgn);
+                        if (is_zero(fanin_asgn)) {
                             break;
                         }
                         opvar_idx++;
@@ -209,13 +209,13 @@ namespace percy
                     // the specified output function.
                     if (i == dag.get_nr_vertices()-1) {
                         int pLits[1];
-                        auto outbit = kitty::get_bit(*spec.functions[0], t+1);
+                        auto outbit = kitty::get_bit(spec.functions[0], t+1);
                         if (spec.out_inv & 1) {
                             outbit = 1 - outbit;
                         }
                         pLits[0] = abc::Abc_Var2Lit(get_sim_var(spec, dag, i,
                                     t), 1 - outbit);
-                        if (!solver_add_clause(*solver,pLits,pLits+1)) {
+                        if (!solver->add_clause(pLits, pLits + 1)) {
                             return false;
                         }
 
@@ -274,14 +274,14 @@ namespace percy
                     chain& chain)
             {
                 assert(chain.get_fanin() == FI);
-                fanin op_inputs[FI];
+                int op_inputs[FI];
 
                 chain.reset(spec.get_nr_in(), 1, dag.get_nr_vertices());
 
                 for (int i = 0; i < dag.get_nr_vertices(); i++) {
                     kitty::static_truth_table<FI> op;
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        if (solver_var_value(*solver, get_op_var(dag, i, j))) {
+                        if (solver->var_value(get_op_var(dag, i, j))) {
                             kitty::set_bit(op, j); 
                         }
                     }
@@ -319,8 +319,7 @@ namespace percy
                         continue;
                     }
                     for (int i = 0; i < spec.nr_steps; i++) {
-                        if (solver_var_value(this->solver, 
-                                    get_out_var(spec, nontriv_count, i))) {
+                        if (solver->var_value(get_out_var(spec, nontriv_count, i))) {
                             chain.set_output(h, ((i + spec.get_nr_in() + 1) << 1) +
                                     ((spec.out_inv >> h) & 1));
                             nontriv_count++;

@@ -36,7 +36,6 @@ namespace percy
         SLV_BSAT2,
         SLV_CMSAT,
         SLV_GLUCOSE,
-        SLV_SYRUP_MULTI,
         SLV_TOTAL,
     };
 

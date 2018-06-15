@@ -56,7 +56,7 @@ namespace percy
                     printf("nr_sim_vars=%d\n", nr_sim_vars);
                 }
 
-                solver->set_nr_vars(nr_op_vars + nr_sim_vars);
+                this->solver->set_nr_vars(nr_op_vars + nr_sim_vars);
             }
 
             bool
@@ -94,7 +94,7 @@ namespace percy
                                 get_op_var(spec, i, opvar_idx), 1 - output));
                 }
 
-                auto status =  solver->add_clause(
+                auto status =  this->solver->add_clause(
                         abc::Vec_IntArray(vLits), 
                         abc::Vec_IntArray(vLits) + ctr); 
 
@@ -180,7 +180,7 @@ namespace percy
                         }
                         pLits[0] = abc::Abc_Var2Lit(get_sim_var(spec, dag, i,
                                     t), 1 - outbit);
-                        if (!solver->add_clause(pLits, pLits + 1)) {
+                        if (!this->solver->add_clause(pLits, pLits + 1)) {
                             return false;
                         }
 
@@ -244,7 +244,7 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     kitty::dynamic_truth_table op(2);
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        if (solver->var_value(get_op_var(spec, i, j))) {
+                        if (this->solver->var_value(get_op_var(spec, i, j))) {
                             kitty::set_bit(op, j); 
                         }
                     }

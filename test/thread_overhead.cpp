@@ -14,15 +14,13 @@ using namespace percy;
     potential solution.
 *******************************************************************************/
 
+/*
 template<int nrin>
 void check_overhead(int conflict_limit)
 {
     dag<2> g;
     synth_stats stats;
-    synth_spec<static_truth_table<nrin>> spec;
-
-    spec.nr_in = nrin;
-    spec.nr_out = 1;
+    spec spec;
     spec.verbosity = 0;
 
     // don't run too many tests.
@@ -30,7 +28,7 @@ void check_overhead(int conflict_limit)
     max_tests = std::min(max_tests, MAX_TESTS);
     static_truth_table<nrin> tt;
 
-    chain<2> chain;
+    chain chain;
 
     printf("Testing %d-input overhead\n", nrin);
 
@@ -71,6 +69,7 @@ void check_overhead(int conflict_limit)
     printf("\n");
 
 }
+*/
 
 int main(void)
 {

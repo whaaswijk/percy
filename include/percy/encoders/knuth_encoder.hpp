@@ -920,21 +920,26 @@ namespace percy
             void 
             extract_dag(const spec& spec, dag<FI>& dag)
             {
-                assert(fi == spec.fanin);
+                assert(FI == spec.fanin);
                 dag.reset(spec.get_nr_in(), spec.nr_steps);
 
+                auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.get_nr_in() + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver_var_value(*solver,
-                                        get_sel_var(spec, i, j, k)))
-                            {
-                                dag.set_vertex(i, j, k);
-                                break;
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        if (solver->var_value(sel_var)) {
+                            const auto& fanins = svar_map[svar_offset + j];
+                            if (spec.verbosity) {
+                                printf("  with operands ");
+                                for (int k = 0; k < spec.fanin; k++) {
+                                    printf("x_%d ", fanins[k] + 1);
+                                }
                             }
-
+                            dag.set_vertex(i, fanins);
                         }
                     }
+                    svar_offset += nr_svars_for_i;
                 }
             }
 

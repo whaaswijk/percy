@@ -255,7 +255,6 @@ namespace percy
                 std::vector<int> fanin_svars(spec.fanin);
                 int pLits[2];
 
-                int svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
                     // Generate the appropriate constraints for all fanin combinations.
                     const auto nr_svars_for_i = spec.get_nr_in() + i;
@@ -667,7 +666,6 @@ namespace percy
                 std::vector<int> fanin(spec.fanin);
                 std::vector<int> fvar_asgns;
 
-                auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
                     const auto nr_svars_for_i = spec.get_nr_in() + i;
                     std::string bitmask(spec.fanin, 1);
@@ -857,17 +855,19 @@ namespace percy
             {
                 assert(FI == spec.fanin);
                 dag.reset(spec.get_nr_in(), spec.nr_steps);
+                std::vector<int> fanins(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int k = 1; k < spec.get_nr_in() + i; k++) {
-                        for (int j = 0; j < k; j++) {
-                            if (solver->var_value(get_sel_var(spec, i, j, k))) {
-                                dag.set_vertex(i, j, k);
-                                break;
-                            }
-
+                    const auto nr_svars_for_i = spec.get_nr_in() + i;
+                    auto svar_idx = 0;
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(spec, i, j);
+                        if (solver->var_value(sel_var)) {
+                            fanins[svar_idx++] = j;
                         }
                     }
+                    assert(svar_idx == spec.fanin);
+                    dag.set_vertex(i, fanins);
                 }
             }
 
@@ -884,7 +884,6 @@ namespace percy
                 printf("  Nr. variables = %d\n", solver->nr_vars());
                 printf("  Nr. clauses = %d\n\n", solver->nr_clauses());
 
-                auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
                     bool step_has_fanins = false;
                     auto svar_idx = 0;
