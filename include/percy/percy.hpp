@@ -29,9 +29,6 @@
 *******************************************************************************/
 namespace percy
 {
-	using pabc::lit;
-	using pabc::sat_solver;
-
 	using std::chrono::high_resolution_clock;
 	using std::chrono::duration;
 	using std::chrono::time_point;
@@ -1048,9 +1045,11 @@ namespace percy
         case SLV_BSAT2:
             solver = new bsat_wrapper;
             break;
+#ifdef PERCY_BUILD_CMS
         case SLV_CMSAT:
             solver = new cmsat_wrapper;
             break;
+#endif
 #if !defined(_WIN32) && !defined(_WIN64)
         case SLV_GLUCOSE:
             solver = new glucose_wrapper;

@@ -2,7 +2,7 @@
 
 #if !defined(_WIN32) && !defined(_WIN64)
 
-#ifdef USE_SYRUP
+#ifndef USE_GLUCOSE
 #include <syrup/parallel/MultiSolvers.h>
 #define GWType Glucose::MultiSolvers
 #else
@@ -56,7 +56,7 @@ namespace percy
 
         int nr_conflicts()
         {
-#ifndef USE_SYRUP
+#ifdef USE_GLUCOSE
             return solver->conflicts;
 #else
             // Currently not supported by Glucose::MultiSolvers
@@ -64,7 +64,7 @@ namespace percy
 #endif
         }
 
-        int add_clause(lit* begin, lit* end)
+        int add_clause(pabc::lit* begin, pabc::lit* end)
         {
             Glucose::vec<Glucose::Lit> litvec;
             for (auto i = begin; i != end; i++) {
@@ -80,7 +80,7 @@ namespace percy
 
         int var_value(int var)
         {
-#ifndef USE_SYRUP
+#ifdef USE_GLUCOSE
             return solver->modelValue(var) == l_True;
 #else
             return solver->model[var] == l_True;
@@ -89,7 +89,7 @@ namespace percy
 
         synth_result solve(int cl)
         {
-#ifndef USE_SYRUP
+#ifdef USE_GLUCOSE
             Glucose::vec<Glucose::Lit> litvec;
             if (cl) {
                 solver->setConfBudget(cl);
@@ -127,9 +127,9 @@ namespace percy
         }
 
 
-        synth_result solve(lit* begin, lit* end, int cl)
+        synth_result solve(pabc::lit* begin, pabc::lit* end, int cl)
         {
-#ifndef USE_SYRUP
+#ifdef USE_GLUCOSE
             Glucose::vec<Glucose::Lit> litvec;
             for (auto i = begin; i != end; i++) {
                 litvec.push(Glucose::mkLit((*i >> 1), (*i & 1)));
@@ -147,8 +147,8 @@ namespace percy
             }
 #else
             return solve(cl);
-        }
 #endif
+        }
     };
 }
 

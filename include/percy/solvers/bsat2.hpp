@@ -2,15 +2,6 @@
 
 #include "solver_wrapper.hpp"
 
-#define STRINGIFY(s) XSTRINGIFY(s)
-#define XSTRINGIFY(s) #s
-
-#define testingnur 3
-#pragma message ("abc = " STRINGIFY(abc))
-#pragma message ("pabc = " STRINGIFY(pabc))
-#pragma message ("ABC_NAMESPACE = " STRINGIFY(ABC_NAMESPACE))
-#pragma message ("testingnur = " STRINGIFY(testingnur))
-
 namespace percy
 {
     class bsat_wrapper : public solver_wrapper
@@ -55,7 +46,7 @@ namespace percy
             return pabc::sat_solver_nconflicts(solver);
         }
 
-        int add_clause(lit* begin, lit* end)
+        int add_clause(pabc::lit* begin, pabc::lit* end)
         {
             return pabc::sat_solver_addclause(solver, begin, end);
         }
@@ -82,7 +73,7 @@ namespace percy
             }
         }
 
-        synth_result solve(lit* begin, lit* end, int cl)
+        synth_result solve(pabc::lit* begin, pabc::lit* end, int cl)
         {
             auto res = pabc::sat_solver_solve(solver, begin, end, cl, 0, 0, 0);
             if (res == 1) {

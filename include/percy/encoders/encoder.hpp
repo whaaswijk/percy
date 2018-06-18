@@ -8,10 +8,6 @@
 
 namespace percy
 {
-    using pabc::Abc_Var2Lit;
-    using pabc::Vec_IntSetEntry;
-    using pabc::Vec_IntArray;
-
     class encoder
     {
     protected:

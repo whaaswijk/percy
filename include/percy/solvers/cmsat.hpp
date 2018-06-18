@@ -45,7 +45,7 @@ namespace percy
             solver->new_vars(nr_vars);
         }
 
-        int add_clause(lit* begin, lit* end)
+        int add_clause(pabc::lit* begin, pabc::lit* end)
         {
             static std::vector<CMSat::Lit> clause;
             clause.clear();
@@ -76,7 +76,7 @@ namespace percy
             }
         }
 
-        synth_result solve(lit* begin, lit* end, int cl)
+        synth_result solve(pabc::lit* begin, pabc::lit* end, int cl)
         {
             static std::vector<CMSat::Lit> assumps;
             assumps.clear();

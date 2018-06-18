@@ -182,7 +182,7 @@ namespace percy
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         for (int i = 0; i < spec.nr_steps; i++) {
                             pabc::Vec_IntSetEntry(vLits, i, 
-                                    Abc_Var2Lit(get_out_var(spec, h, i), 0));
+                                    pabc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                             if (spec.verbosity) {
                                 printf("  output %d may point to step %d\n", 
                                         h+1, spec.get_nr_in()+i+1);
@@ -198,7 +198,7 @@ namespace percy
                 const auto last_op = spec.nr_steps - 1;
                 for (int h = 0; h < spec.nr_nontriv; h++) {
                     pabc::Vec_IntSetEntry(vLits, h, 
-                            Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
+                            pabc::Abc_Var2Lit(get_out_var(spec, h, last_op), 0));
                 }
                 solver->add_clause(pabc::Vec_IntArray(vLits), 
                         pabc::Vec_IntArray(vLits) + spec.nr_nontriv);
@@ -219,7 +219,7 @@ namespace percy
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
                         pabc::Vec_IntSetEntry(vLits, j-1,
-                                Abc_Var2Lit(get_op_var(spec, i, j), 0));
+                                pabc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     solver->add_clause(pabc::Vec_IntArray(vLits),
                             pabc::Vec_IntArray(vLits) + nr_op_vars_per_step);
@@ -373,7 +373,7 @@ namespace percy
                                     pabc::Vec_IntSetEntry(
                                             vLits, 
                                             ctr++, 
-                                            Abc_Var2Lit(svar, 0));
+                                            pabc::Abc_Var2Lit(svar, 0));
                                     break;
                                 }
                             }
