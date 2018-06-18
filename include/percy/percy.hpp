@@ -29,8 +29,8 @@
 *******************************************************************************/
 namespace percy
 {
-	using abc::lit;
-	using abc::sat_solver;
+	using pabc::lit;
+	using pabc::sat_solver;
 
 	using std::chrono::high_resolution_clock;
 	using std::chrono::duration;

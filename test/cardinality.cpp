@@ -17,7 +17,7 @@ block_solution(solver_wrapper* s, vector<int> sum_vars)
 
     for (int i = 0; i < sum_vars.size(); i++) {
         const auto sum_var = sum_vars[i];
-        lits[i] = abc::Abc_Var2Lit(sum_var, s->var_value(sum_var));
+        lits[i] = pabc::Abc_Var2Lit(sum_var, s->var_value(sum_var));
     }
     return s->add_clause(lits, lits + sum_vars.size());
 }

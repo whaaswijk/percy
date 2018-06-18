@@ -23,18 +23,18 @@ namespace percy
             int lex_offset;
             int total_nr_vars;
             
-            abc::Vec_Int_t* vLits; // Dynamic vector of literals
+            pabc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
             epfl_encoder(solver_wrapper& solver)
             {
-                vLits = abc::Vec_IntAlloc(128);
+                vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
             ~epfl_encoder()
             {
-                abc::Vec_IntFree(vLits);
+                pabc::Vec_IntFree(vLits);
             }
 
             int
@@ -164,12 +164,12 @@ namespace percy
                 if (spec.nr_nontriv > 1) {
                     for (int h = 0; h < spec.nr_nontriv; h++) {
                         for (int i = 0; i < spec.nr_steps; i++) {
-                            abc::Vec_IntSetEntry(vLits, i, 
-                                    abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
+                            pabc::Vec_IntSetEntry(vLits, i, 
+                                    pabc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                         }
                         status &= solver->add_clause(
-                                abc::Vec_IntArray(vLits),
-                                abc::Vec_IntArray(vLits) + spec.nr_steps);
+                                pabc::Vec_IntArray(vLits),
+                                pabc::Vec_IntArray(vLits) + spec.nr_steps);
 
                         if (spec.verbosity > 2) {
                             printf("creating output clause: ( ");
@@ -186,12 +186,12 @@ namespace percy
                 // operator, otherwise it may as well not be there.
                 const auto last_op = spec.nr_steps - 1;
                 for (int h = 0; h < spec.nr_nontriv; h++) {
-                    abc::Vec_IntSetEntry(vLits, h,
-                            abc::Abc_Var2Lit(get_out_var(spec, h, last_op),0));
+                    pabc::Vec_IntSetEntry(vLits, h,
+                            pabc::Abc_Var2Lit(get_out_var(spec, h, last_op),0));
                 }
                 status &= solver->add_clause(
-                    abc::Vec_IntArray(vLits),
-                    abc::Vec_IntArray(vLits) + spec.nr_nontriv);
+                    pabc::Vec_IntArray(vLits),
+                    pabc::Vec_IntArray(vLits) + spec.nr_nontriv);
 
                 if (spec.verbosity > 2) {
                     printf("creating output clause: ( ");
@@ -309,8 +309,8 @@ namespace percy
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {
                             outbit = 1 - outbit;
                         }
-                        pLits[0] = abc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
-                        pLits[1] = abc::Abc_Var2Lit(get_sim_var(spec, i, t), 
+                        pLits[0] = pabc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
+                        pLits[1] = pabc::Abc_Var2Lit(get_sim_var(spec, i, t), 
                                 1 - outbit);
                         ret &= solver->add_clause(pLits, pLits+2);
                         if (spec.verbosity > 2) {
@@ -376,28 +376,28 @@ namespace percy
                             return true;
                         }
                     } else {
-                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(
+                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(
                                     get_sim_var(spec, child - spec.get_nr_in(),
                                         t), assign));
                     }
                 }
 
                 for (const auto svar : fanin_svars) {
-                    abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
+                    pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
                 }
 
-                abc::Vec_IntSetEntry(vLits, ctr++,
-                        abc::Abc_Var2Lit(get_sim_var(spec, i, t), output));
+                pabc::Vec_IntSetEntry(vLits, ctr++,
+                        pabc::Abc_Var2Lit(get_sim_var(spec, i, t), output));
 
                 //printf("opvar_idx=%d\n", opvar_idx);
                 if (opvar_idx > 0) {
-                    abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(
+                    pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(
                                 get_op_var(spec, i, opvar_idx), 1 - output));
                 }
 
                 auto status = solver->add_clause(
-                        abc::Vec_IntArray(vLits),
-                        abc::Vec_IntArray(vLits) + ctr); 
+                        pabc::Vec_IntArray(vLits),
+                        pabc::Vec_IntArray(vLits) + ctr); 
 
                 if (spec.verbosity > 2) {
                     printf("creating sim. clause: (");
@@ -441,25 +441,25 @@ namespace percy
                     
                     // Dissallow the constant zero operator.
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                        abc::Vec_IntSetEntry(vLits, j-1,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
+                        pabc::Vec_IntSetEntry(vLits, j-1,
+                                pabc::Abc_Var2Lit(get_op_var(spec, i, j), 0));
                     }
                     auto status = solver->add_clause(
-                            abc::Vec_IntArray(vLits), 
-                            abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                            pabc::Vec_IntArray(vLits), 
+                            pabc::Vec_IntArray(vLits) + nr_op_vars_per_step);
                     assert(status);
                     
                     // Dissallow all variable projection operators.
                     for (int n = 0; n < spec.fanin; n++) {
                         kitty::create_nth_var(triv_op, n);
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
-                            abc::Vec_IntSetEntry(vLits, j-1,
-                                    abc::Abc_Var2Lit(get_op_var(spec, i, j), 
+                            pabc::Vec_IntSetEntry(vLits, j-1,
+                                    pabc::Abc_Var2Lit(get_op_var(spec, i, j), 
                                         kitty::get_bit(triv_op, j)));
                         }
                         status = solver->add_clause(
-                                abc::Vec_IntArray(vLits),
-                                abc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                                pabc::Vec_IntArray(vLits),
+                                pabc::Vec_IntArray(vLits) + nr_op_vars_per_step);
                         assert(status);
                     }
                 }
@@ -476,18 +476,18 @@ namespace percy
 
                     // Either one of the outputs points to this step.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
-                        abc::Vec_IntSetEntry(vLits, ctr++, 
-                                abc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
+                        pabc::Vec_IntSetEntry(vLits, ctr++, 
+                                pabc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
                     }
 
                     // Or one of the succeeding steps points to this step.
                     for (int ip = i + 1; ip < spec.nr_steps; ip++) {
                         const auto sel_var = get_sel_var(spec, ip, spec.get_nr_in() + i);
-                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(sel_var, 0));
+                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(sel_var, 0));
                     }
                     auto status = solver->add_clause(
-                            abc::Vec_IntArray(vLits),
-                            abc::Vec_IntArray(vLits) + ctr);
+                            pabc::Vec_IntArray(vLits),
+                            pabc::Vec_IntArray(vLits) + ctr);
                     assert(status);
                 }
             }
@@ -539,14 +539,14 @@ namespace percy
 
                                     auto ctr = 0;
                                     for (const auto svar : fanin_svars) {
-                                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
+                                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
                                     }
                                     for (const auto svar : pfanin_svars) {
-                                        abc::Vec_IntSetEntry(vLits, ctr++, abc::Abc_Var2Lit(svar, 1));
+                                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
                                     }
                                     auto status = solver->add_clause(
-                                        abc::Vec_IntArray(vLits),
-                                        abc::Vec_IntArray(vLits) + ctr);
+                                        pabc::Vec_IntArray(vLits),
+                                        pabc::Vec_IntArray(vLits) + ctr);
                                     assert(status);
                                 } while (std::prev_permutation(bitmaskp.begin(), bitmaskp.end()));
                             }
@@ -704,8 +704,8 @@ namespace percy
                             Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(iop_var, 1));
                             Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ipop_var, 0));
                             auto status = solver->add_clause(
-                                abc::Vec_IntArray(vLits),
-                                abc::Vec_IntArray(vLits) + ctr);
+                                pabc::Vec_IntArray(vLits),
+                                pabc::Vec_IntArray(vLits) + ctr);
                             assert(status);
                             if (op_idx == (nr_op_vars_per_step - 1)) {
                                 continue;
@@ -761,13 +761,13 @@ namespace percy
                             const auto svar_p = get_sel_var(spec, i, p);
                             const auto svar_q = get_sel_var(spec, i, q);
 
-                            abc::Vec_IntSetEntry(vLits, 0, Abc_Var2Lit(svar_p, 0));
-                            abc::Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(svar_q, 1));
+                            pabc::Vec_IntSetEntry(vLits, 0, Abc_Var2Lit(svar_p, 0));
+                            pabc::Vec_IntSetEntry(vLits, 1, Abc_Var2Lit(svar_q, 1));
 
                             auto ctr = 2;
                             for (int ip = 0; ip < i; ip++) {
                                 const auto ip_svar_p = get_sel_var(spec, ip, p);
-                                abc::Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ip_svar_p, 0));
+                                pabc::Vec_IntSetEntry(vLits, ctr++, Abc_Var2Lit(ip_svar_p, 0));
                             }
                             if (!solver->add_clause(Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr)) {
                                 return false;
@@ -1087,22 +1087,22 @@ namespace percy
                         if (solver->var_value(op_var)) {
                             invert = 1;
                         }
-                        abc::Vec_IntSetEntry(vLits, ctr++,
-                                abc::Abc_Var2Lit(get_op_var(spec, i, j),
+                        pabc::Vec_IntSetEntry(vLits, ctr++,
+                                pabc::Abc_Var2Lit(get_op_var(spec, i, j),
                                     invert));
                     }
 
                     for (int j = 0; j < spec.get_nr_in() + i; j++) {
                         const auto sel_var = get_sel_var(spec, i , j);
                         if (solver->var_value(sel_var)) {
-                            abc::Vec_IntSetEntry(vLits, ctr++,
-                                    abc::Abc_Var2Lit(sel_var, 1));
+                            pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(sel_var, 1));
                         }
                     }
                 }
                 return solver->add_clause(
-                            abc::Vec_IntArray(vLits), 
-                            abc::Vec_IntArray(vLits) + ctr);
+                            pabc::Vec_IntArray(vLits), 
+                            pabc::Vec_IntArray(vLits) + ctr);
             }
 
 
@@ -1118,15 +1118,15 @@ namespace percy
                     for (int j = 0; j < spec.get_nr_in() + i; j++) {
                         const auto sel_var = get_sel_var(spec, i, j);
                         if (solver->var_value(sel_var)) {
-                            abc::Vec_IntSetEntry(vLits, ctr++,
-                                    abc::Abc_Var2Lit(sel_var, 1));
+                            pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(sel_var, 1));
                         }
                     }
                 }
 
                 return solver->add_clause(
-                            abc::Vec_IntArray(vLits), 
-                            abc::Vec_IntArray(vLits) + ctr);
+                            pabc::Vec_IntArray(vLits), 
+                            pabc::Vec_IntArray(vLits) + ctr);
             }
     };
 }

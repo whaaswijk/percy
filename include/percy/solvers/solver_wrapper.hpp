@@ -5,10 +5,9 @@
 
 namespace percy
 {
-    using abc::lit;
-	using abc::sat_solver;
-	using abc::Abc_LitIsCompl;
-	using abc::Abc_Lit2Var;
+    using pabc::lit;
+	using pabc::Abc_LitIsCompl;
+	using pabc::Abc_Lit2Var;
 
     enum synth_result
     {

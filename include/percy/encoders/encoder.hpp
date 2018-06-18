@@ -4,15 +4,13 @@
 #include "../spec.hpp"
 #include "../misc.hpp"
 #include "../sat_circuits.hpp"
-#include <abc/abc_global.h>
 #include <abc/vecInt.h>
-
 
 namespace percy
 {
-    using abc::Abc_Var2Lit;
-    using abc::Vec_IntSetEntry;
-    using abc::Vec_IntArray;
+    using pabc::Abc_Var2Lit;
+    using pabc::Vec_IntSetEntry;
+    using pabc::Vec_IntArray;
 
     class encoder
     {
