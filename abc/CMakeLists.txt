@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 3.6)
 
 project(libabc LANGUAGES CXX)
 
+include_directories(${PROJECT_SOURCE_DIR})
 file(GLOB ABC_SRC *.cpp)
 
 if (STATIC_LIBABC)
@@ -12,5 +13,4 @@ else()
     set_property(TARGET libabcsat PROPERTY OUTPUT_NAME abc)
     set_property(TARGET libabcsat PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
-
-target_link_libraries(libabcsat percy)
+target_include_directories(libabcsat INTERFACE ${PROJECT_SOURCE_DIR})
