@@ -50,7 +50,7 @@ namespace percy
             static std::vector<CMSat::Lit> clause;
             clause.clear();
             for (auto i = begin; i < end; i++) {
-                clause.push_back(CMSat::Lit(Abc_Lit2Var(*i), Abc_LitIsCompl(*i)));
+                clause.push_back(CMSat::Lit(pabc::Abc_Lit2Var(*i), pabc::Abc_LitIsCompl(*i)));
             }
             return solver->add_clause(clause);
         }
@@ -81,7 +81,7 @@ namespace percy
             static std::vector<CMSat::Lit> assumps;
             assumps.clear();
             for (auto i = begin; i < end; i++) {
-                assumps.push_back(CMSat::Lit(Abc_Lit2Var(*i), Abc_LitIsCompl(*i)));
+                assumps.push_back(CMSat::Lit(pabc::Abc_Lit2Var(*i), pabc::Abc_LitIsCompl(*i)));
             }
             if (cl > 0) {
                 solver->set_max_confl(cl);
