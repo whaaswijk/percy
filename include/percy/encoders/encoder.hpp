@@ -45,6 +45,7 @@ namespace percy
         virtual bool encode(const spec& spec) = 0;
         virtual bool cegar_encode(const spec& spec) = 0;
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
+        virtual void print_solver_state(const spec& spec) = 0;
     };
 
     class fence_encoder : public enumerating_encoder
@@ -72,22 +73,49 @@ namespace percy
     }
 
     static inline void
-    next_assignment(std::vector<int>& fanin_asgn)
+    next_assignment(std::vector<int>& asgn)
     {
-        for (int i = 0; i < fanin_asgn.size(); i++) {
-            if (fanin_asgn[i]) {
-                fanin_asgn[i] = 0;
+        for (int i = 0; i < asgn.size(); i++) {
+            if (asgn[i]) {
+                asgn[i] = 0;
             } else {
-                fanin_asgn[i] = 1;
+                asgn[i]++;
                 return;
             }
         }
     }
+    
+    static inline void
+    inc_assignment(std::vector<int>& asgn, int max_val, int i)
+    {
+        if (i >= asgn.size()) return;
+
+        if (asgn[i] == max_val) {
+            asgn[i] = 0;
+            inc_assignment(asgn, max_val, i + 1);
+        } else {
+            assert(asgn[i] < max_val);
+            asgn[i]++;
+        }
+    }
+    
+    static inline void
+    inc_assignment(std::vector<int>& asgn, int max_val)
+    {
+        inc_assignment(asgn, max_val, 0);
+    }
+
 
     static inline bool
     is_zero(const std::vector<int>& fanin_asgn)
     {
-        return std::find(fanin_asgn.begin(), fanin_asgn.end(), 1) == fanin_asgn.end();
+        auto status = true;
+        for (const auto asgn : fanin_asgn) {
+            if (asgn != 0) {
+                status = false;
+            }
+        }
+        return status;
     }
 
     void
