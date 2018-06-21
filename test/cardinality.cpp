@@ -23,10 +23,10 @@ block_solution(solver_wrapper* s, vector<int> sum_vars)
 }
 
 void
-enumerate_solutions(int nr_svars, int C)
+enumerate_solutions(int nr_svars, int C, SolverType stype)
 {
     assert(nr_svars <= MAX_SUM_VARS);
-    auto s = get_solver(SLV_BSAT2);
+    auto s = get_solver(stype);
 
     vector<int> sum_vars;
     vector<int> res_vars;
@@ -88,10 +88,20 @@ enumerate_solutions(int nr_svars, int C)
 /// Tests the creation of cardinality constraint circuits in SAT solvers.
 int main(void)
 {
-    enumerate_solutions(2, 2);
-    enumerate_solutions(4, 2);
-    enumerate_solutions(4, 3);
+    enumerate_solutions(2, 2, SLV_BSAT2);
+    enumerate_solutions(4, 2, SLV_BSAT2);
+    enumerate_solutions(4, 3, SLV_BSAT2);
     
+    enumerate_solutions(2, 2, SLV_CMSAT);
+    enumerate_solutions(4, 2, SLV_CMSAT);
+    enumerate_solutions(4, 3, SLV_CMSAT);
+    
+#if !defined(_WIN32) && !defined(_WIN64)
+    enumerate_solutions(2, 2, SLV_GLUCOSE);
+    enumerate_solutions(4, 2, SLV_GLUCOSE);
+    enumerate_solutions(4, 3, SLV_GLUCOSE);
+#endif
+
     return 0;
 }
 

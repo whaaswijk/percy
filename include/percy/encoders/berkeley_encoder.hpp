@@ -542,9 +542,10 @@ namespace percy
                 order. In other words, we require steps operands to be 
                 co-lexicographically ordered tuples.
             *******************************************************************/
-            void 
+            bool 
             create_colex_clauses(const spec& spec)
             {
+                bool status = true;
                 std::vector<int> fanins(spec.fanin);
                 std::vector<int> ip_fanins(spec.fanin);
 
@@ -571,11 +572,10 @@ namespace percy
                                     pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, ip_fanins[k], k), 1));
                             }
 
-                            const auto status = solver->add_clause(
+                            status &= solver->add_clause(
                                 pabc::Vec_IntArray(vLits),
                                 pabc::Vec_IntArray(vLits) + ctr
                             );
-                            assert(status);
                             
                             inc_assignment(ip_fanins, max_ip_fanin);
                             if (is_zero(ip_fanins)) {
@@ -589,6 +589,7 @@ namespace percy
                         }
                     }
                 }
+                return status;
             }
 
             /*******************************************************************
@@ -596,9 +597,10 @@ namespace percy
                 order. In other words, we require steps operands to be
                 lexicographically ordered tuples.
             *******************************************************************/
-            void
+            bool
             create_lex_clauses(const spec& spec)
             {
+                auto status = true;
                 std::vector<int> fanins(spec.fanin);
                 std::vector<int> ip_fanins(spec.fanin);
 
@@ -625,11 +627,10 @@ namespace percy
                                     pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, ip_fanins[k], k), 1));
                             }
 
-                            const auto status = solver->add_clause(
+                            status &= solver->add_clause(
                                 pabc::Vec_IntArray(vLits),
                                 pabc::Vec_IntArray(vLits) + ctr
                             );
-                            assert(status);
                             
                             inc_assignment(ip_fanins, max_ip_fanin);
                             if (is_zero(ip_fanins)) {
@@ -643,6 +644,7 @@ namespace percy
                         }
                     }
                 }
+                return status;
             }
 
             /*******************************************************************
@@ -989,12 +991,12 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
 
-                if (spec.add_colex_clauses) {
-                    create_colex_clauses(spec);
+                if (spec.add_colex_clauses && !create_colex_clauses(spec)) {
+                    return false;
                 }
 
-                if (spec.add_lex_clauses) {
-                    create_lex_clauses(spec);
+                if (spec.add_lex_clauses && !create_lex_clauses(spec)) {
+                    return false;
                 }
                 
                 if (spec.add_lex_func_clauses) {
@@ -1041,12 +1043,12 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
                 
-                if (spec.add_colex_clauses) {
-                    create_colex_clauses(spec);
+                if (spec.add_colex_clauses && !create_colex_clauses(spec)) {
+                    return false;
                 }
-                
-                if (spec.add_lex_clauses) {
-                    create_lex_clauses(spec);
+
+                if (spec.add_lex_clauses && !create_lex_clauses(spec)) {
+                    return false;
                 }
 
                 if (spec.add_lex_func_clauses) {

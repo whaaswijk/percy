@@ -1045,7 +1045,7 @@ namespace percy
         case SLV_BSAT2:
             solver = new bsat_wrapper;
             break;
-#ifdef PERCY_BUILD_CMS
+#ifdef USE_CMS
         case SLV_CMSAT:
             solver = new cmsat_wrapper;
             break;
