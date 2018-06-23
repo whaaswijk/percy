@@ -1,5 +1,7 @@
 #pragma once
 
+#include <kitty/kitty.hpp>
+
 namespace percy
 {
     
