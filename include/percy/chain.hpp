@@ -370,6 +370,13 @@ namespace percy
                     return false;
                 }
 
+                for (auto& step : steps) {
+                    if (step.size() != spec.fanin) {
+                        assert(false);
+                        return false;
+                    }
+                }
+
                 auto nr_nontriv = 0;
                 for (int i = 0; i < spec.nr_nontriv; i++) {
                     if ((spec.triv_flag >> i) & 1) {

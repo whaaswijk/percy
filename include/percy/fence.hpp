@@ -9,6 +9,7 @@
 #include "concurrentqueue.h"
 #include <cmath>
 #include <thread>
+#include <percy/spec.hpp>
 
 /*******************************************************************************
     Definitions of Boolean fences and fence filters and generators.
@@ -631,12 +632,12 @@ namespace percy
         to be consumed by other threads.
     ***************************************************************************/
     void
-    generate_fences(int k, moodycamel::ConcurrentQueue<fence>& q)
+    generate_fences(spec& spec, moodycamel::ConcurrentQueue<fence>& q)
     {
         rec_fence_generator gen;
 
-        for (int l = 1; l <= k; l++) {
-            gen.reset(k, l);
+        for (int l = 1; l <= spec.nr_steps; l++) {
+            gen.reset(spec.nr_steps, l, spec.get_nr_out(), spec.fanin);
             gen.generate_fences(q);
         }
     }

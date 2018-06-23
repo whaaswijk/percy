@@ -691,7 +691,7 @@ namespace percy
             bool 
             encode(const spec& spec, const fence& f)
             {
-                assert(spec.nr_steps <= MAX_STEPS);
+                assert(spec.nr_steps == f.nr_nodes());
 
                 bool success = true;
 
@@ -734,7 +734,7 @@ namespace percy
             bool 
             cegar_encode(const spec& spec, const fence& f)
             {
-                assert(spec.nr_steps <= MAX_STEPS);
+                assert(spec.nr_steps == f.nr_nodes());
 
                 update_level_map(spec, f);
                 create_variables(spec);

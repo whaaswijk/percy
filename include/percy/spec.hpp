@@ -22,13 +22,33 @@ namespace percy
         SYNTH_TOTAL
     };
 
+    const char * const SynthMethodToString[SYNTH_TOTAL] =
+    {
+        "SYNTH_STD",
+        "SYNTH_STD_CEGAR",
+        "SYNTH_FENCE",
+        "SYNTH_FENCE_CEGAR",
+        "SYNTH_DAG",
+        "SYNTH_FDAG",
+    };
+
     enum EncoderType
     {
         ENC_KNUTH,
         ENC_EPFL,
+        ENC_BERKELEY,
         ENC_FENCE,
         ENC_DAG,
         ENC_TOTAL
+    };
+
+    const char* const EncoderTypeToString[ENC_TOTAL] = 
+    {
+        "ENC_KNUTH",
+        "ENC_EPFL",
+        "ENC_BERKELEY",
+        "ENC_FENCE",
+        "ENC_DAG",
     };
 
     enum SolverType
@@ -39,6 +59,13 @@ namespace percy
         SLV_TOTAL,
     };
 
+    const char * const SolverTypeToString[SLV_TOTAL] = 
+    {
+        "SLV_BSAT2",
+        "SLV_CMSAT",
+        "SLV_GLUCOSE",
+    };
+
 
     /// Used to gather data on synthesis experiments.
     struct synth_stats
@@ -46,6 +73,11 @@ namespace percy
         double overhead = 0;
         double total_synth_time = 0;
         double time_to_first_synth = 0;
+        int nr_success = 0;
+        int nr_timeouts = 0;
+        int64_t sat_time = 0;   ///< How much time was spent on UNSAT formulae (in us)
+        int64_t unsat_time = 0; ///< How much time was spent on SAT formulae (in us)
+        int64_t synth_time = 0; ///< How much time was spent on SAT formulae (in us)
     }; 
 
     class spec
@@ -76,8 +108,6 @@ namespace percy
             bool add_symvar_clauses = true; ///< Symmetry break: impose order on symmetric variables
             bool add_lex_clauses = false; ///< Symmetry break: order step fanins lexicographically
 
-            int64_t synth_time;  ///< A place to log elapsed synthesis time (in us)
-  
             /// Limit on the number of SAT conflicts. Zero means no limit.
             int conflict_limit = 0;
             
