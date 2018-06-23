@@ -36,7 +36,10 @@ namespace percy
             { 
                 reset(0, 0, 0, 0);
             }
-            chain(const chain& c) = delete;
+            chain(const chain& c) 
+            {
+                copy(c);
+            }
 
             /*
             chain(chain&& c)
