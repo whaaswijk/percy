@@ -3,7 +3,7 @@
 #include <chrono>
 #include <vector>
 #include "tt_utils.hpp"
-
+#include <kitty/kitty.hpp>
 
 namespace percy
 {

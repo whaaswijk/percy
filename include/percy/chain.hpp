@@ -65,7 +65,9 @@ namespace percy
 
             int get_fanin() const { return fanin; }
             int get_nr_steps() const { return steps.size(); }
+            int get_nr_inputs() const { return nr_in; }
             int get_nr_outputs() const { return outputs.size(); }
+            const std::vector<int>& get_step(int i) const { return steps[i]; }
             const std::vector<int>& get_outputs() const { return outputs; }
 
             const dynamic_truth_table& get_operator(int i) const
