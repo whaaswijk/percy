@@ -209,7 +209,7 @@ namespace percy
                     // the specified output function.
                     if (i == dag.get_nr_vertices()-1) {
                         int pLits[1];
-                        auto outbit = kitty::get_bit(spec.functions[0], t+1);
+                        auto outbit = kitty::get_bit(spec[0], t+1);
                         if (spec.out_inv & 1) {
                             outbit = 1 - outbit;
                         }
