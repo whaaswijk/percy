@@ -453,6 +453,24 @@ namespace percy
                 }
             }
 
+            void
+            create_primitive_clauses(const spec& spec)
+            {
+                const auto primitives = spec.get_compiled_primitives();
+
+                if (primitives.size() == 1) {
+                    const auto op = primitives[0];
+                    for (int i = 0; i < spec.nr_steps; i++) {
+                        for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                            const auto op_var = get_op_var(spec, i, j);
+                            auto op_lit = pabc::Abc_Var2Lit(op_var, 1 - kitty::get_bit(op, j));
+                            auto status = solver->add_clause(&op_lit, &op_lit + 1);
+                            assert(status);
+                        }
+                    }
+                }
+            }
+
             /*******************************************************************
               Add clauses which ensure that every step is used at least once.
             *******************************************************************/
@@ -1053,7 +1071,9 @@ namespace percy
                 
                 create_cardinality_constraints(spec);
 
-                if (spec.add_nontriv_clauses) {
+                if (spec.get_nr_primitives() > 0) {
+                    create_primitive_clauses(spec);
+                } else if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
 
