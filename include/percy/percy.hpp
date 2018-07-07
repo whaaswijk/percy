@@ -14,6 +14,7 @@
 #include "floating_dag.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
+#include "cnf.hpp"
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
