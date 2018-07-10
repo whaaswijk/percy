@@ -193,63 +193,6 @@ main(void)
 #endif
     }
 
-    printf("Generating CNF for f = MAJ-7\n");
-    kitty::dynamic_truth_table maj7(7);
-    kitty::create_majority(maj7);
-    spec.verbosity = 2;
-    spec.fanin = 3;
-    spec.add_primitive(MAJ);
-    spec.compile_primitives();
-    spec[0] = maj7;
-    status = synthesize(spec, c);
-    assert(status == success);
-    min_nr_steps = c.get_nr_steps();
-    printf("min_nr_steps=%d\n", min_nr_steps);
-    
-    for (int i = 1; i <= min_nr_steps; i++) {
-        const auto filename = std::string("cnf_") + std::to_string(i) + std::string(".cnf");
-
-        auto fhandle = fopen(filename.c_str(), "w");
-        if (fhandle == NULL) {
-            fprintf(stderr, "Error: unable to open CNF output file\n");
-            return 1;
-        }
-        spec.nr_steps = i;
-        spec.preprocess();
-
-        cnf.clear();
-        encoder.encode(spec);
-        cnf.to_dimacs(fhandle);
-        fclose(fhandle);
-
-        printf("generated DIMACS for %d steps\n", spec.nr_steps);
-        
-#if !defined(_WIN32) && !defined(_WIN64)
-        Glucose::SimpSolver s;
-        s.parsing = 1;
-        s.use_simplification = 1;
-        gzFile in = gzopen(filename.c_str(), "rb");
-        Glucose::parse_DIMACS(in, s);
-        s.parsing = 0;
-        s.eliminate(true);
-        if (!s.okay()){
-            printf("Solved by simplification\n");
-            printf("UNSATISFIABLE\n");
-        } else {
-            Glucose::vec<Glucose::Lit> dummy;
-            auto ret = Glucose::toInt(s.solveLimited(dummy));
-            if (ret == 1) {
-                printf("UNSATISFIABLE\n");
-            } else if (ret == 0) {
-                printf("SATISFIABLE\n");
-            } else {
-                printf("TIMEOUT\n");
-            }
-        }
-        gzclose(in);
-#endif
-    }
-
     return 0;
 }
 
