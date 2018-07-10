@@ -38,16 +38,17 @@ namespace percy
             return 1;
         }
 
-        void to_cnf(FILE* f) 
+        void to_dimacs(FILE* f) 
         {
-            fprintf(f, "p %d %d\n", nr_vars(), nr_clauses());
+            fprintf(f, "p cnf %d %d\n", nr_vars(), nr_clauses());
             for (const auto& clause : clauses) {
                 for (const auto lit : clause) {
-                    const auto var = pabc::Abc_Lit2Var(lit);
+                    // NOTE: variable 0 does not exist in DIMACS format
+                    const auto var = pabc::Abc_Lit2Var(lit) + 1;
                     const auto is_c = pabc::Abc_LitIsCompl(lit);
                     fprintf(f, "%d ", is_c ? -var : var);
                 }
-                fprintf(f, "\n");
+                fprintf(f, "0\n");
             }
         }
 

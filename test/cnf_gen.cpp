@@ -1,9 +1,17 @@
 #include <cstdio>
 #include <percy/percy.hpp>
+#if !defined(_WIN32) && !defined(_WIN64)
+#ifdef USE_GLUCOSE
+#include <glucose/utils/ParseUtils.h>
+#else
+#include <syrup/core/Dimacs.h>
+#include <syrup/utils/ParseUtils.h>
+#endif
+#endif
 
 using namespace percy;
 
-/// Test the generation of CNF output from encoded exact synthesis instances.
+/// Test the generation of DIMACS output from encoded exact synthesis instances.
 int
 main(void)
 {
@@ -19,6 +27,7 @@ main(void)
     auto status = synthesize(spec, c);
     assert(status == success);
     const auto min_nr_steps = c.get_nr_steps();
+    printf("min_nr_steps=%d\n", min_nr_steps);
     
     // Generate cnf formulas up to the minimum nr of steps and
     // make sure that all but the last are UNSAT.
@@ -38,8 +47,35 @@ main(void)
 
         cnf.clear();
         encoder.encode(spec);
-        cnf.to_cnf(fhandle);
+        cnf.to_dimacs(fhandle);
         fclose(fhandle);
+
+        printf("generated DIMACS for %d steps\n", spec.nr_steps);
+        
+#if !defined(_WIN32) && !defined(_WIN64)
+        Glucose::SimpSolver s;
+        s.parsing = 1;
+        s.use_simplification = 1;
+        gzFile in = gzopen(filename.c_str(), "rb");
+        Glucose::parse_DIMACS(in, s);
+        s.parsing = 0;
+        s.eliminate(true);
+        if (!s.okay()){
+            printf("Solved by simplification\n");
+            printf("UNSATISFIABLE\n");
+        } else {
+            Glucose::vec<Glucose::Lit> dummy;
+            auto ret = Glucose::toInt(s.solveLimited(dummy));
+            if (ret == 1) {
+                printf("UNSATISFIABLE\n");
+            } else if (ret == 0) {
+                printf("SATISFIABLE\n");
+            } else {
+                printf("TIMEOUT\n");
+            }
+        }
+        gzclose(in);
+#endif
     }
 
     return 0;
