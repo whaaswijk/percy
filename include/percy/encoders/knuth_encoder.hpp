@@ -234,7 +234,7 @@ namespace percy
                 total_nr_vars = nr_op_vars + nr_out_vars + nr_sim_vars +
                                 nr_sel_vars + nr_lex_vars;
 
-                if (spec.verbosity > 2) {
+                if (spec.verbosity > 1) {
                     printf("Creating variables (KNUTH-%d)\n", spec.fanin);
                     printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
@@ -389,7 +389,7 @@ namespace percy
                         pabc::Vec_IntArray(vLits),
                         pabc::Vec_IntArray(vLits) + ctr); 
 
-                if (spec.verbosity > 2) {
+                if (spec.verbosity > 3) {
                     printf("creating sim. clause: (");
                     printf(" !s_%d_%d ", spec.get_nr_in() + i + 1, svar + 1);
                     printf(" \\/ %sx_%d_%d ", output ? "!" : "", 
@@ -757,7 +757,7 @@ namespace percy
                         if (!symm) {
                             continue;
                         }
-                        if (spec.verbosity) {
+                        if (spec.verbosity > 3) {
                             printf("  variables x_%d and x_%d are symmetric\n",
                                     p+1, q+1);
                         }
