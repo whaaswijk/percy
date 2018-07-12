@@ -85,5 +85,55 @@ namespace percy
             }
         }
 
+        void set_nLearntMax(int nLearntMax)
+        {
+            solver->nLearntMax = nLearntMax;
+        }
+
+        void set_nLearntStart(int nLearntStart)
+        {
+            solver->nLearntStart = nLearntStart;
+        }
+
+        void set_nLearntDelta(int nLearntDelta)
+        {
+            solver->nLearntDelta = nLearntDelta;
+        }
+
+        void set_nLearntRation(int nLearntRatio)
+        {
+            solver->nLearntRatio = nLearntRatio;
+        }
+
+        void set_random_seed(int random_seed)
+        {
+            solver->random_seed = random_seed;
+        }
+
+        void set_fSkipSimplify(int fSkipSimplify)
+        {
+            solver->fSkipSimplify = fSkipSimplify;
+        }
+
+        void set_fNoRestarts(int fNoRestarts)
+        {
+            solver->fNoRestarts = fNoRestarts;
+        }
+
+        void setVarActType(int VarActType)
+        {
+            solver->VarActType = VarActType;
+        }
+
+        void setClaActType(int ClaActType)
+        {
+            solver->ClaActType = ClaActType;
+        }
+
+        void init_activities()
+        {
+            solver_init_activities(solver);
+        }
+
     };
 }
