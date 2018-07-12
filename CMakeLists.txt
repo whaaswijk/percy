@@ -23,6 +23,7 @@ endif()
 
 # Glucose and Glucose-Syrup don't build properly on Windows
 if (UNIX)
+    find_package(ZLIB REQUIRED)
     if (PERCY_USE_SYRUP)
         find_package(Threads REQUIRED)
         add_subdirectory(syrup)
