@@ -100,7 +100,7 @@ namespace percy
             solver->nLearntDelta = nLearntDelta;
         }
 
-        void set_nLearntRation(int nLearntRatio)
+        void set_nLearntRatio(int nLearntRatio)
         {
             solver->nLearntRatio = nLearntRatio;
         }
@@ -120,12 +120,12 @@ namespace percy
             solver->fNoRestarts = fNoRestarts;
         }
 
-        void setVarActType(int VarActType)
+        void set_VarActType(int VarActType)
         {
             solver->VarActType = VarActType;
         }
 
-        void setClaActType(int ClaActType)
+        void set_ClaActType(int ClaActType)
         {
             solver->ClaActType = ClaActType;
         }
