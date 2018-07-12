@@ -156,7 +156,7 @@ struct sat_solver_t
     int         root_level;    // Level of first proper decision.
     int         simpdb_assigns;// Number of top-level assignments at last 'simplifyDB()'.
     int         simpdb_props;  // Number of propagations before next 'simplifyDB()'.
-    double      random_seed;
+    double      random_seed = 91648253;
     double      progress_estimate;
     int         verbosity;     // Verbosity level. 0=silent, 1=some progress report, 2=everything
     int         fVerbose;
