@@ -22,7 +22,7 @@ namespace percy
         pabc::Vec_Int_t* vLits = NULL;
 
         int nr_svars_for_step(const spec& spec, const partial_dag& dag, int i)
-        const
+            const
         {
             const auto& vertex = dag.get_vertex(i);
             auto nr_pi_fanins = 0;
@@ -174,6 +174,32 @@ namespace percy
             return ret;
         }
 
+        bool create_nontriv_clauses(const spec& spec)
+        {
+            int pLits[3];
+            bool status = true;
+            for (int i = 0; i < spec.nr_steps; i++) {
+                // Dissallow the constant zero operator.
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 0);
+                status &= solver->add_clause(pLits, pLits + 3);
+
+                // Dissallow variable projections.
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 1);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                status &= solver->add_clause(pLits, pLits + 3);
+
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 1);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                status &= solver->add_clause(pLits, pLits + 3);
+            }
+
+            return status;
+        }
+
         bool add_simulation_clause(
             const spec& spec,
             const int t,
@@ -263,8 +289,8 @@ namespace percy
         }
 
         bool create_tt_clauses(
-            const spec& spec, 
-            const partial_dag& dag, 
+            const spec& spec,
+            const partial_dag& dag,
             const int t)
         {
             auto ret = true;
@@ -333,7 +359,7 @@ namespace percy
 
             return ret;
         }
-        
+
         bool create_main_clauses(const spec& spec, const partial_dag& dag)
         {
             auto success = true;
@@ -351,6 +377,132 @@ namespace percy
             }
 
             return success;
+        }
+
+        bool create_symvar_clauses(const spec& spec, const partial_dag& dag)
+        {
+            for (int q = 1; q < spec.get_nr_in(); q++) {
+                for (int p = 0; p < q; p++) {
+                    auto symm = true;
+                    for (int i = 0; i < spec.nr_nontriv; i++) {
+                        auto f = spec[spec.synth_func(i)];
+                        if (!(swap(f, p, q) == f)) {
+                            symm = false;
+                            break;
+                        }
+                    }
+                    if (!symm) {
+                        continue;
+                    }
+
+                    for (int i = 1; i < spec.nr_steps; i++) {
+                        const auto vertex = dag.get_vertex(i);
+                        auto nr_pi_fanins = 0;
+                        if (vertex[1] == FANIN_PI) {
+                            // If the second fanin is a PI, the first one 
+                            // certainly is.
+                            nr_pi_fanins = 2;
+                        } else if (vertex[0] == FANIN_PI) {
+                            nr_pi_fanins = 1;
+                        }
+                        if (nr_pi_fanins == 0) {
+                            continue;
+                        }
+                        if (nr_pi_fanins == 1) {
+                            const auto sel_var = get_sel_var(spec, dag, i, q);
+                            pabc::Vec_IntSetEntry(vLits, 0,
+                                pabc::Abc_Var2Lit(sel_var, 1));
+                            auto ctr = 1;
+                            for (int ip = 0; ip < i; ip++) {
+                                const auto vertex2 = dag.get_vertex(ip);
+                                auto nr_pi_fanins2 = 0;
+                                if (vertex2[1] == FANIN_PI) {
+                                    // If the second fanin is a PI, the first one 
+                                    // certainly is.
+                                    nr_pi_fanins2 = 2;
+                                } else if (vertex2[0] == FANIN_PI) {
+                                    nr_pi_fanins2 = 1;
+                                }
+                                if (nr_pi_fanins2 == 0) {
+                                    continue;
+                                }
+                                if (nr_pi_fanins2 == 1) {
+                                    const auto sel_varp = get_sel_var(spec, dag, ip, p);
+                                    pabc::Vec_IntSetEntry(vLits, ctr++,
+                                        pabc::Abc_Var2Lit(sel_varp, 0));
+                                } else {
+                                    auto svar_ctr = 0;
+                                    for (int k = 1; k < spec.get_nr_in(); k++) {
+                                        for (int j = 0; j < k; j++) {
+                                            if (j == p || k == p) {
+                                                const auto sel_varp = get_sel_var(spec, dag, ip, svar_ctr);
+                                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                                    pabc::Abc_Var2Lit(sel_varp, 0));
+                                            }
+                                            svar_ctr++;
+                                        }
+                                    }
+                                    assert(svar_ctr == nr_svars_for_step(spec, dag, ip));
+                                }
+                            }
+                            if (!solver->add_clause(Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr)) {
+                                return false;
+                            }
+                        } else {
+                            auto svar_ctr = 0;
+                            for (int k = 1; k < spec.get_nr_in(); k++) {
+                                for (int j = 0; j < k; j++) {
+                                    if (j != q && k != q) {
+                                        svar_ctr++;
+                                        continue;
+                                    }
+                                    const auto sel_var = get_sel_var(spec, dag, i, svar_ctr);
+                                    pabc::Vec_IntSetEntry(vLits, 0,
+                                        pabc::Abc_Var2Lit(sel_var, 1));
+                                    auto ctr = 1;
+                                    for (int ip = 0; ip < i; ip++) {
+                                        const auto vertex2 = dag.get_vertex(ip);
+                                        auto nr_pi_fanins2 = 0;
+                                        if (vertex2[1] == FANIN_PI) {
+                                            // If the second fanin is a PI, the first one 
+                                            // certainly is.
+                                            nr_pi_fanins2 = 2;
+                                        } else if (vertex2[0] == FANIN_PI) {
+                                            nr_pi_fanins2 = 1;
+                                        }
+                                        if (nr_pi_fanins2 == 0) {
+                                            continue;
+                                        }
+                                        if (nr_pi_fanins2 == 1) {
+                                            const auto sel_varp = get_sel_var(spec, dag, ip, p);
+                                            pabc::Vec_IntSetEntry(vLits, ctr++,
+                                                pabc::Abc_Var2Lit(sel_varp, 0));
+                                        } else {
+                                            auto svar_ctrp = 0;
+                                            for (int kp = 1; kp < spec.get_nr_in(); kp++) {
+                                                for (int jp = 0; jp < kp; jp++) {
+                                                    if (jp == p || kp == p) {
+                                                        const auto sel_varp = get_sel_var(spec, dag, ip, svar_ctrp);
+                                                        pabc::Vec_IntSetEntry(vLits, ctr++,
+                                                            pabc::Abc_Var2Lit(sel_varp, 0));
+                                                    }
+                                                    svar_ctrp++;
+                                                }
+                                            }
+                                            assert(svar_ctrp == nr_svars_for_step(spec, dag, ip));
+                                        }
+                                    }
+                                    if (!solver->add_clause(Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr)) {
+                                        return false;
+                                    }
+                                    svar_ctr++;
+                                }
+                            }
+                            assert(svar_ctr == nr_svars_for_step(spec, dag, i));
+                        }
+                    }
+                }
+            }
         }
 
         bool
@@ -371,29 +523,13 @@ namespace percy
                 return false;
             }
 
-            if (spec.add_nontriv_clauses) {
-            //    create_nontriv_clauses(spec);
-            }
-
-            if (spec.add_alonce_clauses) {
-             //   create_alonce_clauses(spec);
-            }
-
-            if (spec.add_noreapply_clauses) {
-           //     create_noreapply_clauses(spec);
-            }
-
-            if (spec.add_colex_clauses) {
-            //    create_colex_clauses(spec);
-            }
-
-            if (spec.add_lex_func_clauses) {
-              //  create_lex_func_clauses(spec);
-            }
-/*
-            if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
+            if (spec.add_nontriv_clauses && !create_nontriv_clauses(spec)) {
                 return false;
-            }*/
+            }
+
+            if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
+                return false;
+            }
 
             return true;
         }

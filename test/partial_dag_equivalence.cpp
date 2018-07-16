@@ -33,6 +33,8 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         kitty::create_from_words(tt, &i, &i+1);
 
         spec.verbosity = 0;
+        spec.add_colex_clauses = true;
+        spec.add_lex_func_clauses = true;
         spec[0] = tt;
         auto res1 = synthesize(spec, c1, solver, encoder1, SYNTH_STD_CEGAR);
         assert(res1 == success);
@@ -41,12 +43,14 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         assert(c1.satisfies_spec(spec));
 
         //spec.verbosity = 2;
+        spec.add_colex_clauses = false;
+        spec.add_lex_func_clauses = false;
         auto had_success = false;
         for (auto& dag : dags) {
             auto res2 = pd_synthesize(spec, c2, dag, solver, encoder2);
             if (res2 == success) {
                 had_success = true;
-                //assert(c2.satisfies_spec(spec));
+                assert(c2.satisfies_spec(spec));
                 break;
             }
         }
