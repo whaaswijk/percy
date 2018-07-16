@@ -11,7 +11,7 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "spec.hpp"
-#include "floating_dag.hpp"
+#include "partial_dag.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
@@ -1412,6 +1412,72 @@ namespace percy
         default:
             fprintf(stderr, "Error: synthesis method %d not supported\n", synth_method);
             exit(1);
+        }
+    }
+
+    synth_result
+    pd_synthesize(
+        spec& spec, 
+        chain& chain, 
+        partial_dag& dag,
+        solver_wrapper& solver, 
+        partial_dag_encoder& encoder, 
+        synth_stats * stats = NULL)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        if (stats) {
+            stats->synth_time = 0;
+            stats->sat_time = 0;
+            stats->unsat_time = 0;
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = dag.nr_vertices();
+        solver.restart();
+        if (!encoder.encode(spec, dag)) {
+            return failure;
+        }
+
+        auto begin = std::chrono::steady_clock::now();
+        const auto status = solver.solve(spec.conflict_limit);
+        auto end = std::chrono::steady_clock::now();
+        auto elapsed_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                end - begin
+                ).count();
+
+        if (stats) {
+            stats->synth_time += elapsed_time;
+        }
+
+        if (status == success) {
+            encoder.extract_chain(spec, dag, chain);
+            if (spec.verbosity > 2) {
+                //    encoder.print_solver_state(spec);
+            }
+            if (stats) {
+                stats->sat_time = elapsed_time;
+            }
+            return success;
+        } else if (status == failure) {
+            return failure;
+            if (stats) {
+                stats->unsat_time += elapsed_time;
+            }
+        } else {
+            return timeout;
         }
     }
             
