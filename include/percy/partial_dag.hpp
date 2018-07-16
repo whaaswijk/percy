@@ -69,7 +69,7 @@ namespace percy
             }
 
             void 
-            set_vertex(int v_idx, const std::vector<int>& const fanins)
+            set_vertex(int v_idx, const std::vector<int>& fanins)
             {
                 assert(v_idx < nr_vertices());
                 assert(fanins.size() == fanin);
@@ -87,7 +87,7 @@ namespace percy
             }
 
             void 
-            add_vertex(const std::vector<int>& const fanins)
+            add_vertex(const std::vector<int>& fanins)
             {
                 assert(fanins.size() == fanin);
                 vertices.push_back(fanins);
