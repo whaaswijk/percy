@@ -1068,7 +1068,7 @@ namespace percy
                     }
                     if (!encoder.create_tt_clauses(spec, first_one - 1)) {
                         if (stats) {
-                            stats->sat_time += elapsed_time;
+                            stats->unsat_time += elapsed_time;
                         }
                         spec.nr_steps++;
                         break;
@@ -1451,7 +1451,7 @@ namespace percy
         }
 
         auto begin = std::chrono::steady_clock::now();
-        const auto status = solver.solve(spec.conflict_limit);
+        const auto status = solver.solve(0);
         auto end = std::chrono::steady_clock::now();
         auto elapsed_time =
             std::chrono::duration_cast<std::chrono::microseconds>(
@@ -1481,16 +1481,96 @@ namespace percy
         }
     }
 
+    synth_result pd_cegar_synthesize(
+        spec& spec, 
+        chain& chain, 
+        const partial_dag& dag,
+        solver_wrapper& solver, 
+        partial_dag_encoder& encoder,
+        synth_stats* stats = NULL)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        if (stats) {
+            stats->synth_time = 0;
+            stats->sat_time = 0;
+            stats->unsat_time = 0;
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        spec.nr_steps = dag.nr_vertices();
+        solver.restart();
+        if (!encoder.cegar_encode(spec, dag)) {
+            return failure;
+        }
+        while (true) {
+            auto begin = std::chrono::steady_clock::now();
+            auto stat = solver.solve(0);
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed_time =
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    end - begin
+                    ).count();
+
+            if (stats) {
+                stats->synth_time += elapsed_time;
+            }
+            if (stat == success) {
+                encoder.extract_chain(spec, dag, chain);
+                auto sim_tts = chain.simulate(spec);
+                auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                auto first_one = kitty::find_first_one_bit(xor_tt);
+                if (first_one == -1) {
+                    if (stats) {
+                        stats->sat_time += elapsed_time;
+                    }
+                    return success;
+                }
+                // Add additional constraint.
+                if (spec.verbosity) {
+                    printf("  CEGAR difference at tt index %ld\n",
+                        first_one);
+                }
+                if (!encoder.create_tt_clauses(spec, dag, first_one - 1)) {
+                    return failure;
+                }
+            } else {
+                return failure;
+            }
+        }
+    }
+
     synth_result pd_synthesize(
         spec& spec,
         chain& chain,
         const std::vector<partial_dag>& dags,
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
+        SynthMethod synth_method = SYNTH_STD,
         synth_stats * stats = NULL)
     {
         for (auto& dag : dags) {
-            const auto status = pd_synthesize(spec, chain, dag, solver, encoder, stats);
+            synth_result status;
+            switch (synth_method) {
+            case SYNTH_STD_CEGAR:
+                status = pd_cegar_synthesize(spec, chain, dag, solver, encoder, stats);
+                break;
+            default:
+                status = pd_synthesize(spec, chain, dag, solver, encoder, stats);
+                break;
+            }
             if (status == success) {
                 return success;
             }

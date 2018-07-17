@@ -21,8 +21,10 @@ namespace percy
         int sim_offset;
         pabc::Vec_Int_t* vLits = NULL;
 
-        int nr_svars_for_step(const spec& spec, const partial_dag& dag, int i)
-            const
+        int nr_svars_for_step(
+            const spec& spec, 
+            const partial_dag& dag, 
+            int i) const
         {
             const auto& vertex = dag.get_vertex(i);
             auto nr_pi_fanins = 0;
@@ -312,13 +314,13 @@ namespace percy
                     // The fanins for this step are fixed
                     const auto j = vertex[0] + spec.get_nr_in() - 1;
                     const auto k = vertex[1] + spec.get_nr_in() - 1;
-                    add_simulation_clause(spec, t, i, j, k, 0, 0, 1);
-                    add_simulation_clause(spec, t, i, j, k, 0, 1, 0);
-                    add_simulation_clause(spec, t, i, j, k, 0, 1, 1);
-                    add_simulation_clause(spec, t, i, j, k, 1, 0, 0);
-                    add_simulation_clause(spec, t, i, j, k, 1, 0, 1);
-                    add_simulation_clause(spec, t, i, j, k, 1, 1, 0);
-                    add_simulation_clause(spec, t, i, j, k, 1, 1, 1);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 0, 0, 1);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 0);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 1);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 0);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 1);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 0);
+                    ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 1);
                 } else if (nr_pi_fanins == 1) {
                     // The first fanin is flexible
                     assert(vertex[1] != 0);
@@ -326,13 +328,13 @@ namespace percy
                     auto ctr = 0;
                     for (int j = 0; j < spec.get_nr_in(); j++) {
                         const auto sel_var = get_sel_var(spec, dag, i, j);
-                        add_simulation_clause(spec, t, i, j, k, 0, 0, 1, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 0, 1, 0, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 0, 1, 1, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 1, 0, 0, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 1, 0, 1, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 1, 1, 0, sel_var);
-                        add_simulation_clause(spec, t, i, j, k, 1, 1, 1, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 0, 0, 1, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 0, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 1, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 0, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 1, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 0, sel_var);
+                        ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 1, sel_var);
                         ctr++;
                     }
                     assert(ctr == nr_svars_for_step(spec, dag, i));
@@ -343,13 +345,13 @@ namespace percy
                     for (int k = 1; k < spec.get_nr_in(); k++) {
                         for (int j = 0; j < k; j++) {
                             const auto sel_var = get_sel_var(spec, dag, i, ctr);
-                            add_simulation_clause(spec, t, i, j, k, 0, 0, 1, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 0, 1, 0, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 0, 1, 1, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 1, 0, 0, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 1, 0, 1, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 1, 1, 0, sel_var);
-                            add_simulation_clause(spec, t, i, j, k, 1, 1, 1, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 0, 0, 1, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 0, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 0, 1, 1, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 0, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 1, 0, 1, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 0, sel_var);
+                            ret &= add_simulation_clause(spec, t, i, j, k, 1, 1, 1, sel_var);
                             ctr++;
                         }
                     }
@@ -514,6 +516,37 @@ namespace percy
             create_variables(spec, dag);
             if (!create_main_clauses(spec, dag)) {
                 return false;
+            }
+
+            if (!fix_output_sim_vars(spec, dag)) {
+                return false;
+            }
+
+            if (!create_fanin_clauses(spec, dag)) {
+                return false;
+            }
+
+            if (spec.add_nontriv_clauses && !create_nontriv_clauses(spec)) {
+                return false;
+            }
+
+            if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        bool
+        cegar_encode(const spec& spec, const partial_dag& dag)
+        {
+            assert(spec.nr_steps <= MAX_STEPS);
+
+            create_variables(spec, dag);
+            for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
+                if (!create_tt_clauses(spec, dag, rand() % spec.get_tt_size())) {
+                    return false;
+                }
             }
 
             if (!fix_output_sim_vars(spec, dag)) {
