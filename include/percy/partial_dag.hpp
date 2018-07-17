@@ -104,34 +104,95 @@ namespace percy
                 return vertices.size();
             }
 
+#ifndef DISABLE_NAUTY
+            bool is_isomorphic(const partial_dag& g) 
+            {
+                const auto total_vertices = nr_vertices();
+                assert(total_vertices == g.nr_vertices());
+
+                void (*adjacencies)(graph*, int*, int*, int, 
+                        int, int, int*, int, boolean, int, int) = NULL;
+
+                DYNALLSTAT(int,lab1,lab1_sz);
+                DYNALLSTAT(int,lab2,lab2_sz);
+                DYNALLSTAT(int,ptn,ptn_sz);
+                DYNALLSTAT(int,orbits,orbits_sz);
+                DYNALLSTAT(int,map,map_sz);
+                DYNALLSTAT(graph,g1,g1_sz);
+                DYNALLSTAT(graph,g2,g2_sz);
+                DYNALLSTAT(graph,cg1,cg1_sz);
+                DYNALLSTAT(graph,cg2,cg2_sz);
+                DEFAULTOPTIONS_DIGRAPH(options);
+                statsblk stats;
+
+                int m = SETWORDSNEEDED(total_vertices);;
+
+                options.getcanon = TRUE;
+
+                DYNALLOC1(int,lab1,lab1_sz,total_vertices,"malloc");
+                DYNALLOC1(int,lab2,lab2_sz,total_vertices,"malloc");
+                DYNALLOC1(int,ptn,ptn_sz,total_vertices,"malloc");
+                DYNALLOC1(int,orbits,orbits_sz,total_vertices,"malloc");
+                DYNALLOC1(int,map,map_sz,total_vertices,"malloc");
+
+                // Make the first graph
+                DYNALLOC2(graph,g1,g1_sz,total_vertices,m,"malloc");
+                EMPTYGRAPH(g1,m,total_vertices);
+                for (int i = 1; i < total_vertices; i++) {
+                    const auto& vertex = get_vertex(i);
+                    if (vertex[0] != FANIN_PI) {
+                        ADDONEARC(g1, vertex[0] - 1, i, m);
+                    }
+                    if (vertex[1] != FANIN_PI) {
+                        ADDONEARC(g1, vertex[1] - 1, i, m);
+                    }
+                }
+
+                // Make the second graph
+                DYNALLOC2(graph,g2,g2_sz,total_vertices,m,"malloc");
+                EMPTYGRAPH(g2,m,total_vertices);
+                for (int i = 0; i < total_vertices; i++) {
+                    const auto& vertex = g.get_vertex(i);
+                    if (vertex[0] != FANIN_PI) {
+                        ADDONEARC(g2, vertex[0] - 1, i, m);
+                    }
+                    if (vertex[1] != FANIN_PI) {
+                        ADDONEARC(g2, vertex[1] - 1, i, m);
+                    }
+                }
+
+                // Create canonical graphs
+                DYNALLOC2(graph,cg1,cg1_sz,total_vertices,m,"malloc");
+                DYNALLOC2(graph,cg2,cg2_sz,total_vertices,m,"malloc");
+                densenauty(g1,lab1,ptn,orbits,&options,&stats,m,total_vertices,cg1);
+                densenauty(g2,lab2,ptn,orbits,&options,&stats,m,total_vertices,cg2);
+
+                // Compare the canonical graphs to see if the two graphs are
+                // isomorphic
+                bool isomorphic = true;
+                for (int k = 0; k < m*total_vertices; k++) {
+                    if (cg1[k] != cg2[k]) {
+                        isomorphic = false;
+                        break;;
+                    }
+                }
+                if (false) {
+                    // Print the mapping between graphs for debugging purposes
+                    for (int i = 0; i < total_vertices; ++i) {
+                        map[lab1[i]] = lab2[i];
+                    }
+                    for (int i = 0; i < total_vertices; ++i) {
+                        printf(" %d-%d",i,map[i]);
+                    }
+                    printf("\n");
+                }
+
+                return isomorphic;
+            }
+#endif
             
     };
 
-    /***************************************************************************
-        Converts a floating dag to the graphviz dot format and writes it to the
-        specified output stream.
-    ***************************************************************************/
-    void 
-    to_dot(const partial_dag& dag, std::ostream& o)
-    {
-        o << "graph{\n";
-
-        o << "node [shape=circle];\n";
-        dag.foreach_vertex([&dag, &o] (auto v, int v_idx) {
-            const auto dot_idx = v_idx + 1;
-            o << dot_idx << ";\n";
-
-            dag.foreach_fanin(v, [&o, dot_idx] (auto f_id, int idx) {
-                if (f_id != FANIN_PI) {
-                    o << f_id << " -- " << dot_idx << ";\n";
-                }
-            });
-
-        });
-
-        o << "}\n";
-    }
-    
     enum partial_gen_type
     {
         GEN_TUPLES, /// No restrictions besides acyclicity
