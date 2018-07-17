@@ -1419,7 +1419,7 @@ namespace percy
     pd_synthesize(
         spec& spec, 
         chain& chain, 
-        partial_dag& dag,
+        const partial_dag& dag,
         solver_wrapper& solver, 
         partial_dag_encoder& encoder, 
         synth_stats * stats = NULL)
@@ -1479,6 +1479,23 @@ namespace percy
         } else {
             return timeout;
         }
+    }
+
+    synth_result pd_synthesize(
+        spec& spec,
+        chain& chain,
+        const std::vector<partial_dag>& dags,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder,
+        synth_stats * stats = NULL)
+    {
+        for (auto& dag : dags) {
+            const auto status = pd_synthesize(spec, chain, dag, solver, encoder, stats);
+            if (status == success) {
+                return success;
+            }
+        }
+        return failure;
     }
             
     synth_result
