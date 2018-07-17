@@ -40,6 +40,19 @@ namespace percy
                 vertices = std::move(dag.vertices);
             }
 
+            int nr_pi_fanins()
+            {
+                int count = 0;
+                for (const auto& v : vertices) {
+                    for (auto fanin : v) {
+                        if (fanin == FANIN_PI) {
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+
             template<typename Fn>
             void 
             foreach_vertex(Fn&& fn) const
@@ -575,6 +588,31 @@ namespace percy
                 g.set_vertex(i, gen->_js[i], gen->_ks[i]);
             }
             dags.push_back(g);
+        });
+
+        for (int i = 1; i <= max_vertices; i++) {
+            g.reset(2, i);
+            gen.reset(i);
+            gen.count_dags();
+        }
+
+        return dags;
+    }
+
+    std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
+    {
+        partial_dag g;
+        partial_dag_generator gen;
+        std::vector<partial_dag> dags;
+
+        gen.set_callback([&g, &dags, nr_in]
+        (partial_dag_generator* gen) {
+            for (int i = 0; i < gen->nr_vertices(); i++) {
+                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+            }
+            if (g.nr_pi_fanins() >= nr_in) {
+                dags.push_back(g);
+            }
         });
 
         for (int i = 1; i <= max_vertices; i++) {
