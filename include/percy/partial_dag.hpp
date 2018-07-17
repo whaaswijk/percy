@@ -906,7 +906,7 @@ namespace percy
             dags.push_back(g);
         }
 
-        printf("read %d dags\n", dags.size());
+        fclose(fhandle);
 
         return dags;
     }
