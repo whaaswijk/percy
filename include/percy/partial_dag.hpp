@@ -118,7 +118,7 @@ namespace percy
             }
 
 #ifndef DISABLE_NAUTY
-            bool is_isomorphic(const partial_dag& g) 
+            bool is_isomorphic(const partial_dag& g) const
             {
                 const auto total_vertices = nr_vertices();
                 assert(total_vertices == g.nr_vertices());
@@ -186,7 +186,7 @@ namespace percy
                 for (int k = 0; k < m*total_vertices; k++) {
                     if (cg1[k] != cg2[k]) {
                         isomorphic = false;
-                        break;;
+                        break;
                     }
                 }
                 if (false) {
@@ -634,6 +634,119 @@ namespace percy
         }
     };
 
+#ifndef DISABLE_NAUTY
+    class pd_iso_checker
+    {
+    private:
+        int total_vertices;
+        int *lab1;
+        size_t lab1_sz = 0;
+        int *lab2;
+        size_t lab2_sz = 0;
+        int *ptn;
+        size_t ptn_sz = 0;
+        int *orbits;
+        size_t orbits_sz = 0;
+        int *map;
+        size_t map_sz = 0;
+        graph *g1;
+        size_t g1_sz = 0;
+        graph *g2;
+        size_t g2_sz = 0;
+        graph *cg1;
+        size_t cg1_sz = 0;
+        graph *cg2;
+        size_t cg2_sz = 0;
+        statsblk stats;
+        int m;
+
+        void initialize()
+        {
+            m = SETWORDSNEEDED(total_vertices);;
+
+            DYNALLOC1(int,lab1,lab1_sz,total_vertices,"malloc");
+            DYNALLOC1(int,lab2,lab2_sz,total_vertices,"malloc");
+            DYNALLOC1(int,ptn,ptn_sz,total_vertices,"malloc");
+            DYNALLOC1(int,orbits,orbits_sz,total_vertices,"malloc");
+            DYNALLOC1(int,map,map_sz,total_vertices,"malloc");
+            
+            DYNALLOC2(graph,g1,g1_sz,total_vertices,m,"malloc");
+            DYNALLOC2(graph,g2,g2_sz,total_vertices,m,"malloc");
+
+            DYNALLOC2(graph,cg1,cg1_sz,total_vertices,m,"malloc");
+            DYNALLOC2(graph,cg2,cg2_sz,total_vertices,m,"malloc");
+        }
+
+    public:
+        pd_iso_checker(int _total_vertices)
+        {
+            total_vertices = _total_vertices;
+            initialize();
+        }
+
+        ~pd_iso_checker()
+        {
+            DYNFREE(lab1,lab1_sz);
+            DYNFREE(lab2,lab2_sz);
+            DYNFREE(ptn,ptn_sz);
+            DYNFREE(orbits,orbits_sz);
+            DYNFREE(map,map_sz);
+            
+            DYNFREE(g1,g1_sz);
+            DYNFREE(g2,g2_sz);
+
+            DYNFREE(cg1,cg1_sz);
+            DYNFREE(cg2,cg2_sz);
+        }
+
+        bool isomorphic(const partial_dag& dag1, const partial_dag& dag2)
+        {
+            void (*adjacencies)(graph*, int*, int*, int, 
+                    int, int, int*, int, boolean, int, int) = NULL;
+
+            DEFAULTOPTIONS_DIGRAPH(options);
+            options.getcanon = TRUE;
+
+            const auto nr_vertices = dag1.nr_vertices();
+
+            EMPTYGRAPH(g1, m, nr_vertices);
+            EMPTYGRAPH(g2, m, nr_vertices);
+
+            for (int i = 1; i < nr_vertices; i++) {
+                const auto& vertex = dag1.get_vertex(i);
+                if (vertex[0] != FANIN_PI) {
+                    ADDONEARC(g1, vertex[0] - 1, i, m);
+                }
+                if (vertex[1] != FANIN_PI) {
+                    ADDONEARC(g1, vertex[1] - 1, i, m);
+                }
+            }
+
+            for (int i = 0; i < nr_vertices; i++) {
+                const auto& vertex = dag2.get_vertex(i);
+                if (vertex[0] != FANIN_PI) {
+                    ADDONEARC(g2, vertex[0] - 1, i, m);
+                }
+                if (vertex[1] != FANIN_PI) {
+                    ADDONEARC(g2, vertex[1] - 1, i, m);
+                }
+            }
+
+            densenauty(g1,lab1,ptn,orbits,&options,&stats,m,nr_vertices,cg1);
+            densenauty(g2,lab2,ptn,orbits,&options,&stats,m,nr_vertices,cg2);
+
+            bool isomorphic = true;
+            for (int k = 0; k < m*nr_vertices; k++) {
+                if (cg1[k] != cg2[k]) {
+                    isomorphic = false;
+                    break;
+                }
+            }
+            return isomorphic;
+        }
+
+    };
+#endif
 
     /// Generate all partial DAGs up to the specified number
     /// of vertices.
@@ -684,5 +797,55 @@ namespace percy
 
         return dags;
     }
+
+    std::vector<partial_dag> pd_filter_isomorphic(const std::vector<partial_dag>& dags)
+    {
+        std::vector<partial_dag> ni_dags;
+
+        for (const auto& g1 : dags) {
+            bool iso_found = false;
+#ifndef DISABLE_NAUTY
+            for (const auto& g2 : ni_dags) {
+                if (g2.nr_vertices() == g1.nr_vertices()) {
+                    if (g1.is_isomorphic(g2)) {
+                        iso_found = true;
+                        break;
+                    }
+                }
+            }
+#endif
+            if (!iso_found) {
+                ni_dags.push_back(g1);
+            }
+        }
+
+        return ni_dags;
+    }
+
+    std::vector<partial_dag> pd_filter_isomorphic(const std::vector<partial_dag>& dags, int max_size)
+    {
+        std::vector<partial_dag> ni_dags;
+#ifndef DISABLE_NAUTY
+        pd_iso_checker checker(max_size);
+        for (const auto& g1 : dags) {
+            bool iso_found = false;
+            for (const auto& g2 : ni_dags) {
+                if (g2.nr_vertices() == g1.nr_vertices()) {
+                    if (checker.isomorphic(g1, g2)) {
+                        iso_found = true;
+                        break;
+                    }
+                }
+            }
+            if (!iso_found) {
+                ni_dags.push_back(g1);
+            }
+        }
+#else
+        ni_dags = dags;
+#endif
+        return ni_dags;
+    }
+
 }
 

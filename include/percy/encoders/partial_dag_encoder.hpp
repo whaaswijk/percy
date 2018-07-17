@@ -503,6 +503,7 @@ namespace percy
                     }
                 }
             }
+            return true;
         }
 
         bool
