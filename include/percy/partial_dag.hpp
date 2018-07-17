@@ -34,6 +34,13 @@ namespace percy
                 vertices = dag.vertices;
             }
 
+            partial_dag& operator=(const partial_dag& dag)
+            {
+                fanin = dag.fanin;
+                vertices = dag.vertices;
+                return *this;
+            }
+
             partial_dag(partial_dag&& dag)
             {
                 fanin = dag.fanin;

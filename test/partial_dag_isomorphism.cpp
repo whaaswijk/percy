@@ -24,6 +24,7 @@ int main(void)
     g3.set_vertex(2, 1, 2);
     g3.set_vertex(3, 1, 3);
 
+#ifndef DISABLE_NAUTY
     // Should be self-isomorphic
     assert(g1.is_isomorphic(g1));
     assert(g2.is_isomorphic(g2));
@@ -39,6 +40,7 @@ int main(void)
     assert(checker.isomorphic(g3, g3));
     assert(checker.isomorphic(g1, g2));
     assert(!checker.isomorphic(g1, g3));
+#endif
 
     return 0;
 }
