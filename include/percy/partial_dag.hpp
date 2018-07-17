@@ -854,5 +854,61 @@ namespace percy
         return ni_dags;
     }
 
+    /// Writes a collection of partial DAGs to the specified filename
+    /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
+    /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
+    void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+    {
+        auto fhandle = fopen(filename, "wb");
+        if (fhandle == NULL) {
+            fprintf(stderr, "Error: unable to open output file\n");
+            exit(1);
+        }
+
+        for (auto& dag : dags) {
+            int buf = dag.nr_vertices();
+            fwrite(&buf, sizeof(int), 1, fhandle);
+            for (int i = 0; i < dag.nr_vertices(); i++) {
+                auto& v = dag.get_vertex(i);
+                buf = v[0];
+                fwrite(&buf, sizeof(int), 1, fhandle);
+                buf = v[1];
+                fwrite(&buf, sizeof(int), 1, fhandle);
+            }
+        }
+
+        fclose(fhandle);
+    }
+
+    /// Reads serialized partial DAGs from file
+    std::vector<partial_dag> read_partial_dags(const char* const filename)
+    {
+        std::vector<partial_dag> dags;
+
+        auto fhandle = fopen(filename, "rb");
+        if (fhandle == NULL) {
+            fprintf(stderr, "Error: unable to open output file\n");
+            exit(1);
+        }
+
+        partial_dag g;
+        int buf;
+        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+            auto nr_vertices = buf;
+            g.reset(2, nr_vertices);
+            for (int i = 0; i < nr_vertices; i++) {
+                fread(&buf, sizeof(int), 1, fhandle);
+                auto fanin1 = buf;
+                fread(&buf, sizeof(int), 1, fhandle);
+                auto fanin2 = buf;
+                g.set_vertex(i, fanin1, fanin2);
+            }
+            dags.push_back(g);
+        }
+
+        printf("read %d dags\n", dags.size());
+
+        return dags;
+    }
 }
 
