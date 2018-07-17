@@ -6,7 +6,7 @@ int
 main(void)
 {
     partial_dag_generator gen;
-    //gen.verbosity(1);
+    gen.gen_type(GEN_TUPLES);
 
     for (int i = 1; i <= 8; i++) {
         uint64_t expected_dags = 1;
