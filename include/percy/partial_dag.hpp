@@ -877,6 +877,30 @@ namespace percy
         return ni_dags;
     }
 
+    std::vector<partial_dag> pd_filter_isomorphic(
+        const std::vector<partial_dag>& dags, 
+        std::vector<partial_dag> ni_dags)
+    {
+        for (const auto& g1 : dags) {
+            bool iso_found = false;
+#ifndef DISABLE_NAUTY
+            for (const auto& g2 : ni_dags) {
+                if (g2.nr_vertices() == g1.nr_vertices()) {
+                    if (g1.is_isomorphic(g2)) {
+                        iso_found = true;
+                        break;
+                    }
+                }
+            }
+#endif
+            if (!iso_found) {
+                ni_dags.push_back(g1);
+            }
+        }
+
+        return ni_dags;
+    }
+
     std::vector<partial_dag> pd_filter_isomorphic(const std::vector<partial_dag>& dags, int max_size)
     {
         std::vector<partial_dag> ni_dags;
