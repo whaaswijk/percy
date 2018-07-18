@@ -803,31 +803,6 @@ namespace percy
         return dags;
     }
 
-    /// Generate all partial DAGs up to the specified number
-    /// of vertices.
-    std::vector<partial_dag> pd_generate_max(int max_vertices)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::vector<partial_dag> dags;
-
-        gen.set_callback([&g, &dags]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-            }
-            dags.push_back(g);
-        });
-
-        for (int i = 1; i <= max_vertices; i++) {
-            g.reset(2, i);
-            gen.reset(i);
-            gen.count_dags();
-        }
-
-        return dags;
-    }
-
     std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
     {
         partial_dag g;
