@@ -44,7 +44,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         auto res1 = synthesize(spec, c1, solver, encoder1, SYNTH_STD_CEGAR);
         auto elapsed1 = std::clock() - start;
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate(spec);
+        auto sim_tts1 = c1.simulate();
         auto c1_nr_vertices = c1.get_nr_steps();
         assert(c1.satisfies_spec(spec));
 
@@ -57,7 +57,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         auto elapsed2 = std::clock() - start;
         assert(res2 == success);
         assert(c2.satisfies_spec(spec));
-        auto sim_tts2 = c2.simulate(spec);
+        auto sim_tts2 = c2.simulate();
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c1_nr_vertices == c2_nr_vertices);
         assert(sim_tts1[0] == sim_tts2[0]);
@@ -120,7 +120,7 @@ void check_pd_equivalence5()
 
 
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate(spec);
+        auto sim_tts1 = c1.simulate();
         auto c1_nr_vertices = c1.get_nr_steps();
         assert(c1.satisfies_spec(spec));
 
@@ -133,7 +133,7 @@ void check_pd_equivalence5()
         auto elapsed2 = std::clock() - start;
         assert(res2 == success);
         assert(c2.satisfies_spec(spec));
-        auto sim_tts2 = c2.simulate(spec);
+        auto sim_tts2 = c2.simulate();
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c1_nr_vertices == c2_nr_vertices);
         assert(sim_tts1[0] == sim_tts2[0]);
@@ -155,12 +155,9 @@ void check_pd_equivalence5()
 /// synthesis.  By default, does not check for full equivalence of all n-input functions.
 /// Users can specify a arbitrary runtime argument, which removes the limit on
 /// the number of equivalence tests.
-int main(int argc, char **argv)
+int main()
 {
     bool full_coverage = false;
-    if (argc > 1) {
-        full_coverage = true;
-    }
     if (full_coverage) {
         printf("Doing full equivalence check\n");
     } else {

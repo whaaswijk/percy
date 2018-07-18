@@ -109,7 +109,7 @@ namespace percy
             void 
             add_vertex(const std::vector<int>& fanins)
             {
-                assert(fanins.size() == static_cast<unsigned>(fanin);
+                assert(fanins.size() == static_cast<unsigned>(fanin));
                 vertices.push_back(fanins);
             }
 
@@ -833,7 +833,7 @@ namespace percy
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
     {
-        auto ctr = 0;
+        size_t ctr = 0;
         for (const auto& g1 : dags) {
             bool iso_found = false;
 #ifndef DISABLE_NAUTY
@@ -850,7 +850,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%lu, %zu)\r", ++ctr, dags.size());
+                printf("(%zu, %zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -892,7 +892,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%lu,%lu)\r", ++ctr, dags.size());
+                printf("(%zu,%zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");

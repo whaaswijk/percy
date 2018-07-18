@@ -292,9 +292,9 @@ namespace percy
 
                 // Some outputs may be simple constants or projections.
                 for (auto h = 0u; h < outputs.size(); h++) {
-                    const auto out = static_cast<unsigned>(outputs[h]);
-                    const auto var = out >> 1u;
-                    const auto inv = out & 1u;
+                    const auto out = outputs[h];
+                    const auto var = out >> 1;
+                    const auto inv = out & 1;
                     if (var == 0) {
                         clear(tt_step);
                         fs[h] = inv ? ~tt_step : tt_step;
@@ -333,11 +333,11 @@ namespace percy
                     }
                     tmps[i] = tt_step;
 
-                    for (int h = 0; h < outputs.size(); h++) {
+                    for (auto h = 0u; h < outputs.size(); h++) {
                         const auto out = outputs[h];
                         const auto var = out >> 1;
                         const auto inv = out & 1;
-                        if (var - nr_in - 1 == i) {
+                        if (var - nr_in - 1 == static_cast<int>(i)) {
                             fs[h] = inv ? ~tt_step : tt_step;
                         }
                     }
