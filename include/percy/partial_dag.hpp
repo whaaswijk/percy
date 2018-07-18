@@ -830,7 +830,7 @@ namespace percy
 
     std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
-        std::vector<partial_dag> ni_dags)
+        std::vector<partial_dag>& ni_dags)
     {
         for (const auto& g1 : dags) {
             bool iso_found = false;
@@ -859,30 +859,7 @@ namespace percy
         return ni_dags;
     }
 
-    std::vector<partial_dag> pd_filter_isomorphic(const std::vector<partial_dag>& dags, int max_size)
-    {
-        std::vector<partial_dag> ni_dags;
-#ifndef DISABLE_NAUTY
-        pd_iso_checker checker(max_size);
-        for (const auto& g1 : dags) {
-            bool iso_found = false;
-            for (const auto& g2 : ni_dags) {
-                if (g2.nr_vertices() == g1.nr_vertices()) {
-                    if (checker.isomorphic(g1, g2)) {
-                        iso_found = true;
-                        break;
-                    }
-                }
-            }
-            if (!iso_found) {
-                ni_dags.push_back(g1);
-            }
-        }
-#else
-        ni_dags = dags;
-#endif
-        return ni_dags;
-    }
+    
 
     void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
@@ -912,6 +889,16 @@ namespace percy
 #else
         ni_dags = dags;
 #endif
+    }
+
+    std::vector<partial_dag> pd_filter_isomorphic(
+        const std::vector<partial_dag>& dags, 
+        int max_size,
+        bool show_progress = false)
+    {
+        std::vector<partial_dag> ni_dags;
+        pd_filter_isomorphic(dags, max_size, ni_dags, show_progress)
+        return ni_dags;
     }
 
     /// Writes a collection of partial DAGs to the specified filename
