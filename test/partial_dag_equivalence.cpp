@@ -28,7 +28,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 
     chain c1, c2;
 
-    auto dags = pd_generate(7);
+    auto dags = pd_generate_max(7);
 
     auto total_elapsed1 = 0;
     auto total_elapsed2 = 0;
@@ -88,7 +88,7 @@ void check_pd_equivalence5()
 
     chain c1, c2;
 
-    auto dags = pd_generate(7);
+    auto dags = pd_generate_max(7);
 
     auto total_elapsed1 = 0;
     auto total_elapsed2 = 0;

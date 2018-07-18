@@ -755,9 +755,57 @@ namespace percy
     };
 #endif
 
+    /// Generate all partial DAGs of the specified number
+    /// of vertices.
+    std::vector<partial_dag> pd_generate(int nr_vertices)
+    {
+        partial_dag g;
+        partial_dag_generator gen;
+        std::vector<partial_dag> dags;
+
+        gen.set_callback([&g, &dags]
+        (partial_dag_generator* gen) {
+            for (int i = 0; i < gen->nr_vertices(); i++) {
+                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+            }
+            dags.push_back(g);
+        });
+
+        g.reset(2, nr_vertices);
+        gen.reset(nr_vertices);
+        gen.count_dags();
+
+        return dags;
+    }
+
     /// Generate all partial DAGs up to the specified number
     /// of vertices.
-    std::vector<partial_dag> pd_generate(int max_vertices)
+    std::vector<partial_dag> pd_generate_max(int max_vertices)
+    {
+        partial_dag g;
+        partial_dag_generator gen;
+        std::vector<partial_dag> dags;
+
+        gen.set_callback([&g, &dags]
+        (partial_dag_generator* gen) {
+            for (int i = 0; i < gen->nr_vertices(); i++) {
+                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+            }
+            dags.push_back(g);
+        });
+
+        for (int i = 1; i <= max_vertices; i++) {
+            g.reset(2, i);
+            gen.reset(i);
+            gen.count_dags();
+        }
+
+        return dags;
+    }
+
+    /// Generate all partial DAGs up to the specified number
+    /// of vertices.
+    std::vector<partial_dag> pd_generate_max(int max_vertices)
     {
         partial_dag g;
         partial_dag_generator gen;

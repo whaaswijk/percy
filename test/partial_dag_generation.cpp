@@ -4,7 +4,7 @@ using namespace percy;
 
 int main(void)
 {
-    auto dags = pd_generate(7);
+    auto dags = pd_generate_max(7);
     auto dags_filtered = pd_generate_filtered(7, 4);
 
     printf("found %lu DAGs\n", dags.size());
