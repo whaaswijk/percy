@@ -47,7 +47,7 @@ namespace percy
             return true;
         }
 
-        for (int i = 0; i < tt.num_vars(); i++) {
+        for (auto i = 0u; i < tt.num_vars(); i++) {
             kitty::create_nth_var(tt_check, i);
             if (tt == tt_check || tt == ~tt_check) {
                 return true;
@@ -65,7 +65,7 @@ namespace percy
             return true;
         }
 
-        for (int i = 0; i < tt.num_vars(); i++) {
+        for (auto i = 0u; i < tt.num_vars(); i++) {
             kitty::create_nth_var(tt_check, i);
             if (tt == tt_check || tt == ~tt_check) {
                 return true;
@@ -104,7 +104,7 @@ namespace percy
                     synth->print_solver_state(spec);
                 }
                 synth->chain_extract(spec, chain);
-                auto sim_tts = chain.simulate(spec);
+                auto sim_tts = chain.simulate();
                 auto xor_tt = (*sim_tts[0]) ^ (*spec.functions[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -843,7 +843,7 @@ namespace percy
         // array.
         auto solv = new uint64_t[starting_points.size()];
         
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             const auto& sp = starting_points[i];
             threads.push_back(
                 std::thread([i, solv, &sp, nr_vars, nr_vertices] {
@@ -863,7 +863,7 @@ namespace percy
         }
 
         uint64_t total_nsols =0 ;
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             printf("solv[%d] = %lu\n", i, solv[i]);
             total_nsols += solv[i];
         }
@@ -903,7 +903,7 @@ namespace percy
 
         std::mutex vmutex;
         
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             const auto& sp = starting_points[i];
             threads.push_back(
                 std::thread([i, &dags, &vmutex, &sp, nr_vars, nr_vertices] {
@@ -1052,7 +1052,7 @@ namespace percy
                 }
                 if (stat == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate(spec);
+                    auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
@@ -1193,12 +1193,12 @@ namespace percy
         // As the topological synthesizer decomposes the synthesis
         // problem, to fairly count the total number of conflicts we
         // should keep track of all conflicts in existence checks.
-        int total_conflicts = 0;
         fence f;
         po_filter<unbounded_generator> g(
             unbounded_generator(spec.initial_steps),
             spec.get_nr_out(), spec.fanin);
         int old_nnodes = 1;
+        auto total_conflicts = 0;
         while (true) {
             g.next_fence(f);
             spec.nr_steps = f.nr_nodes();
@@ -1279,7 +1279,7 @@ namespace percy
             auto status = solver.solve(spec.conflict_limit);
             if (status == success) {
                 encoder.extract_chain(spec, chain);
-                auto sim_tts = chain.simulate(spec);
+                auto sim_tts = chain.simulate();
                 auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -1356,7 +1356,7 @@ namespace percy
                 auto status = solver.solve(spec.conflict_limit);
                 if (status == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate(spec);
+                    auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
@@ -1529,7 +1529,7 @@ namespace percy
             }
             if (stat == success) {
                 encoder.extract_chain(spec, dag, chain);
-                auto sim_tts = chain.simulate(spec);
+                auto sim_tts = chain.simulate();
                 auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -1595,7 +1595,6 @@ namespace percy
         std::mutex found_mutex;
 
         spec.nr_steps = spec.initial_steps;
-        auto status = failure;
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {

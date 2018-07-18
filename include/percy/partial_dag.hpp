@@ -92,7 +92,7 @@ namespace percy
             set_vertex(int v_idx, const std::vector<int>& fanins)
             {
                 assert(v_idx < nr_vertices());
-                assert(fanins.size() == fanin);
+                assert(fanins.size() == static_cast<unsigned>(fanin));
                 for (int i = 0; i < fanin; i++) {
                     vertices[v_idx][i] = fanins[i];
                 }
@@ -109,7 +109,7 @@ namespace percy
             void 
             add_vertex(const std::vector<int>& fanins)
             {
-                assert(fanins.size() == fanin);
+                assert(fanins.size() == static_cast<unsigned>(fanin);
                 vertices.push_back(fanins);
             }
 
@@ -850,7 +850,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%lu, %lu)\r", ++ctr, dags.size());
+                printf("(%lu, %zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");

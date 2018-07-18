@@ -7,8 +7,12 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "solvers.hpp"
-#include <abc/vecInt.h>
 #include <vector>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <abc/vecInt.h>
+#pragma GCC diagnostic pop
 
 namespace percy
 {

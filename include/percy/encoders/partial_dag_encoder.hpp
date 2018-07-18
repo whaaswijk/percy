@@ -132,7 +132,6 @@ namespace percy
                 printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
             }
 
-            auto svar_offset = 0;
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto nr_svars_for_i = nr_svars_for_step(spec, dag, i);
                 if (nr_svars_for_i == 0) {
@@ -157,7 +156,7 @@ namespace percy
 
         /// The simulation variables of the final step must be equal to
         /// the function we're trying to synthesize.
-        bool fix_output_sim_vars(const spec& spec, const partial_dag& dag)
+        bool fix_output_sim_vars(const spec& spec)
         {
             bool ret = true;
             auto ilast_step = spec.nr_steps - 1;
@@ -297,9 +296,7 @@ namespace percy
         {
             auto ret = true;
             std::vector<int> fanin_asgn(spec.fanin);
-            int pLits[2];
 
-            int svar_offset = 0;
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto vertex = dag.get_vertex(i);
                 auto nr_pi_fanins = 0;
@@ -518,7 +515,7 @@ namespace percy
                 return false;
             }
 
-            if (!fix_output_sim_vars(spec, dag)) {
+            if (!fix_output_sim_vars(spec)) {
                 return false;
             }
 
@@ -549,7 +546,7 @@ namespace percy
                 }
             }
 
-            if (!fix_output_sim_vars(spec, dag)) {
+            if (!fix_output_sim_vars(spec)) {
                 return false;
             }
 

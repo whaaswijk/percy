@@ -80,7 +80,7 @@ void check_fence_equivalence(int nr_in, int FI, bool full_coverage)
     Users can specify a arbitrary runtime argument, which removes the limit on
     the number of equivalence tests.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main()
 {
     bool full_coverage = false;
     if (argc > 1) {

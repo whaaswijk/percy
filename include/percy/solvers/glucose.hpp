@@ -2,6 +2,13 @@
 
 #if !defined(_WIN32) && !defined(_WIN64)
 
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #ifndef USE_GLUCOSE
 #include <syrup/parallel/MultiSolvers.h>
 #define GWType Glucose::MultiSolvers
@@ -9,6 +16,8 @@
 #include <glucose/core/Solver.h>
 #define GWType Glucose::Solver
 #endif
+
+#pragma GCC diagnostic pop
 
 namespace percy
 {
