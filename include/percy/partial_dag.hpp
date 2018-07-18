@@ -854,6 +854,36 @@ namespace percy
         return ni_dags;
     }
 
+    void pd_filter_isomorphic(
+        const std::vector<partial_dag>& dags, 
+        int max_size, 
+        std::vector<partial_dag>& ni_dags,
+        bool show_progress = false)
+    {
+#ifndef DISABLE_NAUTY
+        size_t ctr = 0;
+        pd_iso_checker checker(max_size);
+        for (const auto& g1 : dags) {
+            bool iso_found = false;
+            for (const auto& g2 : ni_dags) {
+                if (g2.nr_vertices() == g1.nr_vertices()) {
+                    if (checker.isomorphic(g1, g2)) {
+                        iso_found = true;
+                        break;
+                    }
+                }
+            }
+            if (!iso_found) {
+                ni_dags.push_back(g1);
+            }
+            printf("(%lu,%lu)\r", ++ctr, dags.size());
+        }
+        printf("\n");
+#else
+        ni_dags = dags;
+#endif
+    }
+
     /// Writes a collection of partial DAGs to the specified filename
     /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
     /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
