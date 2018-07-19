@@ -752,6 +752,40 @@ namespace percy
             return isomorphic;
         }
 
+        /// Computes the canonical representation of the given DAG 
+        /// and returns it as a vector of numbers.
+        std::vector<graph> crepr(const partial_dag& dag)
+        {
+            void (*adjacencies)(graph*, int*, int*, int, 
+                    int, int, int*, int, boolean, int, int) = NULL;
+
+            DEFAULTOPTIONS_DIGRAPH(options);
+            options.getcanon = TRUE;
+
+            const auto nr_vertices = dag.nr_vertices();
+            std::vector<graph> repr(m*dag.nr_vertices());
+
+            EMPTYGRAPH(g1, m, nr_vertices);
+
+            for (int i = 1; i < nr_vertices; i++) {
+                const auto& vertex = dag.get_vertex(i);
+                if (vertex[0] != FANIN_PI) {
+                    ADDONEARC(g1, vertex[0] - 1, i, m);
+                }
+                if (vertex[1] != FANIN_PI) {
+                    ADDONEARC(g1, vertex[1] - 1, i, m);
+                }
+            }
+
+            densenauty(g1,lab1,ptn,orbits,&options,&stats,m,nr_vertices,cg1);
+
+            for (int k = 0; k < m * nr_vertices; k++) {
+                repr[k] =  cg1[k];
+            }
+
+            return repr;
+        }
+
     };
 #endif
 
@@ -867,7 +901,60 @@ namespace percy
         return ni_dags;
     }
 
-    
+    /// Filters out isomorphic DAGs. NOTE: assumes that
+    /// all gven DAGs have the same number of vertices.
+    void pd_filter_isomorphic_fast(
+        const std::vector<partial_dag>& dags, 
+        std::vector<partial_dag>& ni_dags,
+        bool show_progress = false)
+    {
+        if (dags.size() == 0) {
+            return;
+        }
+
+        const auto nr_vertices = dags[0].nr_vertices();
+        pd_iso_checker checker(nr_vertices);
+        std::vector<std::vector<graph>> reprs(dags.size());
+        auto ctr = 0u;
+        if (show_progress)
+            printf("computing canonical representations\n");
+        for (auto i = 0u; i < dags.size(); i++) {
+            const auto& dag = dags[i];
+            reprs[i] = checker.crepr(dag);
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        std::vector<int> is_iso(dags.size());
+        for (auto i = 0u; i < dags.size(); i++) {
+            is_iso[i] = 0;
+        }
+        
+        ctr = 0u;
+        if (show_progress)
+            printf("checking isomorphisms\n");
+        for (auto i = 1u; i < dags.size(); i++) {
+            for (auto j = 0u; j < i; j++) {
+                if (reprs[i] == reprs[j]) {
+                    is_iso[i] = 1;
+                    break;
+                }
+            }
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        for (auto i = 0u; i < dags.size(); i++) {
+            if (!is_iso[i]) {
+                ni_dags.push_back(dags[i]);
+            }
+        }
+    }
+
 
     void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
