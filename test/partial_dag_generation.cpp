@@ -32,13 +32,21 @@ int main(void)
         pd_filter_isomorphic_sfast(dags, ni_dags);
         const auto elapsed3 = std::clock() - start;
         const auto nr_ni3 = ni_dags.size();
+        
+        ni_dags.clear();
+        start = std::clock();
+        auto gen_dags = pd_generate_nonisomorphic(nr_iso_vertices);
+        const auto elapsed4 = std::clock() - start;
+        const auto nr_ni4 = gen_dags.size();
 
         assert(nr_ni1 == nr_ni2);
         assert(nr_ni1 == nr_ni3);
+        assert(nr_ni1 == nr_ni4);
         printf("nr non iso: %zu\n", ni_dags.size());
         printf("elapsed1 = %.2fms\n", (1000.0 * elapsed1) / CLOCKS_PER_SEC);
         printf("elapsed2 = %.2fms\n", (1000.0 * elapsed2) / CLOCKS_PER_SEC);
         printf("elapsed3 = %.2fms\n", (1000.0 * elapsed3) / CLOCKS_PER_SEC);
+        printf("elapsed4 = %.2fms\n", (1000.0 * elapsed4) / CLOCKS_PER_SEC);
     }
 
     return 0;
