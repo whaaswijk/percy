@@ -5,8 +5,6 @@
 #include <iostream>
 #include <memory>
 
-#include <kitty/kitty.hpp>
-#include <kitty/print.hpp>
 #include "dag.hpp"
 #include "spec.hpp"
 #include "misc.hpp"

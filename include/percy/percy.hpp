@@ -4,13 +4,12 @@
 #include <memory>
 #include <thread>
 #include <mutex>
-#include <kitty/kitty.hpp>
+#include "spec.hpp"
 #include "fence.hpp"
 #include "chain.hpp"
 #include "dag_generation.hpp"
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
-#include "spec.hpp"
 #include "partial_dag.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
@@ -1324,7 +1323,6 @@ namespace percy
         po_filter<unbounded_generator> g(
             unbounded_generator(spec.initial_steps),
             spec.get_nr_out(), spec.fanin);
-        int total_conflicts = 0;
         int old_nnodes = 1;
         while (true) {
             g.next_fence(f);
@@ -1333,7 +1331,6 @@ namespace percy
             if (spec.nr_steps > old_nnodes) {
                 // Reset conflict count, since this is where other
                 // synthesizers reset it.
-                total_conflicts = 0;
                 old_nnodes = spec.nr_steps;
             }
 

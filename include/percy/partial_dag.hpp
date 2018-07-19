@@ -928,9 +928,11 @@ namespace percy
             for (int i = 0; i < dag.nr_vertices(); i++) {
                 auto& v = dag.get_vertex(i);
                 buf = v[0];
-                fwrite(&buf, sizeof(int), 1, fhandle);
+                auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
                 buf = v[1];
-                fwrite(&buf, sizeof(int), 1, fhandle);
+                stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
             }
         }
 
@@ -954,9 +956,11 @@ namespace percy
             auto nr_vertices = buf;
             g.reset(2, nr_vertices);
             for (int i = 0; i < nr_vertices; i++) {
-                fread(&buf, sizeof(int), 1, fhandle);
+                auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
                 auto fanin1 = buf;
-                fread(&buf, sizeof(int), 1, fhandle);
+                stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
                 auto fanin2 = buf;
                 g.set_vertex(i, fanin1, fanin2);
             }

@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 
 #define MAX_TESTS 256
 

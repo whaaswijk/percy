@@ -1,6 +1,9 @@
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-pedantic"
 #include <kitty/kitty.hpp>
+#pragma GCC diagnostic pop
 
 namespace percy
 {

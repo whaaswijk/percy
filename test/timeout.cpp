@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <vector>
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 #include <ctime>
 
 #define NR_IN 5

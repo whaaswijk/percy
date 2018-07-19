@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 
 #if !defined(_WIN32) && !defined(_WIN64)
 

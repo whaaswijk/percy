@@ -1,5 +1,4 @@
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 #include <cassert>
 #include <cstdio>
 #include <fstream>

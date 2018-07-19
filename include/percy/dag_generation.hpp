@@ -771,7 +771,7 @@ namespace percy
 
     };
 
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !defined(DISABLE_NAUTY)
     class nonisomorphic_dag_generator
     {
         private:
