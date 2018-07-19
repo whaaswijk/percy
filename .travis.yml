@@ -6,6 +6,8 @@ script:
     - cmake -DPERCY_BUILD_CMS=ON -DPERCY_TEST=ON -DTRAVIS_BUILD=ON ..
     - make -j4
     - make test
+    - cd ..
+    - bash memcheck.sh
 
 matrix:
   include:
