@@ -955,6 +955,60 @@ namespace percy
         }
     }
 
+    /// Isomorphism check using set containinment (hashing)
+    void pd_filter_isomorphic_sfast(
+        const std::vector<partial_dag>& dags, 
+        std::vector<partial_dag>& ni_dags,
+        bool show_progress = false)
+    {
+        if (dags.size() == 0) {
+            return;
+        }
+
+        const auto nr_vertices = dags[0].nr_vertices();
+        pd_iso_checker checker(nr_vertices);
+        std::vector<std::vector<graph>> reprs(dags.size());
+        auto ctr = 0u;
+        if (show_progress)
+            printf("computing canonical representations\n");
+        for (auto i = 0u; i < dags.size(); i++) {
+            const auto& dag = dags[i];
+            reprs[i] = checker.crepr(dag);
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        std::vector<int> is_iso(dags.size());
+        for (auto i = 0u; i < dags.size(); i++) {
+            is_iso[i] = 0;
+        }
+
+        std::set<std::vector<graph>> can_reps;
+        
+        ctr = 0u;
+        if (show_progress)
+            printf("checking isomorphisms\n");
+        for (auto i = 0u; i < dags.size(); i++) {
+            auto repr = reprs[i];
+            const auto res = can_reps.insert(repr);
+            if (!res.second) { // Already have an isomorphic representative
+                is_iso[i] = 1;
+            }
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        for (auto i = 0u; i < dags.size(); i++) {
+            if (!is_iso[i]) {
+                ni_dags.push_back(dags[i]);
+            }
+        }
+    }
+
 
     void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
