@@ -5,6 +5,7 @@ using namespace percy;
 
 int main(void)
 {
+#ifndef DISABLE_NAUTY
     auto dags = pd_generate_max(7);
     auto dags_filtered = pd_generate_filtered(7, 4);
 
@@ -56,6 +57,7 @@ int main(void)
         printf("elapsed4 = %.2fms\n", (1000.0 * elapsed4) / CLOCKS_PER_SEC);
         printf("elapsed5 = %.2fms\n", (1000.0 * elapsed5) / CLOCKS_PER_SEC);
     }
+#endif
 
     return 0;
 }

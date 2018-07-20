@@ -39,7 +39,6 @@ endif()
 if (PERCY_BUILD_KITTY)
     add_subdirectory(kitty EXCLUDE_FROM_ALL)
 endif()
-add_subdirectory(include)
 
 if (PERCY_BUILD_CMS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_CMS")
@@ -74,17 +73,18 @@ elseif(WIN32)
     endif()
 endif()
 
-if (PERCY_TEST)
-    enable_testing()
-    add_subdirectory(test)
-endif()
-
 # Nauty does not seem to compile on Windows
 if (WIN32)
     set(DISABLE_NAUTY ON)
 endif()
-if (${DISABLE_NAUTY})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_NAUTY")
-else()
+
+if (NOT ${DISABLE_NAUTY})
     add_subdirectory(nauty)
+endif()
+
+add_subdirectory(include)
+
+if (PERCY_TEST)
+    enable_testing()
+    add_subdirectory(test)
 endif()

@@ -994,6 +994,7 @@ namespace percy
         return dags;
     }
 
+#ifndef DISABLE_NAUTY
     std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
@@ -1002,7 +1003,6 @@ namespace percy
         size_t ctr = 0;
         for (const auto& g1 : dags) {
             bool iso_found = false;
-#ifndef DISABLE_NAUTY
             for (const auto& g2 : ni_dags) {
                 if (g2.nr_vertices() == g1.nr_vertices()) {
                     if (g1.is_isomorphic(g2)) {
@@ -1011,7 +1011,6 @@ namespace percy
                     }
                 }
             }
-#endif
             if (!iso_found) {
                 ni_dags.push_back(g1);
             }
@@ -1148,7 +1147,6 @@ namespace percy
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
     {
-#ifndef DISABLE_NAUTY
         size_t ctr = 0;
         pd_iso_checker checker(max_size);
         for (const auto& g1 : dags) {
@@ -1169,9 +1167,7 @@ namespace percy
         }
         if (show_progress)
             printf("\n");
-#else
         ni_dags = dags;
-#endif
     }
 
     std::vector<partial_dag> pd_filter_isomorphic(
@@ -1183,6 +1179,6 @@ namespace percy
         pd_filter_isomorphic(dags, max_size, ni_dags, show_progress);
         return ni_dags;
     }
-
+#endif
 }
 
