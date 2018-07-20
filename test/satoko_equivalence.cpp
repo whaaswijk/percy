@@ -120,6 +120,9 @@ int main(int argc, char **argv)
     check_std_equivalence<3>();
     check_std_equivalence<4>();
 
+    //printf("Press Enter to continue...\n");
+    //std::cin.ignore();
+
     return 0;
 }
 
