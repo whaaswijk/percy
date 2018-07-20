@@ -18,6 +18,7 @@ option(PERCY_USE_GLUCOSE "Use glucose instead of glucose-syrup" OFF)
 option(PERCY_BUILD_CMS "Enables support for CryptoMinisat" OFF)
 option(STATIC_LIBABC "Builds libabc as a static library" ON)
 option(DISABLE_NAUTY "Disables the Nauty library" OFF)
+option(PERCY_SATOKO "Enable support for the Satoko solver" ON)
 
 if (${TRAVIS_BUILD})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRAVIS_BUILD -Wno-sign-compare -Wno-parentheses")
@@ -56,6 +57,10 @@ if (${PERCY_BUILD_CMS})
     endif()
 endif()
 
+if (${PERCY_SATOKO})
+    add_subdirectory(satoko)
+endif()
+
 if (${PERCY_BENCH})
     add_subdirectory(bench)
 endif()
@@ -82,7 +87,7 @@ endif()
 
 add_subdirectory(include)
 
-if (PERCY_TEST)
+if (${PERCY_TEST})
     enable_testing()
     add_subdirectory(test)
 endif()

@@ -7,6 +7,12 @@ if (${PERCY_BUILD_CMS})
     add_dependencies(percy libcryptominisat5)
 endif()
 
+if (${PERCY_SATOKO})
+    target_link_libraries(percy INTERFACE satoko)
+else()
+    target_compile_definitions(percy INTERFACE DISABLE_SATOKO)
+endif()
+
 target_link_libraries(percy INTERFACE kitty libabcsat)
 
 if (${DISABLE_NAUTY})
