@@ -109,7 +109,7 @@ namespace percy
             solver->opts.b_rst = b_rst;
         }
 
-        void set_frst_block_rst(unsigned fst_block_rst)
+        void set_fst_block_rst(unsigned fst_block_rst)
         {
             solver->opts.fst_block_rst = fst_block_rst;
         }
