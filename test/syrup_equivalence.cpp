@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 
 #if !defined(_WIN32) && !defined(_WIN64)
 
@@ -37,24 +36,24 @@ void check_std_equivalence(int nr_in, bool full_coverage)
         spec[0] = tt;
         auto res1 = synthesize(spec, c1, solver1, encoder1);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate(spec);
+        auto sim_tts1 = c1.simulate();
         auto c1_nr_steps = c1.get_nr_steps();
 
         auto res1_cegar = synthesize(spec, c1_cegar, solver1, encoder1, SYNTH_STD_CEGAR);
         assert(res1_cegar == success);
-        auto sim_tts1_cegar = c1_cegar.simulate(spec);
+        auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_steps = c1_cegar.get_nr_steps();
 
         auto res2 = synthesize(spec, c2, solver2, encoder2);
         assert(res2 == success);
-        auto sim_tts2 = c2.simulate(spec);
+        auto sim_tts2 = c2.simulate();
         auto c2_nr_steps = c2.get_nr_steps();
 
         /*
          * TODO: enable Glucose::MultiSolvers synthesis using CEGAR
         auto res2_cegar = synth2->cegar_synthesize(spec, c2_cegar);
         assert(res2_cegar == success);
-        auto sim_tts2_cegar = c2_cegar.simulate(spec);
+        auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_steps = c2_cegar.get_nr_steps();
         */
 

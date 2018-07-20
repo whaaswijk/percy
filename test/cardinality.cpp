@@ -92,9 +92,11 @@ int main(void)
     enumerate_solutions(4, 2, SLV_BSAT2);
     enumerate_solutions(4, 3, SLV_BSAT2);
     
+#ifdef USE_CMS
     enumerate_solutions(2, 2, SLV_CMSAT);
     enumerate_solutions(4, 2, SLV_CMSAT);
     enumerate_solutions(4, 3, SLV_CMSAT);
+#endif
     
 #if !defined(_WIN32) && !defined(_WIN64) && defined(USE_GLUCOSE)
     enumerate_solutions(2, 2, SLV_GLUCOSE);

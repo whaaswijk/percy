@@ -1,5 +1,4 @@
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 #include <cassert>
 #include <cstdio>
 #include <fstream>
@@ -29,7 +28,7 @@ int main(void)
     printf("synthesizing %s\n", kitty::to_binary(maj5).c_str());
     auto result = synthesize(spec, c, solver, encoder);
     assert(result == success);
-    auto tts = c.simulate(spec);
+    auto tts = c.simulate();
     assert(tts[0] == maj5);
     assert(c.get_nr_steps() == 4);
 
@@ -39,7 +38,7 @@ int main(void)
     printf("synthesizing %s\n", kitty::to_binary(maj7).c_str());
     result = synthesize(spec, c, solver, encoder);
     assert(result == success);
-    tts = c.simulate(spec);
+    tts = c.simulate();
     assert(tts[0] == maj7);
     assert(c.get_nr_steps() == 7);
 

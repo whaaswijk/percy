@@ -350,7 +350,7 @@ void sat_solver_set_var_activity(sat_solver* s, int * pVars, int nVars)
 //=================================================================================================
 // variable activities
 
-static inline void solver_init_activities(sat_solver* s)  
+void solver_init_activities(sat_solver* s)  
 {
     // variable activities
     if ( s->VarActType == 0 )
@@ -1278,7 +1278,6 @@ sat_solver* sat_solver_new(void)
     s->root_level             = 0;
 //    s->simpdb_assigns         = 0;
 //    s->simpdb_props           = 0;
-    s->random_seed            = 91648253;
     s->progress_estimate      = 0;
 //    s->binary                 = (clause*)ABC_ALLOC( char, sizeof(clause) + sizeof(lit)*2);
 //    s->binary->size_learnt    = (2 << 1);
@@ -1514,7 +1513,6 @@ void sat_solver_restart( sat_solver* s )
     s->root_level             = 0;
 //    s->simpdb_assigns         = 0;
 //    s->simpdb_props           = 0;
-    s->random_seed            = 91648253;
     s->progress_estimate      = 0;
     s->verbosity              = 0;
 
@@ -1801,7 +1799,6 @@ void sat_solver_rollback( sat_solver* s )
         solver_init_activities(s);
 
         s->root_level             = 0;
-        s->random_seed            = 91648253;
         s->progress_estimate      = 0;
         s->verbosity              = 0;
 

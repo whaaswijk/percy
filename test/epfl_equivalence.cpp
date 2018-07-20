@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <percy/percy.hpp>
-#include <kitty/kitty.hpp>
 
 #define MAX_TESTS 256
 
@@ -32,25 +31,25 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
         spec[0] = tt;
         auto res1 = synthesize(spec, c1, solver, knuth_enc);
         assert(res1 == success);
-        auto sim_tts1 = c1.simulate(spec);
+        auto sim_tts1 = c1.simulate();
         auto c1_nr_vertices = c1.get_nr_steps();
         assert(c1.satisfies_spec(spec));
 
         auto res1_cegar = synthesize(spec, c1_cegar, solver, knuth_enc, SYNTH_STD_CEGAR);
         assert(res1_cegar == success);
-        auto sim_tts1_cegar = c1_cegar.simulate(spec);
+        auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_vertices = c1_cegar.get_nr_steps();
         assert(c1_cegar.satisfies_spec(spec));
 
         auto res2 = synthesize(spec, c2, solver, epfl_enc);
         assert(res2 == success);
-        auto sim_tts2 = c2.simulate(spec);
+        auto sim_tts2 = c2.simulate();
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c2.satisfies_spec(spec));
 
         auto res2_cegar = synthesize(spec, c2_cegar, solver, epfl_enc, SYNTH_STD_CEGAR);
         assert(res2_cegar == success);
-        auto sim_tts2_cegar = c2_cegar.simulate(spec);
+        auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_vertices = c2.get_nr_steps();
         assert(c2_cegar.satisfies_spec(spec));
 

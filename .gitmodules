@@ -6,7 +6,7 @@
 	url = https://github.com/whaaswijk/glucose-syrup
 [submodule "cryptominisat"]
 	path = cryptominisat
-	url = https://github.com/msoos/cryptominisat.git
+	url = https://github.com/whaaswijk/cryptominisat.git
 [submodule "kitty"]
 	path = kitty
 	url = https://github.com/whaaswijk/kitty

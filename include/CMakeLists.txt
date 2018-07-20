@@ -1,12 +1,23 @@
 add_library(percy INTERFACE)
+
 target_include_directories(percy INTERFACE ${PROJECT_SOURCE_DIR}/include)
 
+if (${PERCY_BUILD_CMS})
+    target_include_directories(percy INTERFACE ${CMS_INCLUDE_DIR})
+    add_dependencies(percy libcryptominisat5)
+endif()
+
 target_link_libraries(percy INTERFACE kitty libabcsat)
-if (UNIX)
+
+if (${DISABLE_NAUTY})
+    target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
+else()
     target_link_libraries(percy INTERFACE nauty)
-    if (PERCY_USE_SYRUP)
+endif()
+if (UNIX)
+    if (${PERCY_USE_SYRUP})
         target_link_libraries(percy INTERFACE syrup pthread)
-    else()
+    elseif(${PERCY_USE_GLUCOSE})
         target_link_libraries(percy INTERFACE glucose)
     endif()
 endif()
