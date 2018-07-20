@@ -41,5 +41,20 @@ int main(void)
     }
 
 
+    printf("Writing single DAG\n");
+    auto fhandle = fopen("test.bin", "wb");
+    write_partial_dag(g1, fhandle);
+    fclose(fhandle);
+
+    printf("Reading single DAG\n");
+    read_dags = read_partial_dags("test.bin");
+    for (const auto& dag : read_dags) {
+        for (int i = 0; i < dag.nr_vertices(); i++) {
+            auto v = dag.get_vertex(i);
+            printf("(%d,%d) - ", v[0], v[1]);
+        }
+        printf("\n");
+    }
+
     return 0;
 }

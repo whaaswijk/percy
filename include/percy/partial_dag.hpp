@@ -789,6 +789,83 @@ namespace percy
     };
 #endif
 
+    /// Writes a collection of partial DAGs to the specified filename
+    /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
+    /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
+    void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+    {
+        auto fhandle = fopen(filename, "wb");
+        if (fhandle == NULL) {
+            fprintf(stderr, "Error: unable to open output file\n");
+            exit(1);
+        }
+
+        for (auto& dag : dags) {
+            int buf = dag.nr_vertices();
+            fwrite(&buf, sizeof(int), 1, fhandle);
+            for (int i = 0; i < dag.nr_vertices(); i++) {
+                auto& v = dag.get_vertex(i);
+                buf = v[0];
+                auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+                buf = v[1];
+                stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+            }
+        }
+
+        fclose(fhandle);
+    }
+
+    void write_partial_dag(const partial_dag& dag, FILE* fhandle)
+    {
+        int buf = dag.nr_vertices();
+        fwrite(&buf, sizeof(int), 1, fhandle);
+        for (int i = 0; i < dag.nr_vertices(); i++) {
+            auto& v = dag.get_vertex(i);
+            buf = v[0];
+            auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+            assert(stat == 1);
+            buf = v[1];
+            stat = fwrite(&buf, sizeof(int), 1, fhandle);
+            assert(stat == 1);
+        }
+    }
+
+    /// Reads serialized partial DAGs from file
+    std::vector<partial_dag> read_partial_dags(const char* const filename)
+    {
+        std::vector<partial_dag> dags;
+
+        auto fhandle = fopen(filename, "rb");
+        if (fhandle == NULL) {
+            fprintf(stderr, "Error: unable to open output file\n");
+            exit(1);
+        }
+
+        partial_dag g;
+        int buf;
+        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+            auto nr_vertices = buf;
+            g.reset(2, nr_vertices);
+            for (int i = 0; i < nr_vertices; i++) {
+                auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+                auto fanin1 = buf;
+                stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+                auto fanin2 = buf;
+                g.set_vertex(i, fanin1, fanin2);
+            }
+            dags.push_back(g);
+        }
+
+        fclose(fhandle);
+
+        return dags;
+    }
+
+
     /// Generate all partial DAGs of the specified number
     /// of vertices.
     std::vector<partial_dag> pd_generate(int nr_vertices)
@@ -812,6 +889,7 @@ namespace percy
         return dags;
     }
 
+#ifndef DISABLE_NAUTY
     std::vector<partial_dag> pd_generate_nonisomorphic(int nr_vertices)
     {
         partial_dag g;
@@ -837,6 +915,34 @@ namespace percy
 
         return dags;
     }
+
+    void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
+    {
+        partial_dag g;
+        partial_dag_generator gen;
+        std::set<std::vector<graph>> can_reprs;
+        pd_iso_checker checker(nr_vertices);
+
+        auto fhandle = fopen(filename, "wb");
+
+        gen.set_callback([&g, fhandle, &can_reprs, &checker]
+        (partial_dag_generator* gen) {
+            for (int i = 0; i < gen->nr_vertices(); i++) {
+                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+            }
+            const auto can_repr = checker.crepr(g);
+            const auto res = can_reprs.insert(can_repr);
+            if (res.second)
+                write_partial_dag(g, fhandle);
+        });
+
+        g.reset(2, nr_vertices);
+        gen.reset(nr_vertices);
+        gen.count_dags();
+
+        fclose(fhandle);
+    }
+#endif
 
     /// Generate all partial DAGs up to the specified number
     /// of vertices.
@@ -1078,65 +1184,5 @@ namespace percy
         return ni_dags;
     }
 
-    /// Writes a collection of partial DAGs to the specified filename
-    /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
-    /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
-    void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
-    {
-        auto fhandle = fopen(filename, "wb");
-        if (fhandle == NULL) {
-            fprintf(stderr, "Error: unable to open output file\n");
-            exit(1);
-        }
-
-        for (auto& dag : dags) {
-            int buf = dag.nr_vertices();
-            fwrite(&buf, sizeof(int), 1, fhandle);
-            for (int i = 0; i < dag.nr_vertices(); i++) {
-                auto& v = dag.get_vertex(i);
-                buf = v[0];
-                auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                buf = v[1];
-                stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-            }
-        }
-
-        fclose(fhandle);
-    }
-
-    /// Reads serialized partial DAGs from file
-    std::vector<partial_dag> read_partial_dags(const char* const filename)
-    {
-        std::vector<partial_dag> dags;
-
-        auto fhandle = fopen(filename, "rb");
-        if (fhandle == NULL) {
-            fprintf(stderr, "Error: unable to open output file\n");
-            exit(1);
-        }
-
-        partial_dag g;
-        int buf;
-        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
-            auto nr_vertices = buf;
-            g.reset(2, nr_vertices);
-            for (int i = 0; i < nr_vertices; i++) {
-                auto stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                auto fanin1 = buf;
-                stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                auto fanin2 = buf;
-                g.set_vertex(i, fanin1, fanin2);
-            }
-            dags.push_back(g);
-        }
-
-        fclose(fhandle);
-
-        return dags;
-    }
 }
 
