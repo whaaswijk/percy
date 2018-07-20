@@ -88,6 +88,11 @@ namespace percy
             }
         }
 
+        double set_f_rst(double f_rst)
+        {
+            solver->opt->f_rst = f_rst;
+        }
+
     };
 }
 
