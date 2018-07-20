@@ -12,7 +12,7 @@
 #include "mem.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 /* Bounded Queue */
 typedef struct b_queue_t_ b_queue_t;
@@ -77,5 +77,5 @@ static inline void b_queue_clean(b_queue_t *p)
     p->sum = 0;
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__b_queue_h */

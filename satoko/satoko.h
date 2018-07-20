@@ -11,7 +11,7 @@
 
 #include "types.h"
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 /** Return valeus */
 enum {
@@ -140,9 +140,9 @@ extern void satoko_set_stop(satoko_t *, int *);
 extern void satoko_set_stop_func(satoko_t *s, int (*fnct)(int));
 extern void satoko_set_runid(satoko_t *, int);
 extern int satoko_read_cex_varvalue(satoko_t *, int);
-extern abctime satoko_set_runtime_limit(satoko_t *, abctime);
+extern pabc::abctime satoko_set_runtime_limit(satoko_t *, pabc::abctime);
 extern char satoko_var_polarity(satoko_t *, unsigned);
 
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__satoko_h */

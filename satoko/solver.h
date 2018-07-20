@@ -28,7 +28,7 @@
 #include "utils/vec/vec_uint.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 
 
@@ -101,7 +101,7 @@ struct solver_t_ {
     vec_char_t *marks;
     
     /* Callbacks to stop the solver */
-    abctime nRuntimeLimit;
+    pabc::abctime nRuntimeLimit;
     int    *pstop;
     int     RunId;           
     int   (*pFuncStop)(int);  
@@ -255,5 +255,5 @@ static inline void clause_unwatch(solver_t *s, unsigned cref)
     watch_list_remove(vec_wl_at(s->watches, lit_compl(clause->data[1].lit)), cref, (clause->size == 2));
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__solver_h */

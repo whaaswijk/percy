@@ -18,7 +18,7 @@
 #include "utils/vec/vec_uint.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_IMPL_START
+SATOKO_NAMESPACE_IMPL_START
 
 /** Read the file into an internal buffer.
  *

@@ -16,7 +16,7 @@
 #include "utils/misc.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_IMPL_START
+SATOKO_NAMESPACE_IMPL_START
 
 //===------------------------------------------------------------------------===
 // Satoko internal functions
@@ -332,7 +332,7 @@ int satoko_solve(solver_t *s)
         status = solver_search(s);
         if (solver_check_limits(s) == 0 || solver_stop(s))
             break;
-        if (s->nRuntimeLimit && Abc_Clock() > s->nRuntimeLimit)
+        if (s->nRuntimeLimit && pabc::Abc_Clock() > s->nRuntimeLimit)
             break;
         if (s->pFuncStop && s->pFuncStop(s->RunId))
             break;
@@ -662,9 +662,9 @@ int satoko_read_cex_varvalue(satoko_t *s, int ivar)
     return satoko_var_polarity(s, ivar) == SATOKO_LIT_TRUE;
 }
 
-abctime satoko_set_runtime_limit(satoko_t* s, abctime Limit)
+pabc::abctime satoko_set_runtime_limit(satoko_t* s, pabc::abctime Limit)
 {
-    abctime nRuntimeLimit = s->nRuntimeLimit;
+    pabc::abctime nRuntimeLimit = s->nRuntimeLimit;
     s->nRuntimeLimit = Limit;
     return nRuntimeLimit;
 }

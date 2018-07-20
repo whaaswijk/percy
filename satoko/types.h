@@ -13,7 +13,7 @@
 #include "utils/vec/vec_sdbl.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 /* In Satoko ABC version this file is useless */
 
@@ -35,5 +35,5 @@ typedef vec_sdbl_t vec_act_t ;
 #define CLAUSE_ACT_INIT_INC (1 << 11)
 typedef unsigned clause_act_t;
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__types_h */

@@ -13,7 +13,7 @@
 #include "utils/misc.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 struct watcher {
     unsigned cref;
@@ -199,5 +199,5 @@ static inline struct watch_list *vec_wl_at(vec_wl_t *vec_wl, unsigned idx)
     return vec_wl->watch_lists + idx;
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__watch_list_h */

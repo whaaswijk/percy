@@ -12,7 +12,7 @@
 #include "types.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 struct clause {
     unsigned f_learnt    : 1;
@@ -73,5 +73,5 @@ static inline void clause_dump(FILE *file, struct clause *clause, int no_zero_va
         fprintf(file, "\n");
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__clause_h */

@@ -11,7 +11,7 @@
 #define satoko__utils__sdbl_h
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 /*
     The sdbl_t floating-point number is represented as a 64-bit unsigned int.
     The number is (2^expt)*mnt, where expt is a 16-bit exponent and mnt is a
@@ -29,15 +29,15 @@ ABC_NAMESPACE_HEADER_START
     Only addition, multiplication, and division by 2^n are currently implemented.
 */
 
-typedef word sdbl_t;
+typedef pabc::word sdbl_t;
 
 static sdbl_t SDBL_CONST1 = ABC_CONST(0x0000800000000000);
 static sdbl_t SDBL_MAX = ~(sdbl_t)(0);
 
-union ui64_dbl { word ui64; double dbl; };
+union ui64_dbl { pabc::word ui64; double dbl; };
 
-static inline word sdbl_exp(sdbl_t a) { return a >> 48;         }
-static inline word sdbl_mnt(sdbl_t a) { return (a << 16) >> 16; }
+static inline pabc::word sdbl_exp(sdbl_t a) { return a >> 48;         }
+static inline pabc::word sdbl_mnt(sdbl_t a) { return (a << 16) >> 16; }
 
 static inline double sdbl2double(sdbl_t a) {
     union ui64_dbl temp;
@@ -112,7 +112,7 @@ static inline sdbl_t sdbl_mult(sdbl_t a, sdbl_t b)
 
 static inline sdbl_t sdbl_div(sdbl_t a, unsigned deg2)
 {
-    if (sdbl_exp(a) >= (word)deg2)
+    if (sdbl_exp(a) >= (pabc::word)deg2)
         return ((sdbl_exp(a) - deg2) << 48) + sdbl_mnt(a);
     return SDBL_CONST1;
 }
@@ -128,6 +128,6 @@ static inline void sdbl_test()
 
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 
 #endif /* satoko__utils__sdbl_h */

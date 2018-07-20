@@ -8,6 +8,7 @@
 
 #pragma GCC diagnostic ignored "-Wtype-limits"
 #include <satoko/satoko.h>
+#include <satoko/solver.h>
 #pragma GCC diagnostic pop
 
 namespace percy
@@ -15,66 +16,66 @@ namespace percy
     class satoko_wrapper : public solver_wrapper
     {
     private:
-        pabc::satoko_t * solver = NULL;
+        satoko::satoko_t * solver = NULL;
 
     public:
         satoko_wrapper()
         {
-            solver = pabc::satoko_create();
+            solver = satoko::satoko_create();
         }
 
         ~satoko_wrapper()
         {
-            pabc::satoko_destroy(solver);
+            satoko::satoko_destroy(solver);
             solver = NULL;
         }
 
         void restart()
         {
-            pabc::satoko_reset(solver);
+            satoko::satoko_reset(solver);
         }
 
         void set_nr_vars(int nr_vars)
         {
-            pabc::satoko_setnvars(solver, nr_vars);
+            satoko::satoko_setnvars(solver, nr_vars);
         }
 
         int nr_vars()
         {
-            return pabc::satoko_varnum(solver);
+            return satoko::satoko_varnum(solver);
         }
 
         int nr_clauses()
         {
-            return pabc::satoko_clausenum(solver);
+            return satoko::satoko_clausenum(solver);
         }
 
         int nr_conflicts()
         {
-            return pabc::satoko_conflictnum(solver);
+            return satoko::satoko_conflictnum(solver);
         }
 
         int add_clause(pabc::lit* begin, pabc::lit* end)
         {
-            return pabc::satoko_add_clause(solver, begin, end - begin);
+            return satoko::satoko_add_clause(solver, begin, end - begin);
         }
 
         void add_var()
         {
-            pabc::satoko_add_variable(solver, 0);
+            satoko::satoko_add_variable(solver, 0);
         }
 
         int var_value(int var)
         {
-            return pabc::satoko_read_cex_varvalue(solver, var);
+            return satoko::satoko_read_cex_varvalue(solver, var);
         }
 
         synth_result solve(int cl)
         {
-            auto res = pabc::satoko_solve_assumptions_limit(solver, 0, 0, cl);
-            if (res == pabc::SATOKO_SAT) {
+            auto res = satoko::satoko_solve_assumptions_limit(solver, 0, 0, cl);
+            if (res == satoko::SATOKO_SAT) {
                 return success;
-            } else if (res == pabc::SATOKO_UNSAT) {
+            } else if (res == satoko::SATOKO_UNSAT) {
                 return failure;
             } else {
                 return timeout;
@@ -83,21 +84,105 @@ namespace percy
 
         synth_result solve(pabc::lit* begin, pabc::lit* end, int cl)
         {
-            auto res = pabc::satoko_solve_assumptions_limit(solver, begin, end - begin, cl);
-            if (res == pabc::SATOKO_SAT) {
+            auto res = satoko::satoko_solve_assumptions_limit(solver, begin, end - begin, cl);
+            if (res == satoko::SATOKO_SAT) {
                 return success;
-            } else if (res == pabc::SATOKO_UNSAT) {
+            } else if (res == satoko::SATOKO_UNSAT) {
                 return failure;
             } else {
                 return timeout;
             }
         }
 
-        double set_f_rst(double f_rst)
+        void set_no_simplify(char no_simplify)
         {
-            solver->opt->f_rst = f_rst;
+            solver->opts.no_simplify = no_simplify;
         }
 
+        void set_f_rst(double f_rst)
+        {
+            solver->opts.f_rst = f_rst;
+        }
+
+        void set_b_rst(double b_rst)
+        {
+            solver->opts.b_rst = b_rst;
+        }
+
+        void set_frst_block_rst(unsigned fst_block_rst)
+        {
+            solver->opts.fst_block_rst = fst_block_rst;
+        }
+
+        void set_sz_lbd_bqueue(unsigned sz_lbd_bqueue)
+        {
+            solver->opts.sz_lbd_bqueue = sz_lbd_bqueue;
+        }
+
+        void set_sz_trail_bqueue(unsigned sz_trail_bqueue)
+        {
+            solver->opts.sz_trail_bqueue = sz_trail_bqueue;
+        }
+
+        void set_n_conf_fst_reduce(unsigned n_conf_fst_reduce)
+        {
+            solver->opts.n_conf_fst_reduce = n_conf_fst_reduce;
+        }
+
+        void set_inc_reduce(unsigned inc_reduce)
+        {
+            solver->opts.inc_reduce = inc_reduce;
+        }
+
+        void set_inc_special_reduce(unsigned inc_special_reduce)
+        {
+            solver->opts.inc_special_reduce;
+        }
+
+        void set_lbd_freeze_clause(unsigned lbd_freeze_clause)
+        {
+            solver->opts.lbd_freeze_clause = lbd_freeze_clause;
+        }
+
+        void set_learnt_ratio(float learnt_ratio)
+        {
+            solver->opts.learnt_ratio = learnt_ratio;
+        }
+
+        void set_var_decay(double var_decay)
+        {
+            solver->opts.var_decay = var_decay;
+        }
+
+        void set_clause_decay(float clause_decay)
+        {
+            solver->opts.clause_decay = clause_decay;
+        }
+
+        void set_var_act_rescale(unsigned var_act_rescale)
+        {
+            solver->opts.var_act_rescale = var_act_rescale;
+        }
+
+        void set_var_act_limit(satoko::act_t var_act_limit)
+        {
+            solver->opts.var_act_limit = var_act_limit;
+        }
+
+        void set_clause_max_sz_bin_resol(unsigned clause_max_sz_bin_resol)
+        {
+            solver->opts.clause_max_sz_bin_resol = clause_max_sz_bin_resol;
+        }
+
+        void set_clause_min_lbd_bin_resol(unsigned clause_min_lbd_bin_resol)
+        {
+            solver->opts.clause_min_lbd_bin_resol = clause_min_lbd_bin_resol;
+        }
+
+        void set_garbage_max_ratio(float garbage_max_ratio)
+        {
+            solver->opts.garbage_max_ratio = garbage_max_ratio;
+        }
     };
 }
 

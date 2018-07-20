@@ -16,7 +16,7 @@
 #include "../mem.h"
 
 #include "misc/util/abc_global.h"
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 typedef struct vec_flt_t_ vec_flt_t;
 struct vec_flt_t_ {
@@ -242,5 +242,5 @@ static inline void vec_flt_print(vec_flt_t *p)
     fprintf(stdout, " }\n");
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__vec__vec_flt_h */

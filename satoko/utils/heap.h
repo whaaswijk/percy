@@ -16,7 +16,7 @@
 #include "vec/vec_uint.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 typedef struct heap_t_ heap_t;
 struct heap_t_ {
@@ -174,5 +174,5 @@ static inline unsigned heap_remove_min(heap_t *p)
     return x;
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__heap_h */

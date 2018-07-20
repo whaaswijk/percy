@@ -13,7 +13,7 @@
 #include "types.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 static inline void clause_act_rescale(solver_t *s)
 {
@@ -39,5 +39,5 @@ static inline void clause_act_decay(solver_t *s)
     s->clause_act_inc += (s->clause_act_inc >> 10);
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__act_clause_h */

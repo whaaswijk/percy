@@ -12,7 +12,7 @@
 #include "clause.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 /* Clauses DB data structure */
 struct cdb {
@@ -102,5 +102,5 @@ static inline unsigned cdb_wasted(struct cdb *p)
     return p->wasted;
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__cdb_h */

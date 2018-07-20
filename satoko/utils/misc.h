@@ -10,7 +10,7 @@
 #define satoko__utils__misc_h
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 #define stk_swap(type, a, b)  { type t = a; a = b; b = t; }
 
@@ -31,5 +31,5 @@ static inline int stk_uint_compare(const void *p1, const void *p2)
     return 0;
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__misc_h */

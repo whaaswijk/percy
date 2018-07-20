@@ -15,7 +15,7 @@
 #include "utils/sdbl.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 /** Re-scale the activity value for all variables.
  */
@@ -49,5 +49,5 @@ static inline void var_act_decay(solver_t *s)
     s->var_act_inc = sdbl_mult(s->var_act_inc, double2sdbl(1 /s->opts.var_decay));
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__act_var_h */

@@ -19,7 +19,7 @@
 #include "utils/sort.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_IMPL_START
+SATOKO_NAMESPACE_IMPL_START
 
 //===------------------------------------------------------------------------===
 // Lit funtions
@@ -645,7 +645,7 @@ char solver_search(solver_t *s)
             unsigned next_lit;
 
             if (solver_rst(s) || solver_check_limits(s) == 0 || solver_stop(s) || 
-                (s->nRuntimeLimit && (s->stats.n_conflicts & 63) == 0 && Abc_Clock() > s->nRuntimeLimit)) {
+                (s->nRuntimeLimit && (s->stats.n_conflicts & 63) == 0 && pabc::Abc_Clock() > s->nRuntimeLimit)) {
                 b_queue_clean(s->bq_lbd);
                 solver_cancel_until(s, 0);
                 return SATOKO_UNDEC;

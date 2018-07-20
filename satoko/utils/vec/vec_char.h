@@ -16,7 +16,7 @@
 #include "../mem.h"
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 typedef struct vec_char_t_ vec_char_t;
 struct vec_char_t_ {
@@ -256,5 +256,5 @@ static inline void vec_char_print(vec_char_t* p)
     fprintf(stdout, " }\n");
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__vec__vec_char_h */

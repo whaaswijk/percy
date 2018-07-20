@@ -10,7 +10,7 @@
 #define satoko__utils__sort_h
 
 #include <abc/abc_global.h>
-ABC_NAMESPACE_HEADER_START
+SATOKO_NAMESPACE_HEADER_START
 
 static inline void select_sort(void **data, unsigned size,
                    int (*comp_fn)(const void *, const void *))
@@ -61,5 +61,5 @@ static void satoko_sort(void **data, unsigned size,
     }
 }
 
-ABC_NAMESPACE_HEADER_END
+SATOKO_NAMESPACE_HEADER_END
 #endif /* satoko__utils__sort_h */
