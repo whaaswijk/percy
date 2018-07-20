@@ -117,8 +117,8 @@ struct sat_solver_t
     int         hProofPivot;   // the pivot for proof records
 
     // activities
-    int         VarActType;
-    int         ClaActType;
+    int         VarActType = 0;
+    int         ClaActType = 0;
     word        var_inc;       // Amount to bump next variable with.
     word        var_inc2;      // Amount to bump next variable with.
     word        var_decay;     // INVERSE decay factor for variable activity: stores 1/decay. 

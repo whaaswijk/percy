@@ -353,7 +353,6 @@ void sat_solver_set_var_activity(sat_solver* s, int * pVars, int nVars)
 static inline void solver_init_activities(sat_solver* s)  
 {
     // variable activities
-    s->VarActType             = 0;
     if ( s->VarActType == 0 )
     {
         s->var_inc            = (1 <<  5);
@@ -372,7 +371,6 @@ static inline void solver_init_activities(sat_solver* s)
     else assert(0);
 
     // clause activities
-    s->ClaActType             = 0;
     if ( s->ClaActType == 0 )
     {
         s->cla_inc            = (1 << 11);
