@@ -865,6 +865,24 @@ namespace percy
         return dags;
     }
 
+    size_t count_partial_dags(FILE* fhandle)
+    {
+        size_t nr_dags = 0;
+        int buf;
+        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+            auto nr_vertices = buf;
+            for (int i = 0; i < nr_vertices; i++) {
+                auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+                stat = fread(&buf, sizeof(int), 1, fhandle);
+                assert(stat == 1);
+            }
+            nr_dags++;
+        }
+
+        return nr_dags;
+    }
+
 
     /// Generate all partial DAGs of the specified number
     /// of vertices.
