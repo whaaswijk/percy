@@ -136,7 +136,7 @@ namespace percy
 
         void set_inc_special_reduce(unsigned inc_special_reduce)
         {
-            solver->opts.inc_special_reduce;
+            solver->opts.inc_special_reduce = inc_special_reduce;
         }
 
         void set_lbd_freeze_clause(unsigned lbd_freeze_clause)
