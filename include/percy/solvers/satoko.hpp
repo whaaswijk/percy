@@ -3,7 +3,12 @@
 #ifndef DISABLE_SATOKO
 
 #include "solver_wrapper.hpp"
+
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #include <satoko/satoko.h>
+#pragma GCC diagnostic pop
 
 namespace percy
 {
