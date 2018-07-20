@@ -1,13 +1,17 @@
 add_library(percy INTERFACE)
+
 target_include_directories(percy INTERFACE ${PROJECT_SOURCE_DIR}/include)
+
+if (${PERCY_BUILD_CMS})
+    target_include_directories(percy INTERFACE ${CMS_INCLUDE_DIR})
+    add_dependencies(percy libcryptominisat5)
+endif()
 
 target_link_libraries(percy INTERFACE kitty libabcsat)
 
 if (${DISABLE_NAUTY})
-    message("Disabling nauty")
     target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 else()
-    message("Enabling nauty")
     target_link_libraries(percy INTERFACE nauty)
 endif()
 if (UNIX)
