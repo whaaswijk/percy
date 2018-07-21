@@ -1609,9 +1609,9 @@ namespace percy
                 const auto nr_vertices = buf;
                 assert(nr_vertices == spec.nr_steps);
                 for (int i = 0; i < nr_vertices; i++) {
-                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
                     auto fanin1 = buf;
-                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
@@ -1625,6 +1625,7 @@ namespace percy
                     return success;
                 }
             }
+            fclose(fhandle);
             spec.nr_steps++;
         }
     }
