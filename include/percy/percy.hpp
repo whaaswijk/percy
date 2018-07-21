@@ -1574,6 +1574,60 @@ namespace percy
         }
         return failure;
     }
+
+    /// Synthesizes a chain using a set of serialized partial DAGs.
+    synth_result pd_ser_synthesize(
+        spec& spec,
+        chain& chain,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            g.reset(2, spec.nr_steps);
+            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            assert(fhandle != NULL);
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                const auto nr_vertices = buf;
+                assert(nr_vertices == spec.nr_steps);
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    g.set_vertex(i, fanin1, fanin2);
+                }
+                solver.restart();
+                if (!encoder.encode(spec, g)) {
+                    continue;
+                }
+                const auto status = solver.solve(0);
+                if (status == success) {
+                    encoder.extract_chain(spec, g, chain);
+                    return success;
+                }
+            }
+            spec.nr_steps++;
+        }
+    }
             
     synth_result
     pf_fence_synthesize(
