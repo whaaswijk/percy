@@ -39,7 +39,7 @@ namespace percy
             case 1:
                 return spec.get_nr_in();
             case 2:
-                return ((spec.get_nr_in()) * (spec.get_nr_in() - 1)) / 2;
+                return (spec.get_nr_in() * (spec.get_nr_in() - 1)) / 2;
             default: // No fanin flexibility
                 return 0;
             }
@@ -424,8 +424,7 @@ namespace percy
                                 }
                                 if (nr_pi_fanins2 == 0) {
                                     continue;
-                                }
-                                if (nr_pi_fanins2 == 1) {
+                                } else if (nr_pi_fanins2 == 1) {
                                     const auto sel_varp = get_sel_var(spec, dag, ip, p);
                                     pabc::Vec_IntSetEntry(vLits, ctr++,
                                         pabc::Abc_Var2Lit(sel_varp, 0));
@@ -451,13 +450,12 @@ namespace percy
                             auto svar_ctr = 0;
                             for (int k = 1; k < spec.get_nr_in(); k++) {
                                 for (int j = 0; j < k; j++) {
-                                    if (j != q && k != q) {
+                                    if (!(j == q || k == q) || j == p) {
                                         svar_ctr++;
                                         continue;
                                     }
                                     const auto sel_var = get_sel_var(spec, dag, i, svar_ctr);
-                                    pabc::Vec_IntSetEntry(vLits, 0,
-                                        pabc::Abc_Var2Lit(sel_var, 1));
+                                    pabc::Vec_IntSetEntry(vLits, 0, pabc::Abc_Var2Lit(sel_var, 1));
                                     auto ctr = 1;
                                     for (int ip = 0; ip < i; ip++) {
                                         const auto vertex2 = dag.get_vertex(ip);
@@ -471,8 +469,7 @@ namespace percy
                                         }
                                         if (nr_pi_fanins2 == 0) {
                                             continue;
-                                        }
-                                        if (nr_pi_fanins2 == 1) {
+                                        } else if (nr_pi_fanins2 == 1) {
                                             const auto sel_varp = get_sel_var(spec, dag, ip, p);
                                             pabc::Vec_IntSetEntry(vLits, ctr++,
                                                 pabc::Abc_Var2Lit(sel_varp, 0));
