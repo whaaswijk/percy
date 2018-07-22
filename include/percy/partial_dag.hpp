@@ -6,6 +6,7 @@
 #include <vector>
 #include <ostream>
 #include <set>
+#include "tt_utils.hpp"
 
 namespace percy
 {
@@ -638,6 +639,81 @@ namespace percy
             default:
                 return count_noreapply_dags();
             }
+        }
+
+        bool search_operator(
+            spec& spec,
+            chain& chain,
+            const partial_dag& dag,
+            int idx) {
+            kitty::dynamic_truth_table tt(2);
+            do {
+                if (is_normal(tt) && !is_trivial(tt)) {
+                    chain.set_step(idx, _js[idx], _ks[idx], tt);
+                    const auto found = search_sol(spec, chain, dag, idx + 1);
+                    if (found) {
+                        return true;
+                    }
+                }
+                kitty::next_inplace(tt);
+            } while (!kitty::is_const0(tt));
+
+            return false;
+        }
+
+        bool search_sol(
+            spec& spec,
+            chain& chain,
+            const partial_dag& dag,
+            int idx) {
+            if (idx == dag.nr_vertices()) {
+                const auto tts = chain.simulate();
+                if (tts[0] == (spec.out_inv ? ~spec[0] : spec[0])) {
+                    if (spec.out_inv) {
+                        chain.invert();
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            const auto& vertex = dag.get_vertex(idx);
+            auto nr_pi_fanins = 0;
+            if (vertex[1] == FANIN_PI) {
+                nr_pi_fanins = 2;
+            } else if (vertex[0] == FANIN_PI) {
+                nr_pi_fanins = 1;
+            }
+            if (nr_pi_fanins == 0) {
+                _js[idx] = vertex[0] + spec.get_nr_in() - 1;
+                _ks[idx] = vertex[1] + spec.get_nr_in() - 1;
+                const auto found = search_operator(spec, chain, dag, idx);
+                if (found) {
+                    return true;
+                }
+            } else if (nr_pi_fanins == 1) {
+                for (auto j = 0; j < spec.get_nr_in(); j++) {
+                    _js[idx] = j;
+                    _ks[idx] = vertex[1] + spec.get_nr_in() - 1;
+                    const auto found = search_operator(spec, chain, dag, idx);
+                    if (found) {
+                        return true;
+                    }
+                }
+            } else {
+                for (auto k = 1; k < spec.get_nr_in(); k++) {
+                    for (auto j = 0; j < k; j++) {
+                        _js[idx] = j;
+                        _ks[idx] = k;
+                        const auto found = search_operator(spec, chain, dag, idx);
+                        if (found) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
     };
 

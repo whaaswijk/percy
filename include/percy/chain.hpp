@@ -94,6 +94,14 @@ namespace percy
             }
 
             void
+            set_step(int i, int fanin1, int fanin2, const dynamic_truth_table& op)
+            {
+                steps[i][0] = fanin1;
+                steps[i][1] = fanin2;
+                operators[i] = op;
+            }
+
+            void
             set_step(int i, const std::vector<int>& in, const dynamic_truth_table& op)
             {
                 for (int j = 0; j < fanin; j++) {

@@ -33,28 +33,7 @@ namespace percy
 	using std::chrono::duration;
 	using std::chrono::time_point;
 
-    /***************************************************************************
-        We consider a truth table to be trivial if it is equal to (or the
-        complement of) a primary input or constant zero.
-    ***************************************************************************/
-    template<typename TT>
-    static inline bool is_trivial(const TT& tt)
-    {
-        TT tt_check;
-
-        if (tt == tt_check || tt == ~tt_check) {
-            return true;
-        }
-
-        for (auto i = 0u; i < tt.num_vars(); i++) {
-            kitty::create_nth_var(tt_check, i);
-            if (tt == tt_check || tt == ~tt_check) {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    
 
     static inline bool is_trivial(const kitty::dynamic_truth_table& tt)
     {
@@ -1549,21 +1528,22 @@ namespace percy
         }
     }
 
-    bool search_sol(
-        spec& spec,
-        chain& chain,
+    synth_result
+    pd_synthesize_enum(
+        spec& spec, 
+        chain& chain, 
         const partial_dag& dag,
-        int idx) {
-        if (idx == dag.nr_vertices()) {
-            if (spec.out_inv) {
-                chain.invert();
-            }
-            const auto tts = chain.simulate();
-            if (tts[0] == spec[0]) {
-                return true;
-            } else {
-                return false;
-            }
+        synth_stats * stats = NULL)
+    {
+        partial_dag_generator gen;
+        chain.reset(spec.get_nr_in(), 1, dag.nr_vertices(), 2);
+        chain.set_output(0, (spec.get_nr_in() + dag.nr_vertices()) << 1);
+
+        const auto found_sol = gen.search_sol(spec, chain, dag, 0);
+        if (found_sol) {
+            return success;
+        } else {
+            return failure;
         }
     }
 
@@ -1571,11 +1551,10 @@ namespace percy
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
-        const partial_dag& dag,
-        solver_wrapper& solver, 
-        partial_dag_encoder& encoder, 
+        const std::vector<partial_dag>& dags,
         synth_stats * stats = NULL)
     {
+        partial_dag_generator gen;
         spec.preprocess();
 
         // The special case when the Boolean chain to be synthesized
@@ -1589,12 +1568,15 @@ namespace percy
             return success;
         }
 
-        const auto found_sol = search_sol(spec, chain, dag, 0);
-        if (found_sol) {
-            return success;
-        } else {
-            return failure;
+        for (const auto& dag : dags) {
+            const auto result = 
+                pd_synthesize_enum(spec, chain, dag, stats);
+            if (result == success) {
+                return success;
+            }
         }
+
+        return failure;
     }
 
     synth_result pd_synthesize(
