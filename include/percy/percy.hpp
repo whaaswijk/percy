@@ -1686,7 +1686,7 @@ namespace percy
                             return success;
                         }
                         // Add additional constraint.
-                        if (!encoder.create_tt_clauses(spec, first_one - 1)) {
+                        if (!encoder.create_tt_clauses(spec, g, first_one - 1)) {
                             break;
                         }
                     } else {
