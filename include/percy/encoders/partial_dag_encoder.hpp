@@ -175,6 +175,23 @@ namespace percy
             return ret;
         }
 
+        bool fix_output_sim_vars(const spec& spec, int t)
+        {
+            bool ret = true;
+            auto ilast_step = spec.nr_steps - 1;
+
+            auto outbit = kitty::get_bit(
+                spec[spec.synth_func(0)], t + 1);
+            if ((spec.out_inv >> spec.synth_func(0)) & 1) {
+                outbit = 1 - outbit;
+            }
+            const auto sim_var = get_sim_var(spec, ilast_step, t);
+            pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
+            ret &= solver->add_clause(&sim_lit, &sim_lit + 1);
+
+            return ret;
+        }
+
         bool create_nontriv_clauses(const spec& spec)
         {
             int pLits[3];
@@ -298,7 +315,7 @@ namespace percy
             std::vector<int> fanin_asgn(spec.fanin);
 
             for (int i = 0; i < spec.nr_steps; i++) {
-                const auto vertex = dag.get_vertex(i);
+                const auto& vertex = dag.get_vertex(i);
                 auto nr_pi_fanins = 0;
                 if (vertex[1] == FANIN_PI) {
                     // If the second fanin is a PI, the first one 
@@ -538,13 +555,13 @@ namespace percy
 
             create_variables(spec, dag);
             for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                if (!create_tt_clauses(spec, dag, rand() % spec.get_tt_size())) {
+                const auto t = rand() % spec.get_tt_size();
+                if (!create_tt_clauses(spec, dag, t)) {
                     return false;
                 }
-            }
-
-            if (!fix_output_sim_vars(spec)) {
-                return false;
+                if (!fix_output_sim_vars(spec, t)) {
+                    return false;
+                }
             }
 
             if (!create_fanin_clauses(spec, dag)) {

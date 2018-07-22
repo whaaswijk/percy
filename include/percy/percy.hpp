@@ -1549,6 +1549,54 @@ namespace percy
         }
     }
 
+    bool search_sol(
+        spec& spec,
+        chain& chain,
+        const partial_dag& dag,
+        int idx) {
+        if (idx == dag.nr_vertices()) {
+            if (spec.out_inv) {
+                chain.invert();
+            }
+            const auto tts = chain.simulate();
+            if (tts[0] == spec[0]) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    synth_result
+    pd_synthesize_enum(
+        spec& spec, 
+        chain& chain, 
+        const partial_dag& dag,
+        solver_wrapper& solver, 
+        partial_dag_encoder& encoder, 
+        synth_stats * stats = NULL)
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        const auto found_sol = search_sol(spec, chain, dag, 0);
+        if (found_sol) {
+            return success;
+        } else {
+            return failure;
+        }
+    }
+
     synth_result pd_synthesize(
         spec& spec,
         chain& chain,
@@ -1687,6 +1735,8 @@ namespace percy
                         }
                         // Add additional constraint.
                         if (!encoder.create_tt_clauses(spec, g, first_one - 1)) {
+                            break;
+                        } else if (!encoder.fix_output_sim_vars(spec, first_one - 1)) {
                             break;
                         }
                     } else {
