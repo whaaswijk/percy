@@ -60,6 +60,7 @@ namespace percy
         SLV_BSAT2,
         SLV_CMSAT,
         SLV_GLUCOSE,
+        SLV_SATOKO,
         SLV_TOTAL,
     };
 
@@ -68,6 +69,7 @@ namespace percy
         "SLV_BSAT2",
         "SLV_CMSAT",
         "SLV_GLUCOSE",
+        "SLV_SATOKO",
     };
 
     enum Primitive

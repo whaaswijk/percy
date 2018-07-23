@@ -1079,9 +1079,14 @@ namespace percy
             solver = new cmsat_wrapper;
             break;
 #endif
-#if !defined(_WIN32) && !defined(_WIN64)
+#if defined(USE_GLUCOSE) || defined(USE_SYRUP)
         case SLV_GLUCOSE:
             solver = new glucose_wrapper;
+            break;
+#endif
+#ifdef USE_SATOKO
+        case SLV_SATOKO:
+            solver = new satoko_wrapper;
             break;
 #endif
         default:
@@ -1485,7 +1490,7 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        spec.nr_rand_tt_assigns = 1 * spec.get_nr_in();
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
         if (!encoder.cegar_encode(spec, dag)) {
@@ -1505,6 +1510,7 @@ namespace percy
             }
             if (stat == success) {
                 encoder.extract_chain(spec, dag, chain);
+                //encoder.print_solver_state(spec, dag);
                 auto sim_tts = chain.simulate();
                 auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
@@ -1520,6 +1526,8 @@ namespace percy
                         first_one);
                 }
                 if (!encoder.create_tt_clauses(spec, dag, first_one - 1)) {
+                    return failure;
+                } else if (!encoder.fix_output_sim_vars(spec, first_one - 1)) {
                     return failure;
                 }
             } else {

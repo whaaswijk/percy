@@ -58,6 +58,7 @@ if (${PERCY_BUILD_CMS})
 endif()
 
 if (${PERCY_SATOKO})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_SATOKO")
     add_subdirectory(satoko)
 endif()
 

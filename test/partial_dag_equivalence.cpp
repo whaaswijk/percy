@@ -25,12 +25,13 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
     }
     dynamic_truth_table tt(nr_in);
 
-    chain c1, c2;
+    chain c1, c2, c2_cegar;
 
     auto dags = pd_generate_max(7);
 
     auto total_elapsed1 = 0;
     auto total_elapsed2 = 0;
+    auto total_elapsed3 = 0;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -50,7 +51,6 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         //spec.verbosity = 2;
         spec.add_colex_clauses = false;
         spec.add_lex_func_clauses = false;
-        auto had_success = false;
         start = std::clock();
         auto res2 = pd_synthesize(spec, c2, dags, solver, encoder2);
         auto elapsed2 = std::clock() - start;
@@ -60,17 +60,30 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c1_nr_vertices == c2_nr_vertices);
         assert(sim_tts1[0] == sim_tts2[0]);
+
+        start = std::clock();
+        auto res3 = pd_synthesize(spec, c2_cegar, dags, solver, encoder2, SYNTH_STD_CEGAR);
+        auto elapsed3 = std::clock() - start;
+        assert(res3 == success);
+        assert(c2_cegar.satisfies_spec(spec));
+        const auto sim_tts2_cegar = c2_cegar.simulate();
+        const auto c2_cegar_nr_vertices = c2_cegar.get_nr_steps();
+        assert(c1_nr_vertices == c2_cegar_nr_vertices);
+        assert(sim_tts1[0] == sim_tts2_cegar[0]);
         
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
+        total_elapsed3 += elapsed3;
     }
     printf("\n");
     auto total_elapsed1_ms = 1000 * double(total_elapsed1) / CLOCKS_PER_SEC;
     auto total_elapsed2_ms = 1000 * double(total_elapsed2) / CLOCKS_PER_SEC;
+    auto total_elapsed3_ms = 1000 * double(total_elapsed3) / CLOCKS_PER_SEC;
     printf("Time elapsed (STD): %.2fms\n", total_elapsed1_ms);
     printf("Time elapsed (PD): %.2fms\n", total_elapsed2_ms);
+    printf("Time elapsed (PD CEGAR): %.2fms\n", total_elapsed3_ms);
 }
 
 void check_pd_equivalence5()
@@ -85,12 +98,13 @@ void check_pd_equivalence5()
     auto max_tests = MAX_TESTS;
     dynamic_truth_table tt(5);
 
-    chain c1, c2;
+    chain c1, c2, c2_cegar;
 
     auto dags = pd_generate_max(7);
 
     auto total_elapsed1 = 0;
     auto total_elapsed2 = 0;
+    auto total_elapsed3 = 0;
         
     spec.conflict_limit = 1000;
     auto nr_instances = 0;
@@ -103,14 +117,9 @@ void check_pd_equivalence5()
         spec.add_lex_func_clauses = true;
         spec[0] = tt;
         auto start = std::clock();
-        auto res1 = synthesize(spec, c1, solver, encoder1);
+        auto res1 = synthesize(spec, c1, solver, encoder1, SYNTH_STD_CEGAR);
         auto elapsed1 = std::clock() - start;
-        if (res1 == timeout) {
-            printf("(%d/%d)\r", i + 1, max_tests);
-            fflush(stdout);
-            continue;
-        }
-        if (c1.get_nr_steps() > 7) {
+        if (res1 == timeout || c1.get_nr_steps() > 7) {
             printf("(%d/%d)\r", i + 1, max_tests);
             fflush(stdout);
             continue;
@@ -126,7 +135,6 @@ void check_pd_equivalence5()
         //spec.verbosity = 2;
         spec.add_colex_clauses = false;
         spec.add_lex_func_clauses = false;
-        auto had_success = false;
         start = std::clock();
         auto res2 = pd_synthesize(spec, c2, dags, solver, encoder2);
         auto elapsed2 = std::clock() - start;
@@ -136,18 +144,31 @@ void check_pd_equivalence5()
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c1_nr_vertices == c2_nr_vertices);
         assert(sim_tts1[0] == sim_tts2[0]);
+
+        start = std::clock();
+        auto res3 = pd_synthesize(spec, c2_cegar, dags, solver, encoder2);
+        auto elapsed3 = std::clock() - start;
+        assert(res3 == success);
+        assert(c2_cegar.satisfies_spec(spec));
+        auto sim_tts3 = c2_cegar.simulate();
+        auto c3_nr_vertices = c2_cegar.get_nr_steps();
+        assert(c1_nr_vertices == c3_nr_vertices);
+        assert(sim_tts1[0] == sim_tts3[0]);
         
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
+        total_elapsed3 += elapsed3;
     }
     printf("\n");
     auto total_elapsed1_ms = 1000 * double(total_elapsed1) / CLOCKS_PER_SEC;
     auto total_elapsed2_ms = 1000 * double(total_elapsed2) / CLOCKS_PER_SEC;
+    auto total_elapsed3_ms = 1000 * double(total_elapsed3) / CLOCKS_PER_SEC;
     printf("total instances synthesized: %d\n", nr_instances);
     printf("Time elapsed (STD): %.2fms\n", total_elapsed1_ms);
     printf("Time elapsed (PD): %.2fms\n", total_elapsed2_ms);
+    printf("Time elapsed (PD CEGAR): %.2fms\n", total_elapsed3_ms);
 }
 
 /// Tests synthesis based on partial DAGs by comparing it to conventional

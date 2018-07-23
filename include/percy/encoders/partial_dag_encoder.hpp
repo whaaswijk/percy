@@ -13,10 +13,12 @@ namespace percy
     {
     private:
         int nr_sel_vars;
+        int nr_res_vars;
         int nr_op_vars;
         int nr_sim_vars;
         int total_nr_vars;
         int sel_offset;
+        int res_offset;
         int ops_offset;
         int sim_offset;
         pabc::Vec_Int_t* vLits = NULL;
@@ -60,6 +62,23 @@ namespace percy
             return offset + var_idx;
         }
 
+        int get_res_var(
+            const spec& spec, 
+            const partial_dag& dag, 
+            int step_idx, 
+            int res_var_idx) const
+        {
+            assert(step_idx < spec.nr_steps);
+            assert(res_var_idx < (1 + 2) * (nr_svars_for_step(spec, dag, step_idx) + 1));
+
+            auto offset = 0;
+            for (int i = 0; i < step_idx; i++) {
+                offset += (nr_svars_for_step(spec, dag, i) + 1) * (1 + 2);
+            }
+
+            return res_offset + offset + res_var_idx;
+        }
+
         int get_sim_var(const spec& spec, int step_idx, int t) const
         {
             assert(step_idx < spec.nr_steps);
@@ -101,7 +120,6 @@ namespace percy
             nr_sel_vars = 0;
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto nr_svars_for_i = nr_svars_for_step(spec, dag, i);
-                //printf("adding %d svars for step %d\n", nr_svars_for_i, i);
                 nr_sel_vars += nr_svars_for_i;
             }
 
@@ -114,6 +132,38 @@ namespace percy
                 printf("Creating variables (PD-%d)\n", spec.fanin);
                 printf("nr steps = %d\n", spec.nr_steps);
                 printf("nr_sel_vars=%d\n", nr_sel_vars);
+                printf("nr_op_vars = %d\n", nr_op_vars);
+                printf("nr_sim_vars = %d\n", nr_sim_vars);
+                printf("creating %d total variables\n", total_nr_vars);
+            }
+
+            solver->set_nr_vars(total_nr_vars);
+        }
+
+        void cegar_create_variables(const spec& spec, const partial_dag& dag)
+        {
+            nr_op_vars = spec.nr_steps * PD_OP_VARS_PER_STEP;
+            nr_sim_vars = spec.nr_steps * spec.get_tt_size();
+
+            nr_sel_vars = 0;
+            nr_res_vars = 0;
+            for (int i = 0; i < spec.nr_steps; i++) {
+                const auto nr_svars_for_i = nr_svars_for_step(spec, dag, i);
+                nr_sel_vars += nr_svars_for_i;
+                nr_res_vars += (nr_svars_for_i + 1) * (1 + 2);
+            }
+
+            sel_offset = 0;
+            res_offset = nr_sel_vars;
+            ops_offset = nr_sel_vars + nr_res_vars;
+            sim_offset = nr_sel_vars + nr_res_vars + nr_op_vars;
+            total_nr_vars = nr_sel_vars + nr_res_vars + nr_op_vars + nr_sim_vars;
+
+            if (spec.verbosity > 1) {
+                printf("Creating variables (PD-%d)\n", spec.fanin);
+                printf("nr steps = %d\n", spec.nr_steps);
+                printf("nr_sel_vars=%d\n", nr_sel_vars);
+                printf("nr_res_vars=%d\n", nr_res_vars);
                 printf("nr_op_vars = %d\n", nr_op_vars);
                 printf("nr_sim_vars = %d\n", nr_sim_vars);
                 printf("creating %d total variables\n", total_nr_vars);
@@ -177,8 +227,7 @@ namespace percy
 
         bool fix_output_sim_vars(const spec& spec, int t)
         {
-            bool ret = true;
-            auto ilast_step = spec.nr_steps - 1;
+            const auto ilast_step = spec.nr_steps - 1;
 
             auto outbit = kitty::get_bit(
                 spec[spec.synth_func(0)], t + 1);
@@ -187,7 +236,7 @@ namespace percy
             }
             const auto sim_var = get_sim_var(spec, ilast_step, t);
             pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
-            ret &= solver->add_clause(&sim_lit, &sim_lit + 1);
+            const auto ret = solver->add_clause(&sim_lit, &sim_lit + 1);
 
             return ret;
         }
@@ -548,20 +597,89 @@ namespace percy
             return true;
         }
 
+        /// Allowing multiple selection variables to be true can lead
+        /// to infinite CEGAR loops. Multiple different fanin assignments
+        /// may be consistent with a partial truth table, but it is
+        /// possible that only one of them leads to a complete valid
+        /// chain. If this assignment is never selected when a chain
+        /// is extracted in the CEGAR loop, this leads to trouble.
+        /// For an example, try synthesizing the 4-input function with
+        /// decimal truth table 127.
+        bool create_cardinality_constraints(
+            const spec& spec, 
+            const partial_dag& dag)
+        {
+            bool status = true;
+            std::vector<int> svars;
+            std::vector<int> rvars;
+
+            for (int i = 0; i < spec.nr_steps; i++) {
+                auto nr_pi_fanins = 0;
+                const auto& vertex = dag.get_vertex(i);
+                if (vertex[1] == FANIN_PI) {
+                    // If the second fanin is a PI, the first one 
+                    // certainly is.
+                    nr_pi_fanins = 2;
+                } else if (vertex[0] == FANIN_PI) {
+                    nr_pi_fanins = 1;
+                }
+                if (nr_pi_fanins == 0) {
+                    continue;
+                } else {
+                    svars.clear();
+                    rvars.clear();
+                    if (nr_pi_fanins == 1) {
+                        for (int j = 0; j < spec.get_nr_in(); j++) {
+                            const auto sel_var = get_sel_var(spec, dag, i, j);
+                            svars.push_back(sel_var);
+                        }
+                    } else {
+                        auto ctr = 0;
+                        for (int k = 1; k < spec.get_nr_in(); k++) {
+                            for (int j = 0; j < k; j++) {
+                                const auto sel_var = get_sel_var(spec, dag, i, ctr++);
+                                svars.push_back(sel_var);
+                            }
+                        }
+                    }
+                    const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
+                    for (int j = 0; j < nr_res_vars; j++) {
+                        rvars.push_back(get_res_var(spec, dag, i, j));
+                    }
+                    status &= create_cardinality_circuit(solver, svars, rvars, 1);
+                    assert(svars.size() == nr_svars_for_step(spec, dag, i));
+
+                    // Ensure that the fanin cardinality for each step i 
+                    // is exactly FI.
+                    const auto fi_var = 
+                        get_res_var(spec, dag, i, svars.size() * (1 + 2) + 1);
+                    auto fi_lit = pabc::Abc_Var2Lit(fi_var, 0);
+                    status &= solver->add_clause(&fi_lit, &fi_lit + 1);
+                }
+            }
+
+            return status;
+        }
+
         bool
         cegar_encode(const spec& spec, const partial_dag& dag)
         {
             assert(spec.nr_steps <= MAX_STEPS);
 
-            create_variables(spec, dag);
+            cegar_create_variables(spec, dag);
             for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
                 const auto t = rand() % spec.get_tt_size();
+                //printf("creating tt/IO clause at idx %d\n", t+1);
                 if (!create_tt_clauses(spec, dag, t)) {
                     return false;
                 }
                 if (!fix_output_sim_vars(spec, t)) {
                     return false;
                 }
+            }
+
+            if (!create_cardinality_constraints(spec, dag)) {
+                return false;
             }
 
             if (!create_fanin_clauses(spec, dag)) {
@@ -649,6 +767,71 @@ namespace percy
             chain.set_output(0,
                 ((spec.nr_steps + spec.get_nr_in()) << 1) +
                 ((spec.out_inv) & 1));
+        }
+
+        void print_solver_state(spec& spec, const partial_dag& dag)
+        {
+            for (auto i = 0; i < spec.nr_steps; i++) {
+                auto nr_pi_fanins = 0;
+                const auto& vertex = dag.get_vertex(i);
+                if (vertex[1] == FANIN_PI) {
+                    // If the second fanin is a PI, the first one 
+                    // certainly is.
+                    nr_pi_fanins = 2;
+                } else if (vertex[0] == FANIN_PI) {
+                    nr_pi_fanins = 1;
+                }
+                if (nr_pi_fanins == 1) {
+                    for (int j = 0; j < spec.get_nr_in(); j++) {
+                        const auto sel_var = get_sel_var(spec, dag, i, j);
+                        if (solver->var_value(sel_var)) {
+                            printf("s_%d_%d=1\n", i, j);
+                        } else {
+                            printf("s_%d_%d=0\n", i, j);
+                        }
+                    }
+                } else if (nr_pi_fanins == 2) {
+                    auto ctr = 0;
+                    for (int k = 1; k < spec.get_nr_in(); k++) {
+                        for (int j = 0; j < k; j++) {
+                            const auto sel_var = get_sel_var(spec, dag, i, ctr);
+                            if (solver->var_value(sel_var)) {
+                                printf("s_%d_%d=1\n", i, ctr);
+                            } else {
+                                printf("s_%d_%d=0\n", i, ctr);
+                            }
+                            ctr++;
+                        }
+                    }
+                }
+
+                auto res_var_idx = 0;
+                for (int k = 0; k < nr_svars_for_step(spec, dag, i) + 1; k++) {
+                    std::string comma_str;
+                    for (int i = 0; i < k; i++) {
+                        comma_str += "'";
+                    }
+                    for (int i = 0; i < 1 + 2; i++) {
+                        const auto res_var = get_res_var(spec, dag, i, res_var_idx++);
+                        if (solver->var_value(res_var)) {
+                            printf("res%s[%d] = 1\n", comma_str.c_str(), i);
+                        } else {
+                            printf("res%s[%d] = 0\n", comma_str.c_str(), i);
+                        }
+                    }
+                }
+            }
+            for (auto i = 0; i < spec.nr_steps; i++) {
+                printf("tt_%d_0=0\n", i);
+                for (int t = 0; t < spec.get_tt_size(); t++) {
+                    const auto sim_var = get_sim_var(spec, i, t);
+                    if (solver->var_value(sim_var)) {
+                        printf("tt_%d_%d=1\n", i, t + 1);
+                    } else {
+                        printf("tt_%d_%d=0\n", i, t + 1);
+                    }
+                }
+            }
         }
     };
 }
