@@ -953,7 +953,7 @@ namespace percy
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {
                     bsat_wrapper solver;
-                    knuth_fence_encoder encoder(solver);
+                    knuth_fence2_encoder encoder(solver);
                     fence local_fence;
 
                     while (!(*pfound)) {
