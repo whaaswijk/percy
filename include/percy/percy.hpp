@@ -791,7 +791,7 @@ namespace percy
                         continue;
                     }
                     while (true) {
-                        status = solver.solve(1);
+                        status = solver.solve(10);
                         if (status == failure) {
                             break;
                         } else if (status == success) {

@@ -116,14 +116,13 @@ void check_pd_equivalence5()
     auto max_tests = MAX_TESTS;
     dynamic_truth_table tt(5);
 
-    chain c1, c2, c3, c4;
+    chain c1, c2, c3;
 
     auto dags = pd_generate_max(9);
 
     int64_t total_elapsed1 = 0;
     int64_t total_elapsed2 = 0;
     int64_t total_elapsed3 = 0;
-    int64_t total_elapsed4 = 0;
         
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -163,7 +162,7 @@ void check_pd_equivalence5()
         assert(sim_tts1[0] == sim_tts2[0]);
 
         start = std::chrono::steady_clock::now();
-        const auto res3 = pd_synthesize(spec, c3, dags, solver, encoder2);
+        auto res3 = pd_synthesize_parallel(spec, c3, dags);
         const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();
@@ -173,31 +172,17 @@ void check_pd_equivalence5()
         const auto c3_nr_vertices = c3.get_nr_steps();
         assert(c1_nr_vertices == c3_nr_vertices);
         assert(sim_tts1[0] == sim_tts3[0]);
-
-        start = std::chrono::steady_clock::now();
-        auto res4 = pd_synthesize_parallel(spec, c4, dags);
-        const auto elapsed4 = std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - start
-            ).count();
-        assert(res4 == success);
-        assert(c4.satisfies_spec(spec));
-        const auto sim_tts4 = c4.simulate();
-        const auto c4_nr_vertices = c4.get_nr_steps();
-        assert(c1_nr_vertices == c4_nr_vertices);
-        assert(sim_tts1[0] == sim_tts4[0]);
         
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
         total_elapsed3 += elapsed3;
-        total_elapsed4 += elapsed4;
     }
     printf("\n");
     printf("Time elapsed (STD): %lldus\n", total_elapsed1);
     printf("Time elapsed (PD): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PD CEGAR): %lldus\n", total_elapsed3);
-    printf("Time elapsed (PD PARR): %lldus\n", total_elapsed4);
+    printf("Time elapsed (PD PARR): %lldus\n", total_elapsed3);
 }
 
 /// Tests synthesis based on partial DAGs by comparing it to conventional
@@ -232,7 +217,6 @@ int main()
         g.set_vertex(2, 1, 2);
         const auto status = pd_synthesize(spec, c2, g, solver, encoder);
         assert(status == success);
-        printf("found chain\n");
     }
 
     check_pd_equivalence(2, 2, full_coverage);
