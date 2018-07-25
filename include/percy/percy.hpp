@@ -33,6 +33,8 @@ namespace percy
 	using std::chrono::duration;
 	using std::chrono::time_point;
 
+    const int PD_SIZE_CONST = 1000; // Some "impossibly large" number
+
     static inline bool is_trivial(const kitty::dynamic_truth_table& tt)
     {
         kitty::dynamic_truth_table tt_check(tt.num_vars());
@@ -733,6 +735,97 @@ namespace percy
         return failure;
     }
 
+    synth_result
+    pd_synthesize_parallel(
+        spec& spec, 
+        chain& c, 
+        const std::vector<partial_dag>& dags,
+        int num_threads = std::thread::hardware_concurrency())
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            c.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                c.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        std::vector<std::thread> threads(num_threads);
+
+        moodycamel::ConcurrentQueue<partial_dag> q(num_threads * 3);
+
+        bool finished_generating = false;
+        bool* pfinished = &finished_generating;
+        int size_found = PD_SIZE_CONST;
+        int* psize_found = &size_found;
+        std::mutex found_mutex;
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = std::thread([&spec, psize_found, pfinished, &found_mutex, &c, &q] {
+                percy::spec local_spec = spec;
+                bsat_wrapper solver;
+                partial_dag_encoder encoder(solver);
+                partial_dag dag;
+
+                while (*psize_found > local_spec.nr_steps) {
+                    if (!q.try_dequeue(dag)) {
+                        if (*pfinished) {
+                            std::this_thread::yield();
+                            if (!q.try_dequeue(dag)) {
+                                break;
+                            }
+                        } else {
+                            std::this_thread::yield();
+                            continue;
+                        }
+                    }
+                    local_spec.nr_steps = dag.nr_vertices();
+                    synth_result status;
+                    solver.restart();
+                    if (!encoder.encode(local_spec, dag)) {
+                        continue;
+                    }
+                    while (true) {
+                        status = solver.solve(1);
+                        if (status == failure) {
+                            break;
+                        } else if (status == success) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (*psize_found > local_spec.nr_steps) {
+                                encoder.extract_chain(local_spec, dag, c);
+                                *psize_found = local_spec.nr_steps;
+                            }
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+        size_t dag_idx = 0;
+        while (size_found == PD_SIZE_CONST) {
+            while (!q.try_enqueue(dags.at(dag_idx))) {
+                if (size_found == PD_SIZE_CONST) {
+                    std::this_thread::yield();
+                } else {
+                    break;
+                }
+            }
+            dag_idx++;
+        }
+        finished_generating = true;
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        return success;
+    }
+
+
     /// Synthesizes a chain using a set of serialized partial DAGs.
     synth_result pd_ser_synthesize(
         spec& spec,
@@ -863,7 +956,7 @@ namespace percy
     }
 
     /// Same as pd_ser_synthesize, but parallel.  
-    synth_result pd_pser_synthesize(
+    synth_result pd_ser_synthesize_parallel(
         spec& spec,
         chain& chain,
         solver_wrapper& solver,
@@ -997,8 +1090,6 @@ namespace percy
             if (found) {
                 break;
             }
-            const auto qsize = q.size_approx();
-            assert(qsize == 0);
             finished_generating = false;
             spec.nr_steps++;
         }

@@ -512,7 +512,7 @@ namespace percy
         }
 
 
-        void reapply_helper(
+        bool reapply_helper(
             const spec& spec,
             const partial_dag& dag,
             int *svars,
@@ -544,8 +544,7 @@ namespace percy
                         pLits[ctr++] = pabc::Abc_Var2Lit(sel_varpp, 1);
                     }
                     if (ctr > 1) {
-                        auto res = solver->add_clause(pLits, pLits + ctr);
-                        assert(res);
+                        return solver->add_clause(pLits, pLits + ctr);
                     }
                 }
             } else if (depth == 2) {
@@ -561,8 +560,7 @@ namespace percy
                         pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 1);
                     }
                     if (ctr > 1) {
-                        auto res = solver->add_clause(pLits, pLits + ctr);
-                        assert(res);
+                        return solver->add_clause(pLits, pLits + ctr);
                     }
                 }
                 for (int ipp = ip + 1; ipp < spec.nr_steps; ipp++) {
@@ -658,13 +656,15 @@ namespace percy
                     }
                 }
             }
+
+            return true;
         }
 
-        void create_noreapply_clauses(const spec& spec, const partial_dag& dag)
+        bool create_noreapply_clauses(const spec& spec, const partial_dag& dag)
         {
             int svars[3];
             
-            reapply_helper(spec, dag, svars, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            return reapply_helper(spec, dag, svars, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         void colex_helper(
@@ -895,8 +895,8 @@ namespace percy
                 return false;
             }
 
-            if (spec.add_noreapply_clauses) {
-                create_noreapply_clauses(spec, dag);
+            if (spec.add_noreapply_clauses && !create_noreapply_clauses(spec, dag)) {
+                return false;
             }
 
             if (spec.add_colex_clauses) {
@@ -991,8 +991,8 @@ namespace percy
                 return false;
             }
             
-            if (spec.add_noreapply_clauses) {
-                create_noreapply_clauses(spec, dag);
+            if (spec.add_noreapply_clauses && !create_noreapply_clauses(spec, dag)) {
+                return false;
             }
             
             if (spec.add_colex_clauses) {
