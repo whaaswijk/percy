@@ -718,8 +718,6 @@ namespace percy
         
         void create_colex_clauses(const spec& spec, const partial_dag& dag)
         {
-            int pLits[2];
-
             for (int i = 0; i < spec.nr_steps - 1; i++) {
                 const auto& vertex = dag.get_vertex(i);
                 auto nr_pi_fanins = 0;
@@ -957,7 +955,7 @@ namespace percy
                         }
                     }
                     const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
-                    for (int j = 0; j < nr_res_vars; j++) {
+                    for (auto j = 0u; j < nr_res_vars; j++) {
                         rvars.push_back(get_res_var(spec, dag, i, j));
                     }
                     create_cardinality_circuit(solver, svars, rvars, 1);

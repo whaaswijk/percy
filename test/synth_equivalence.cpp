@@ -12,17 +12,13 @@ using kitty::dynamic_truth_table;
 void check_fence_equivalence(int nr_in, int FI, bool full_coverage)
 {
     spec spec;
-    spec.add_alonce_clauses = false;
-    spec.add_colex_clauses = false;
-    spec.add_nontriv_clauses = false;
-    spec.add_noreapply_clauses = false;
     spec.add_lex_func_clauses = false;
-    spec.add_symvar_clauses = false;
     spec.verbosity = 0;
 
     bsat_wrapper solver;
     knuth_encoder encoder1(solver);
-    knuth_fence_encoder encoder2(solver);
+    knuth_fence2_encoder encoder2(solver);
+    encoder2.reset_sim_tts(nr_in);
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
@@ -86,8 +82,6 @@ int main()
     check_fence_equivalence(2, 2, full_coverage);
     check_fence_equivalence(3, 2, full_coverage);
     check_fence_equivalence(4, 2, full_coverage);
-    check_fence_equivalence(3, 3, full_coverage);
-    check_fence_equivalence(4, 3, full_coverage);
     
     return 0;
 }
