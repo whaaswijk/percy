@@ -742,6 +742,7 @@ namespace percy
         const std::vector<partial_dag>& dags,
         int num_threads = std::thread::hardware_concurrency())
     {
+        assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
 
         // The special case when the Boolean chain to be synthesized
@@ -801,7 +802,12 @@ namespace percy
                                 *psize_found = local_spec.nr_steps;
                             }
                             break;
+                        } else if (*psize_found <= local_spec.nr_steps) {
+                            // Another thread found a solution that's
+                            // better or equal to this one.
+                            break;
                         }
+
                     }
                 }
             });
@@ -958,9 +964,10 @@ namespace percy
     /// Same as pd_ser_synthesize, but parallel.  
     synth_result pd_ser_synthesize_parallel(
         spec& spec,
-        chain& chain,
+        chain& c,
         solver_wrapper& solver,
-        partial_dag_encoder& encoder)
+        partial_dag_encoder& encoder,
+        int num_threads = std::thread::hardware_concurrency())
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -968,21 +975,76 @@ namespace percy
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
         if (spec.nr_triv == spec.get_nr_out()) {
-            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            c.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
             for (int h = 0; h < spec.get_nr_out(); h++) {
-                chain.set_output(h, (spec.triv_func(h) << 1) +
+                c.set_output(h, (spec.triv_func(h) << 1) +
                     ((spec.out_inv >> h) & 1));
             }
             return success;
         }
 
+        std::vector<std::thread> threads(num_threads);
+        moodycamel::ConcurrentQueue<partial_dag> q(num_threads * 3);
+        bool finished_generating = false;
+        bool* pfinished = &finished_generating;
+        int size_found = PD_SIZE_CONST;
+        int* psize_found = &size_found;
+        std::mutex found_mutex;
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = std::thread([&spec, psize_found, pfinished, &found_mutex, &c, &q] {
+                percy::spec local_spec = spec;
+                bsat_wrapper solver;
+                partial_dag_encoder encoder(solver);
+                partial_dag dag;
+
+                while (*psize_found > local_spec.nr_steps) {
+                    if (!q.try_dequeue(dag)) {
+                        if (*pfinished) {
+                            std::this_thread::yield();
+                            if (!q.try_dequeue(dag)) {
+                                break;
+                            }
+                        } else {
+                            std::this_thread::yield();
+                            continue;
+                        }
+                    }
+                    local_spec.nr_steps = dag.nr_vertices();
+                    synth_result status;
+                    solver.restart();
+                    if (!encoder.encode(local_spec, dag)) {
+                        continue;
+                    }
+                    while (true) {
+                        status = solver.solve(10);
+                        if (status == failure) {
+                            break;
+                        } else if (status == success) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (*psize_found > local_spec.nr_steps) {
+                                encoder.extract_chain(local_spec, dag, c);
+                                *psize_found = local_spec.nr_steps;
+                            }
+                            break;
+                        } else if (*psize_found <= local_spec.nr_steps) {
+                            // Another thread found a solution that's
+                            // better or equal to this one.
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+
         partial_dag g;
         spec.nr_steps = spec.initial_steps;
-        while (true) {
+        while (size_found == PD_SIZE_CONST) {
             g.reset(2, spec.nr_steps);
             const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
             auto fhandle = fopen(filename.c_str(), "rb");
             if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open PD file\n");
                 break;
             }
 
@@ -995,21 +1057,26 @@ namespace percy
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
-                solver.restart();
-                if (!encoder.encode(spec, g)) {
-                    continue;
+                while (!q.try_enqueue(g)) {
+                    if (size_found == PD_SIZE_CONST) {
+                        std::this_thread::yield();
+                    } else {
+                        break;
+                    }
                 }
-                const auto status = solver.solve(0);
-                if (status == success) {
-                    encoder.extract_chain(spec, g, chain);
-                    return success;
+                if (size_found != PD_SIZE_CONST) {
+                    break;
                 }
             }
             fclose(fhandle);
             spec.nr_steps++;
         }
+        finished_generating = true;
+        for (auto& thread : threads) {
+            thread.join();
+        }
 
-        return failure;
+        return size_found == PD_SIZE_CONST ? failure : success;
     }
             
     synth_result
@@ -1067,7 +1134,7 @@ namespace percy
                             continue;
                         }
                         do {
-                            status = solver.solve(1);
+                            status = solver.solve(10);
                             if (*pfound) {
                                 break;
                             } else if (status == success) {
