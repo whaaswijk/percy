@@ -58,6 +58,7 @@ namespace percy
         virtual bool encode(const spec& spec, const fence& f) = 0;
         virtual bool cegar_encode(const spec& spec, const fence& f) = 0;
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
+        virtual kitty::dynamic_truth_table& simulate(const spec& spec) = 0;
     };
 
     template<int FI>

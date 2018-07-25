@@ -105,6 +105,7 @@ namespace percy
 
         public:
             int fanin = 2; ///< The fanin of the Boolean chain steps
+            int nr_in; ///< The inputs of the chain we want to synthesize
             int nr_steps; ///< The number of Boolean operators to use
             int initial_steps = 1; ///< The number of steps from which to start synthesis
             int verbosity = 0; ///< Verbosity level for debugging purposes
@@ -172,6 +173,7 @@ namespace percy
                     }
                 }
 
+                nr_in = functions[0].num_vars();
                 tt_size = (1 << functions[0].num_vars()) - 1;
 
                 if (verbosity) {
