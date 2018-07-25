@@ -15,6 +15,10 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
+#ifdef USE_SYRUP
+    glucose_wrapper glu_solver;
+    knuth_encoder glu_encoder(glu_solver);
+#endif
     knuth_encoder encoder1(solver);
     knuth_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(nr_in);
@@ -26,12 +30,13 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
     }
     dynamic_truth_table tt(nr_in);
 
-    chain c1, c2, c2_cegar, c3;
+    chain c1, c2, c2_cegar, c3, c5;
 
     int64_t total_elapsed1 = 0;
     int64_t total_elapsed2 = 0;
     int64_t total_elapsed3 = 0;
     int64_t total_elapsed4 = 0;
+    int64_t total_elapsed5 = 0;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -86,6 +91,22 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
         const auto c3_nr_vertices = c3.get_nr_steps();
         assert(c1_nr_vertices == c3_nr_vertices);
         assert(sim_tts1[0] == sim_tts3[0]);
+
+
+#ifdef USE_SYRUP
+        start = std::chrono::steady_clock::now();
+        auto res5 = synthesize(spec, c5, glu_solver, glu_encoder);
+        const auto elapsed5 = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res5 == success);
+        auto sim_tts5 = c5.simulate();
+        auto c5_nr_vertices = c5.get_nr_steps();
+        assert(c5.satisfies_spec(spec));
+        assert(c5_nr_vertices == c1_nr_vertices);
+        total_elapsed5 += elapsed5;
+#endif
+
         
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);
@@ -99,6 +120,7 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
     printf("Time elapsed (FENCE): %lldus\n", total_elapsed4);
     printf("Time elapsed (PF): %lldus\n", total_elapsed2);
     printf("Time elapsed (PF CEGAR): %lldus\n", total_elapsed3);
+    printf("Time elapsed (STD MULTI): %lldus\n", total_elapsed5);
 }
 
 void check_pf_equivalence5()
@@ -107,6 +129,10 @@ void check_pf_equivalence5()
 
     bsat_wrapper solver;
     knuth_encoder encoder1(solver);
+#ifdef USE_SYRUP
+    glucose_wrapper glu_solver;
+    knuth_encoder glu_encoder(glu_solver);
+#endif
     knuth_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(5);
 
@@ -114,11 +140,12 @@ void check_pf_equivalence5()
     auto max_tests = MAX_TESTS;
     dynamic_truth_table tt(5);
 
-    chain c1, c2, c3;
+    chain c1, c2, c3, c4;
 
     int64_t total_elapsed1 = 0;
     int64_t total_elapsed2 = 0;
     int64_t total_elapsed3 = 0;
+    int64_t total_elapsed4 = 0;
         
     auto nr_instances = 0;
 
@@ -162,17 +189,33 @@ void check_pf_equivalence5()
         assert(c1_nr_vertices == c3_nr_vertices);
         assert(sim_tts1[0] == sim_tts3[0]);
 
+#ifdef USE_SYRUP
+        start = std::chrono::steady_clock::now();
+        auto res4 = synthesize(spec, c4, glu_solver, glu_encoder);
+        auto elapsed4 = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res4 == success);
+        assert(c4.satisfies_spec(spec));
+        auto sim_tts4 = c4.simulate();
+        auto c4_nr_vertices = c4.get_nr_steps();
+        assert(c1_nr_vertices == c4_nr_vertices);
+        assert(sim_tts1[0] == sim_tts4[0]);
+#endif
+
         printf("(%d/%d)\r", i+1, max_tests);
         fflush(stdout);
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
         total_elapsed3 += elapsed3;
+        total_elapsed4 += elapsed4;
     }
     printf("\n");
     printf("total instances synthesized: %d\n", nr_instances);
     printf("Time elapsed (STD): %lldus\n", total_elapsed1);
     printf("Time elapsed (FENCE): %lldus\n", total_elapsed2);
     printf("Time elapsed (PF): %lldus\n", total_elapsed3);
+    printf("Time elapsed (STD MULTI): %lldus\n", total_elapsed4);
 }
 
 int main()
