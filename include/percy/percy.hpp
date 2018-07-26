@@ -837,7 +837,8 @@ namespace percy
         spec& spec,
         chain& chain,
         solver_wrapper& solver,
-        partial_dag_encoder& encoder)
+        partial_dag_encoder& encoder,
+        std::string file_prefix = "")
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -857,9 +858,10 @@ namespace percy
         spec.nr_steps = spec.initial_steps;
         while (true) {
             g.reset(2, spec.nr_steps);
-            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
             auto fhandle = fopen(filename.c_str(), "rb");
             if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open file %s\n", filename.c_str());
                 break;
             }
 
@@ -879,79 +881,8 @@ namespace percy
                 const auto status = solver.solve(0);
                 if (status == success) {
                     encoder.extract_chain(spec, g, chain);
+                    fclose(fhandle);
                     return success;
-                }
-            }
-            fclose(fhandle);
-            spec.nr_steps++;
-        }
-
-        return failure;
-    }
-
-    synth_result pd_cegar_ser_synthesize(
-        spec& spec,
-        chain& chain,
-        solver_wrapper& solver,
-        partial_dag_encoder& encoder)
-    {
-        assert(spec.get_nr_in() >= spec.fanin);
-        spec.preprocess();
-
-        // The special case when the Boolean chain to be synthesized
-        // consists entirely of trivial functions.
-        if (spec.nr_triv == spec.get_nr_out()) {
-            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
-            for (int h = 0; h < spec.get_nr_out(); h++) {
-                chain.set_output(h, (spec.triv_func(h) << 1) +
-                    ((spec.out_inv >> h) & 1));
-            }
-            return success;
-        }
-
-        partial_dag g;
-        spec.nr_rand_tt_assigns = 1 * spec.get_tt_size();
-        spec.nr_steps = spec.initial_steps;
-        while (true) {
-            g.reset(2, spec.nr_steps);
-            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
-            auto fhandle = fopen(filename.c_str(), "rb");
-            if (fhandle == NULL) {
-                break;
-            }
-
-            int buf;
-            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
-                    auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
-                    auto fanin2 = buf;
-                    g.set_vertex(i, fanin1, fanin2);
-                }
-                solver.restart();
-                if (!encoder.cegar_encode(spec, g)) {
-                    continue;
-                }
-                while (true) {
-                    const auto status = solver.solve(0);
-                    if (status == success) {
-                        encoder.extract_chain(spec, g, chain);
-                        auto sim_tts = chain.simulate();
-                        auto xor_tt = (sim_tts[0]) ^ (spec[0]);
-                        auto first_one = kitty::find_first_one_bit(xor_tt);
-                        if (first_one == -1) {
-                            return success;
-                        }
-                        // Add additional constraint.
-                        if (!encoder.create_tt_clauses(spec, g, first_one - 1)) {
-                            break;
-                        } else if (!encoder.fix_output_sim_vars(spec, first_one - 1)) {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
                 }
             }
             fclose(fhandle);
