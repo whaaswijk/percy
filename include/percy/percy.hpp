@@ -896,9 +896,8 @@ namespace percy
     synth_result pd_ser_synthesize_parallel(
         spec& spec,
         chain& c,
-        solver_wrapper& solver,
-        partial_dag_encoder& encoder,
-        int num_threads = std::thread::hardware_concurrency())
+        int num_threads = std::thread::hardware_concurrency(),
+        std::string file_prefix ="")
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -972,7 +971,7 @@ namespace percy
         spec.nr_steps = spec.initial_steps;
         while (size_found == PD_SIZE_CONST) {
             g.reset(2, spec.nr_steps);
-            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
             auto fhandle = fopen(filename.c_str(), "rb");
             if (fhandle == NULL) {
                 fprintf(stderr, "Error: unable to open PD file\n");
@@ -1006,6 +1005,7 @@ namespace percy
         for (auto& thread : threads) {
             thread.join();
         }
+        spec.nr_steps = size_found;
 
         return size_found == PD_SIZE_CONST ? failure : success;
     }
