@@ -187,6 +187,7 @@ void check_pd_equivalence5()
 /// the number of equivalence tests.
 int main()
 {
+#ifndef TRAVIS_BUILD
     bool full_coverage = false;
     if (full_coverage) {
         printf("Doing full equivalence check\n");
@@ -194,32 +195,11 @@ int main()
         printf("Doing partial equivalence check\n");
     }
 
-    {
-        bsat_wrapper solver;
-        partial_dag_encoder encoder(solver);
-        kitty::static_truth_table<4> tt;
-        kitty::create_from_hex_string(tt, "0357");
-        spec spec;
-        chain c1, c2;
-        spec[0] = tt;
-    
-        const auto status1 = synthesize(spec, c1);
-        assert(status1 == success);
-
-        partial_dag g;
-        g.reset(2, 3);
-        g.set_vertex(0, 0, 0);
-        g.set_vertex(1, 0, 0);
-        g.set_vertex(2, 1, 2);
-        const auto status = pd_synthesize(spec, c2, g, solver, encoder);
-        assert(status == success);
-        printf("found chain\n");
-    }
-
     check_pd_equivalence(2, 2, full_coverage);
     check_pd_equivalence(3, 2, full_coverage);
     check_pd_equivalence(4, 2, full_coverage);
     check_pd_equivalence5();
+#endif
     
     return 0;
 }
