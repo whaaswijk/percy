@@ -18,6 +18,7 @@ namespace percy
         solver_wrapper* solver = nullptr;
 
     public:
+        virtual ~encoder() { }
         virtual void set_solver(solver_wrapper& s)
         {
             solver = &s;
