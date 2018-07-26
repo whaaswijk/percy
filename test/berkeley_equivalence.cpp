@@ -66,7 +66,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
 }
 
 /*******************************************************************************
-    Verifies that the EPFL encoding is equivalent to the Knuth encoding.
+    Verifies that the Berkeley encoding is equivalent to the Knuth encoding.
 *******************************************************************************/
 int main(int argc, char **argv)
 {

@@ -73,7 +73,7 @@ int main(void)
                 solutions3++;
             }
             assert(solutions1 == solutions2);
-            assert(solutions2 <= solutions3);
+            assert(solutions2 == solutions3);
         }
 
         dynamic_truth_table tt3(3);
@@ -121,7 +121,7 @@ int main(void)
             }
 
             assert(solutions1 == solutions2);
-            assert(solutions2 <= solutions3);
+            assert(solutions2 == solutions3);
         }
 
         spec.fanin = 3;
@@ -160,7 +160,7 @@ int main(void)
             }
 
             assert(solutions1 == solutions2);
-            assert(solutions2 <= solutions3);
+            assert(solutions2 == solutions3);
         }
     }
     
