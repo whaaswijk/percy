@@ -63,9 +63,11 @@ int main()
         printf("Doing partial equivalence check\n");
     }
 
+#ifndef TRAVIS_BUILD
     bench(2, full_coverage);
     bench(3, full_coverage);
     bench(4, full_coverage);
+#endif
     //check_pd_equivalence5();
     
     return 0;

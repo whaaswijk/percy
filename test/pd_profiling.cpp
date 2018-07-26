@@ -131,6 +131,7 @@ void profile5(const std::vector<partial_dag>& dags)
 
 int main()
 {
+#ifndef TRAVIS_BUILD
     bool full_coverage = false;
     if (full_coverage) {
         printf("Doing full equivalence check\n");
@@ -144,6 +145,7 @@ int main()
     profile(3, full_coverage, dags);
     profile(4, full_coverage, dags);
     profile5(dags);
+#endif
     
     return 0;
 }

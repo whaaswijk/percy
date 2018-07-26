@@ -199,7 +199,9 @@ int main()
     profile(2);
     profile(3);
     profile(4);
+#ifndef TRAVIS_BUILD
     profile5();
+#endif
     
     return 0;
 }

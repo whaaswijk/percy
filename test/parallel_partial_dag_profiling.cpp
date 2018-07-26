@@ -64,10 +64,12 @@ void profile5()
 /// the number of equivalence tests.
 int main()
 {
+#ifndef TRAVIS_BUILD
     profile(2);
     profile(3);
     profile(4);
     profile5();
+#endif
     
     return 0;
 }

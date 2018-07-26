@@ -227,7 +227,9 @@ int main()
     check_pf_equivalence(2, 2, full_coverage);
     check_pf_equivalence(3, 2, full_coverage);
     check_pf_equivalence(4, 2, full_coverage);
+#ifndef TRAVIS_BUILD
     check_pf_equivalence5();
+#endif
     
     return 0;
 }

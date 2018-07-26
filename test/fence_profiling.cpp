@@ -56,6 +56,7 @@ void profile(int nr_in, bool full_coverage)
 
 int main()
 {
+#ifndef TRAVIS_BUILD
     bool full_coverage = false;
     if (full_coverage) {
         printf("Doing full equivalence check\n");
@@ -66,6 +67,7 @@ int main()
     profile(2, full_coverage);
     profile(3, full_coverage);
     profile(4, full_coverage);
+#endif
     
     return 0;
 }
