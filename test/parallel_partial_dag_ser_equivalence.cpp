@@ -70,7 +70,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 #if defined(_WIN32) || defined(_WIN64)
         const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../../test/");
 #else
-        const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, ,"../test/");
+        const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../test/");
 #endif
         const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
