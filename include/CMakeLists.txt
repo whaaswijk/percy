@@ -8,6 +8,7 @@ if (${PERCY_BUILD_CMS})
 endif()
 
 if (${PERCY_SATOKO})
+    target_compile_definitions(percy INTERFACE USE_SATOKO)
     target_link_libraries(percy INTERFACE satoko)
 else()
     target_compile_definitions(percy INTERFACE DISABLE_SATOKO)
