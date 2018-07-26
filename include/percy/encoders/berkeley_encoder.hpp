@@ -139,7 +139,6 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     for (int k = 0; k < spec.fanin - 1; k++) {
                         const auto max_fanin_idx = spec.get_nr_in() + i - spec.fanin + k;
-                        int ctr = 0;
                         for (int j = k; j <= max_fanin_idx; j++) {
                             const auto s_ij_k = get_sel_var(spec, i, j, k);
                             pLits[0] = pabc::Abc_Var2Lit(s_ij_k, 1);
