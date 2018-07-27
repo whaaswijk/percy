@@ -108,7 +108,7 @@ namespace percy
                     //    encoder.print_solver_state(spec);
                 }
                 if (stats) {
-                    stats->sat_time = elapsed_time;
+                    stats->sat_time += elapsed_time;
                 }
                 return success;
             } else if (status == failure) {
@@ -188,9 +188,6 @@ namespace percy
                             first_one);
                     }
                     if (!encoder.create_tt_clauses(spec, first_one - 1)) {
-                        if (stats) {
-                            stats->unsat_time += elapsed_time;
-                        }
                         spec.nr_steps++;
                         break;
                     }
