@@ -7,3 +7,4 @@
 #include "encoders/epfl_encoder.hpp"
 #include "encoders/berkeley_encoder.hpp"
 #include "encoders/partial_dag_encoder.hpp"
+#include "encoders/mig_encoder.hpp"

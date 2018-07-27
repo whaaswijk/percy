@@ -19,6 +19,13 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
     partial_dag_encoder encoder2(solver);
     encoder2.reset_sim_tts(nr_in);
 
+    spec.add_alonce_clauses = false;
+    spec.add_nontriv_clauses = false;
+    spec.add_lex_func_clauses = false;
+    spec.add_colex_clauses = false;
+    spec.add_noreapply_clauses = false;
+    spec.add_symvar_clauses = false;
+
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
     if (!full_coverage) {
@@ -34,6 +41,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
     int64_t total_elapsed2 = 0;
     int64_t total_elapsed3 = 0;
 
+    auto foo = get_encoder(solver);
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
 
@@ -41,7 +49,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         spec.add_lex_func_clauses = true;
         spec[0] = tt;
         auto start = std::chrono::steady_clock::now();
-        auto res1 = synthesize(spec, c1, solver, encoder1, SYNTH_STD_CEGAR);
+        auto res1 = synthesize(spec, c1, solver, *foo);
         const auto elapsed1 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();

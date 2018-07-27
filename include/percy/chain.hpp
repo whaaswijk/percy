@@ -565,6 +565,8 @@ namespace percy
                 return true;
             }
 
+            
+
             void
             copy(const chain& c)
             {

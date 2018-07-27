@@ -7,6 +7,7 @@
 #include "spec.hpp"
 #include "fence.hpp"
 #include "chain.hpp"
+#include "mig.hpp"
 #include "dag_generation.hpp"
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
@@ -1208,6 +1209,48 @@ namespace percy
         }
 
         return failure;
+    }
+
+    synth_result
+    mig_synthesize(
+        spec& spec, 
+        mig& mig, 
+        solver_wrapper& solver, 
+        mig_encoder& encoder)
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            solver.restart();
+            if (!encoder.encode(spec)) {
+                spec.nr_steps++;
+                continue;
+            }
+
+            const auto status = solver.solve(spec.conflict_limit);
+
+            if (status == success) {
+                encoder.print_solver_state(spec);
+                encoder.extract_mig(spec, mig);
+                return success;
+            } else if (status == failure) {
+                spec.nr_steps++;
+            } else {
+                return timeout;
+            }
+        }
     }
 
 }

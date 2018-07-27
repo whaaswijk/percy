@@ -987,7 +987,7 @@ namespace percy
                 return false;
             }
 
-            if (spec.add_nontriv_clauses && !create_nontriv_clauses(spec)) {
+            if (!create_nontriv_clauses(spec)) {
                 return false;
             }
             
