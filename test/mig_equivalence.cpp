@@ -53,6 +53,7 @@ void profile(int nr_in)
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
         printf("(%d/%d)\r", i + 1, max_tests);
+        fflush(stdout);
     }
     printf("\n");
     printf("Time elapsed (MIG): %lldus\n", total_elapsed1);
