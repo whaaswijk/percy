@@ -1308,5 +1308,79 @@ namespace percy
         }
     }
 
+    synth_result mig_fence_cegar_synthesize(
+        spec& spec, 
+        mig& mig, 
+        solver_wrapper& solver, 
+        mig_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+
+        fence f;
+        po_filter<unbounded_generator> g(
+            unbounded_generator(spec.initial_steps),
+            spec.get_nr_out(), spec.fanin);
+        int fence_ctr = 0;
+        while (true) {
+            ++fence_ctr;
+            g.next_fence(f);
+            spec.nr_steps = f.nr_nodes();
+
+            if (spec.verbosity) {
+                printf("  next fence (%d):\n", fence_ctr);
+                print_fence(f);
+                printf("\n");
+                printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(),
+                    f.nr_levels());
+                for (int i = 0; i < f.nr_levels(); i++) {
+                    printf("f[%d] = %d\n", i, f[i]);
+                }
+            }
+
+            solver.restart();
+            if (!encoder.cegar_encode(spec, f)) {
+                continue;
+            }
+            while (true) {
+                auto status = solver.solve(spec.conflict_limit);
+                if (status == success) {
+                    encoder.fence_extract_mig(spec, mig);
+                    auto sim_tt = mig.simulate()[0];
+                    //auto sim_tt = encoder.simulate(spec);
+                    //if (spec.out_inv) {
+                    //    sim_tt = ~sim_tt;
+                    //}
+                    auto xor_tt = sim_tt ^ (spec[0]);
+                    auto first_one = kitty::find_first_one_bit(xor_tt);
+                    if (first_one == -1) {
+                        return success;
+                    }
+                    if (!encoder.fence_create_tt_clauses(spec, first_one - 1)) {
+                        break;
+                    }
+                } else if (status == failure) {
+                    break;
+                } else {
+                    return timeout;
+                }
+            }
+        }
+    }
+
 }
 

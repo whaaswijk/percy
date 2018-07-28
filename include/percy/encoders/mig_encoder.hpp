@@ -3,7 +3,6 @@
 #include <vector>
 #include <kitty/kitty.hpp>
 #include "encoder.hpp"
-#include "../partial_dag.hpp"
 
 namespace percy
 {
@@ -13,10 +12,12 @@ namespace percy
         int level_dist[32]; // How many steps are below a certain level
         int nr_levels; // The number of levels in the Boolean fence
         int nr_sel_vars;
+        int nr_res_vars;
         int nr_op_vars;
         int nr_sim_vars;
         int total_nr_vars;
         int sel_offset;
+        int res_offset;
         int ops_offset;
         int sim_offset;
         pabc::lit pLits[2048];
@@ -89,6 +90,16 @@ namespace percy
                 offset += nr_svars_for_step(spec, i);
             }
             return sel_offset + offset + var_idx;
+        }
+
+        int get_res_var(const spec& spec, int step_idx, int res_var_idx) const
+        {
+            auto offset = 0;
+            for (int i = 0; i < step_idx; i++) {
+                offset += (nr_svars_for_step(spec, i) + 1) * (1 + 2);
+            }
+
+            return res_offset + offset + res_var_idx;
         }
 
     public:
@@ -183,6 +194,38 @@ namespace percy
             solver->set_nr_vars(total_nr_vars);
         }
 
+        void cegar_fence_create_variables(const spec& spec)
+        {
+            nr_op_vars = spec.nr_steps * MIG_OP_VARS_PER_STEP;
+            nr_sim_vars = spec.nr_steps * spec.tt_size;
+
+            nr_sel_vars = 0;
+            nr_res_vars = 0;
+            for (int i = 0; i < spec.nr_steps; i++) {
+                const auto nr_svars_for_i = nr_svars_for_step(spec, i);
+                nr_sel_vars += nr_svars_for_i;
+                nr_res_vars += (nr_svars_for_i + 1) * (1 + 2);
+            }
+
+            sel_offset = 0;
+            res_offset = nr_sel_vars;
+            ops_offset = nr_sel_vars + nr_res_vars;
+            sim_offset = nr_sel_vars + nr_res_vars + nr_op_vars;
+            total_nr_vars = nr_sel_vars + nr_res_vars + nr_op_vars + nr_sim_vars;
+
+            if (spec.verbosity) {
+                printf("Creating variables (MIG)\n");
+                printf("nr steps = %d\n", spec.nr_steps);
+                printf("nr_sel_vars=%d\n", nr_sel_vars);
+                printf("nr_sel_vars=%d\n", nr_res_vars);
+                printf("nr_op_vars = %d\n", nr_op_vars);
+                printf("nr_sim_vars = %d\n", nr_sim_vars);
+                printf("creating %d total variables\n", total_nr_vars);
+            }
+
+            solver->set_nr_vars(total_nr_vars);
+        }
+
         
 
         /// Ensures that each gate has the proper number of fanins.
@@ -207,17 +250,6 @@ namespace percy
                 status &= solver->add_clause(pLits, pLits + ctr);
             }
 
-            // We need to select one of the possible operators for this step.
-            /*
-            for (int i = 0; i < spec.nr_steps; i++) {
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 0);
-                pLits[3] = pabc::Abc_Var2Lit(get_op_var(spec, i, 3), 0);
-                status &= solver->add_clause(pLits, pLits + 4);
-            }
-            */
-            
             if (spec.verbosity > 2) {
                 printf("Nr. clauses = %d (POST)\n", solver->nr_clauses());
             }
@@ -1204,6 +1236,41 @@ namespace percy
             }
         }
 
+        void create_cardinality_constraints(const spec& spec)
+        {
+            std::vector<int> svars;
+            std::vector<int> rvars;
+
+            for (int i = 0; i < spec.nr_steps; i++) {
+                svars.clear();
+                rvars.clear();
+                const auto level = get_level(spec, spec.nr_in + i + 1);
+                auto svar_ctr = 0;
+                for (int l = first_step_on_level(level - 1);
+                    l < first_step_on_level(level); l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            const auto sel_var = get_sel_var(spec, i, svar_ctr++);
+                            svars.push_back(sel_var);
+                        }
+                    }
+                }
+                assert(svars.size() == nr_svars_for_step(spec, i));
+                const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
+                for (int j = 0; j < nr_res_vars; j++) {
+                    rvars.push_back(get_res_var(spec, i, j));
+                }
+                create_cardinality_circuit(solver, svars, rvars, 1);
+
+                // Ensure that the fanin cardinality for each step i 
+                // is exactly FI.
+                const auto fi_var =
+                    get_res_var(spec, i, svars.size() * (1 + 2) + 1);
+                auto fi_lit = pabc::Abc_Var2Lit(fi_var, 0);
+                (void)solver->add_clause(&fi_lit, &fi_lit + 1);
+            }
+        }
+
         void reset_sim_tts(int nr_in)
         {
             for (int i = 0; i < NR_SIM_TTS; i++) {
@@ -1291,8 +1358,6 @@ namespace percy
             assert(spec.nr_in >= 3);
             assert(spec.nr_steps == f.nr_nodes());
 
-            bool success = true;
-
             update_level_map(spec, f);
             fence_create_variables(spec);
             if (!fence_create_main_clauses(spec)) {
@@ -1321,9 +1386,36 @@ namespace percy
         }
 
         bool
-        cegar_encode(const spec&, const partial_dag&)
+        cegar_encode(const spec& spec, const fence& f)
         {
-            // TODO: implement!
+            update_level_map(spec, f);
+            cegar_fence_create_variables(spec);
+            for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
+                const auto t = rand() % spec.get_tt_size();
+                (void)fence_create_tt_clauses(spec, t);
+            }
+
+            fence_create_fanin_clauses(spec);
+            create_cardinality_constraints(spec);
+
+            if (spec.add_alonce_clauses) {
+                fence_create_alonce_clauses(spec);
+            }
+            
+            if (spec.add_colex_clauses) {
+                fence_create_colex_clauses(spec);
+            }
+
+            if (spec.add_lex_func_clauses) {
+                fence_create_lex_func_clauses(spec);
+            }
+
+            if (spec.add_symvar_clauses) {
+                fence_create_symvar_clauses(spec);
+            }
+
+            return true;
+
             assert(false);
             return false;
         }
