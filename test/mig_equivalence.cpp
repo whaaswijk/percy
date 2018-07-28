@@ -192,6 +192,7 @@ int main()
         printf("MAJ-5 time elapsed (MIG FENCE): %lldus\n", fence_elapsed);
     }
 
+    /*
     {
         // Exact synthesis of MAJ-7
         mig mig;
@@ -207,6 +208,7 @@ int main()
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
     }
+    */
     
     return 0;
 }
