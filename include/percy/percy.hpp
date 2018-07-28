@@ -1276,7 +1276,9 @@ namespace percy
         po_filter<unbounded_generator> g(
             unbounded_generator(spec.initial_steps),
             spec.get_nr_out(), 3);
+        auto fence_ctr = 0;
         while (true) {
+            ++fence_ctr;
             g.next_fence(f);
             spec.nr_steps = f.nr_nodes();
             solver.restart();
@@ -1285,7 +1287,7 @@ namespace percy
             }
 
             if (spec.verbosity) {
-                printf("  next fence:\n");
+                printf("next fence (%d):\n", fence_ctr);
                 print_fence(f);
                 printf("\n");
                 printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(),
