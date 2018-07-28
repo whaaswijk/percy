@@ -154,8 +154,8 @@ namespace percy
                 for (auto i = 1u; i < steps.size(); i++) {
                     const auto& step = steps[i];
                     for (const auto fid : step) {
-                        if (fid >= nr_in) {
-                            nr_uses[fid - nr_in]++;
+                        if (fid > nr_in) {
+                            nr_uses[fid - nr_in - 1]++;
                         }
                     }
                 }
@@ -174,6 +174,7 @@ namespace percy
                 }
             }
 
+            /*
             if (spec.add_noreapply_clauses) {
                 // Ensure there is no re-application of operands.
                 for (auto i = 0u; i < steps.size() - 1; i++) {
@@ -205,6 +206,7 @@ namespace percy
                     }
                 }
             }
+            */
 
             if (spec.add_colex_clauses) {
                 // Ensure that steps are in co-lexicographical order.
@@ -243,7 +245,7 @@ namespace percy
                         // less than that of i + 1.
                         const auto& op1 = operators[i];
                         const auto& op2 = operators[i + 1];
-                        if (op2 < op1) {
+                        if (op2 > op1) {
                             assert(false);
                             return false;
                         }
@@ -253,12 +255,12 @@ namespace percy
 
             if (spec.add_symvar_clauses) {
                 // Ensure that symmetric variables are ordered.
-                for (int q = 1; q < spec.get_nr_in(); q++) {
-                    for (int p = 0; p < q; p++) {
+                for (int q = 2; q <= spec.get_nr_in(); q++) {
+                    for (int p = 1; p < q; p++) {
                         auto symm = true;
                         for (int i = 0; i < spec.get_nr_out(); i++) {
                             auto outfunc = spec[i];
-                            if (!(swap(outfunc, p, q) == outfunc)) {
+                            if (!(swap(outfunc, p - 1, q - 1) == outfunc)) {
                                 symm = false;
                                 break;
                             }

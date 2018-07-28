@@ -25,6 +25,35 @@ namespace percy
         const int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
+        bool fix_output_sim_vars(const spec& spec, int  t)
+        {
+            auto ilast_step = spec.nr_steps - 1;
+            auto outbit = kitty::get_bit(
+                spec[spec.synth_func(0)], t + 1);
+            if ((spec.out_inv >> spec.synth_func(0)) & 1) {
+                outbit = 1 - outbit;
+            }
+            const auto sim_var = get_sim_var(spec, ilast_step, t);
+            pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
+            return solver->add_clause(&sim_lit, &sim_lit + 1);
+        }
+
+        void vfix_output_sim_vars(const spec& spec, int  t)
+        {
+            auto ilast_step = spec.nr_steps - 1;
+
+            auto outbit = kitty::get_bit(
+                spec[spec.synth_func(0)], t + 1);
+            if ((spec.out_inv >> spec.synth_func(0)) & 1) {
+                outbit = 1 - outbit;
+            }
+            const auto sim_var = get_sim_var(spec, ilast_step, t);
+            pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
+            (void)solver->add_clause(&sim_lit, &sim_lit + 1);
+        }
+
+
+
     public:
         const int OP_VARS_PER_STEP = 3;
 
@@ -60,7 +89,7 @@ namespace percy
         update_level_map(const spec& spec, const fence& f)
         {
             nr_levels = f.nr_levels();
-            level_dist[0] = spec.nr_in;
+            level_dist[0] = spec.nr_in + 1; // add 1 for constant zero
             for (int i = 1; i <= nr_levels; i++) {
                 level_dist[i] = level_dist[i-1] + f.at(i-1);
             }
@@ -206,34 +235,7 @@ namespace percy
             return true;
         }
 
-        bool fix_output_sim_vars(const spec& spec, int  t)
-        {
-            auto ilast_step = spec.nr_steps - 1;
-            auto outbit = kitty::get_bit(
-                spec[spec.synth_func(0)], t + 1);
-            if ((spec.out_inv >> spec.synth_func(0)) & 1) {
-                outbit = 1 - outbit;
-            }
-            const auto sim_var = get_sim_var(spec, ilast_step, t);
-            pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
-            return solver->add_clause(&sim_lit, &sim_lit + 1);
-        }
-
-        void vfix_output_sim_vars(const spec& spec, int  t)
-        {
-            auto ilast_step = spec.nr_steps - 1;
-
-            auto outbit = kitty::get_bit(
-                spec[spec.synth_func(0)], t + 1);
-            if ((spec.out_inv >> spec.synth_func(0)) & 1) {
-                outbit = 1 - outbit;
-            }
-            const auto sim_var = get_sim_var(spec, ilast_step, t);
-            pabc::lit sim_lit = pabc::Abc_Var2Lit(sim_var, 1 - outbit);
-            (void)solver->add_clause(&sim_lit, &sim_lit + 1);
-        }
-
-
+        
 
         /*******************************************************************
             Add clauses that prevent trivial variable projection and

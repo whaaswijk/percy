@@ -1242,11 +1242,64 @@ namespace percy
             const auto status = solver.solve(spec.conflict_limit);
 
             if (status == success) {
-                encoder.print_solver_state(spec);
+                //encoder.print_solver_state(spec);
                 encoder.extract_mig(spec, mig);
                 return success;
             } else if (status == failure) {
                 spec.nr_steps++;
+            } else {
+                return timeout;
+            }
+        }
+    }
+
+    synth_result
+    mig_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, mig_encoder& encoder)
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        // As the topological synthesizer decomposes the synthesis
+        // problem, to fairly count the total number of conflicts we
+        // should keep track of all conflicts in existence checks.
+        fence f;
+        po_filter<unbounded_generator> g(
+            unbounded_generator(spec.initial_steps),
+            spec.get_nr_out(), 3);
+        while (true) {
+            g.next_fence(f);
+            spec.nr_steps = f.nr_nodes();
+            solver.restart();
+            if (!encoder.encode(spec, f)) {
+                continue;
+            }
+
+            if (spec.verbosity) {
+                printf("  next fence:\n");
+                print_fence(f);
+                printf("\n");
+                printf("nr_nodes=%d, nr_levels=%d\n", f.nr_nodes(),
+                    f.nr_levels());
+                for (int i = 0; i < f.nr_levels(); i++) {
+                    printf("f[%d] = %d\n", i, f[i]);
+                }
+            }
+            auto status = solver.solve(spec.conflict_limit);
+            if (status == success) {
+                encoder.fence_extract_mig(spec, mig);
+                return success;
+            } else if (status == failure) {
+                continue;
             } else {
                 return timeout;
             }
