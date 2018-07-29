@@ -22,10 +22,11 @@ void profile(int nr_in)
     max_tests = std::min(max_tests, MAX_TESTS);
     dynamic_truth_table tt(nr_in);
 
-    mig m1, m2;
+    mig m1, m2, m3;
 
     int64_t total_elapsed1 = 0;
     int64_t total_elapsed2 = 0;
+    int64_t total_elapsed3 = 0;
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -48,16 +49,27 @@ void profile(int nr_in)
         assert(res2 == success);
         assert(m2.satisfies_spec(spec));
 
+        start = std::chrono::steady_clock::now();
+        const auto res3 = mig_fence_cegar_synthesize(spec, m3, solver, encoder);
+        const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res3 == success);
+        assert(m3.satisfies_spec(spec));
+
         assert(m1.get_nr_steps() == m2.get_nr_steps());
+        assert(m1.get_nr_steps() == m3.get_nr_steps());
 
         total_elapsed1 += elapsed1;
         total_elapsed2 += elapsed2;
+        total_elapsed3 += elapsed3;
         printf("(%d/%d)\r", i + 1, max_tests);
         fflush(stdout);
     }
     printf("\n");
     printf("Time elapsed (MIG): %lldus\n", total_elapsed1);
     printf("Time elapsed (MIG FENCE): %lldus\n", total_elapsed2);
+    printf("Time elapsed (MIG FENCE CEGAR): %lldus\n", total_elapsed3);
 }
 
 void profile5(void)
@@ -189,8 +201,19 @@ int main()
         assert(res == success);
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 4);
+
+        start = std::chrono::steady_clock::now();
+        res = mig_fence_cegar_synthesize(spec, mig, solver, encoder);
+        const auto fence_cegar_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res == success);
+        assert(mig.satisfies_spec(spec));
+        assert(mig.get_nr_steps() == 4);
+
         printf("MAJ-5 time elapsed (MIG): %lldus\n", elapsed);
         printf("MAJ-5 time elapsed (MIG FENCE): %lldus\n", fence_elapsed);
+        printf("MAJ-5 time elapsed (MIG FENCE CEGAR): %lldus\n", fence_cegar_elapsed);
     }
 
     /*
@@ -198,13 +221,14 @@ int main()
         // Exact synthesis of MAJ-7
         mig mig;
         spec spec;
+        spec.verbosity = 1;
         bsat_wrapper solver;
         mig_encoder encoder(solver);
         kitty::dynamic_truth_table tt(7);
         kitty::create_majority(tt);
         spec[0] = tt;
         spec.initial_steps = 7;
-        auto res = mig_fence_synthesize(spec, mig, solver, encoder);
+        auto res = mig_synthesize(spec, mig, solver, encoder);
         assert(res == success);
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
