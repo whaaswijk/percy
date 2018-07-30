@@ -8,11 +8,12 @@ namespace percy
     {
     private:
         int nr_in;
-        std::vector<std::array<int, 3>> steps;
-        std::vector<int> operators;
         std::vector<int> outputs;
 
     public:
+        std::vector<std::array<int, 3>> steps;
+        std::vector<int> operators;
+
         mig()
         {
             reset(0, 0, 0);
@@ -34,16 +35,13 @@ namespace percy
             std::vector<dynamic_truth_table> fs(outputs.size());
             std::vector<dynamic_truth_table> tmps(steps.size());
 
-            const auto effective_in = nr_in < 3 ? 3 : nr_in;
-
-            kitty::dynamic_truth_table tt_zero(effective_in);
-            kitty::dynamic_truth_table tt_in1(effective_in);
-            kitty::dynamic_truth_table tt_in2(effective_in);
-            kitty::dynamic_truth_table tt_in3(effective_in);
+            kitty::dynamic_truth_table tt_in1(nr_in);
+            kitty::dynamic_truth_table tt_in2(nr_in);
+            kitty::dynamic_truth_table tt_in3(nr_in);
 
 
-            auto tt_step = kitty::create<dynamic_truth_table>(effective_in);
-            auto tt_inute = kitty::create<dynamic_truth_table>(effective_in);
+            auto tt_step = kitty::create<dynamic_truth_table>(nr_in);
+            auto tt_inute = kitty::create<dynamic_truth_table>(nr_in);
 
             // Some outputs may be simple constants or projections.
             for (auto h = 0u; h < outputs.size(); h++) {
@@ -62,22 +60,20 @@ namespace percy
             for (auto i = 0u; i < steps.size(); i++) {
                 const auto& step = steps[i];
 
-                if (step[0] == 0) {
-                    tt_in1 = tt_zero;
-                } else if (step[0] <= nr_in) {
-                    create_nth_var(tt_in1, step[0] - 1);
+                if (step[0] < nr_in) {
+                    create_nth_var(tt_in1, step[0]);
                 } else {
-                    tt_in1 = tmps[step[0] - nr_in - 1];
+                    tt_in1 = tmps[step[0] - nr_in];
                 }
-                if (step[1] <= nr_in) {
-                    create_nth_var(tt_in2, step[1] - 1);
+                if (step[1] < nr_in) {
+                    create_nth_var(tt_in2, step[1]);
                 } else {
-                    tt_in2 = tmps[step[1] - nr_in - 1];
+                    tt_in2 = tmps[step[1] - nr_in];
                 }
-                if (step[2] <= nr_in) {
-                    create_nth_var(tt_in3, step[2] - 1);
+                if (step[2] < nr_in) {
+                    create_nth_var(tt_in3, step[2]);
                 } else {
-                    tt_in3 = tmps[step[2] - nr_in - 1];
+                    tt_in3 = tmps[step[2] - nr_in];
                 }
 
                 kitty::clear(tt_step);
@@ -154,8 +150,8 @@ namespace percy
                 for (auto i = 1u; i < steps.size(); i++) {
                     const auto& step = steps[i];
                     for (const auto fid : step) {
-                        if (fid > nr_in) {
-                            nr_uses[fid - nr_in - 1]++;
+                        if (fid >= nr_in) {
+                            nr_uses[fid - nr_in]++;
                         }
                     }
                 }
@@ -255,12 +251,12 @@ namespace percy
 
             if (spec.add_symvar_clauses) {
                 // Ensure that symmetric variables are ordered.
-                for (int q = 2; q <= spec.get_nr_in(); q++) {
-                    for (int p = 1; p < q; p++) {
+                for (int q = 1; q < spec.get_nr_in(); q++) {
+                    for (int p = 0; p < q; p++) {
                         auto symm = true;
                         for (int i = 0; i < spec.get_nr_out(); i++) {
                             auto outfunc = spec[i];
-                            if (!(swap(outfunc, p - 1, q - 1) == outfunc)) {
+                            if (!(swap(outfunc, p, q) == outfunc)) {
                                 symm = false;
                                 break;
                             }

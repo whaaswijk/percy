@@ -89,7 +89,7 @@ namespace percy
         update_level_map(const spec& spec, const fence& f)
         {
             nr_levels = f.nr_levels();
-            level_dist[0] = spec.nr_in + 1; // add 1 for constant zero
+            level_dist[0] = spec.nr_in;
             for (int i = 1; i <= nr_levels; i++) {
                 level_dist[i] = level_dist[i-1] + f.at(i-1);
             }
