@@ -170,7 +170,6 @@ namespace percy
                 }
             }
 
-            /*
             if (spec.add_noreapply_clauses) {
                 // Ensure there is no re-application of operands.
                 for (auto i = 0u; i < steps.size() - 1; i++) {
@@ -202,7 +201,6 @@ namespace percy
                     }
                 }
             }
-            */
 
             if (spec.add_colex_clauses) {
                 // Ensure that steps are in co-lexicographical order.
@@ -210,7 +208,7 @@ namespace percy
                     const auto& v1 = steps[i];
                     const auto& v2 = steps[i + 1];
 
-                    if (colex_compare(v1, v2) == 1) {
+                    if (colex_compare(v1, v2) != -1) {
                         assert(false);
                         return false;
                     }

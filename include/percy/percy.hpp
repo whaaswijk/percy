@@ -1212,7 +1212,7 @@ namespace percy
     }
 
     synth_result
-    mig_synthesize(
+    maj_synthesize(
         spec& spec, 
         mig& mig, 
         solver_wrapper& solver, 
@@ -1254,7 +1254,59 @@ namespace percy
     }
 
     synth_result
-    mig_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
+    maj_cegar_synthesize(
+        spec& spec, 
+        mig& mig, 
+        solver_wrapper& solver, 
+        maj_encoder& encoder)
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            solver.restart();
+            if (!encoder.encode(spec)) {
+                spec.nr_steps++;
+                continue;
+            }
+            while (true) {
+                const auto status = solver.solve(spec.conflict_limit);
+
+                if (status == success) {
+                    encoder.extract_mig(spec, mig);
+                    auto sim_tt = mig.simulate()[0];
+                    auto xor_tt = sim_tt ^ (spec[0]);
+                    auto first_one = kitty::find_first_one_bit(xor_tt);
+                    if (first_one == -1) {
+                        return success;
+                    }
+                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
+                        spec.nr_steps++;
+                        break;
+                    }
+                } else if (status == failure) {
+                    spec.nr_steps++;
+                    break;
+                } else {
+                    return timeout;
+                }
+            }
+        }
+    }
+
+    synth_result
+    maj_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
     {
         spec.preprocess();
 
@@ -1309,7 +1361,7 @@ namespace percy
         }
     }
 
-    synth_result mig_fence_cegar_synthesize(
+    synth_result maj_fence_cegar_synthesize(
         spec& spec, 
         mig& mig, 
         solver_wrapper& solver, 
@@ -1435,6 +1487,7 @@ namespace percy
                             }
                         }
 
+                        if (spec.verbosity)
                         {
                             std::lock_guard<std::mutex> vlock(found_mutex);
                             printf("  next fence:\n");

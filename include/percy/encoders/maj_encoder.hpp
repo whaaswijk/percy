@@ -486,13 +486,80 @@ namespace percy
             }
         }
 
-        bool create_noreapply_clauses(const spec& spec)
+        void create_noreapply_clauses(const spec& spec)
         {
-            // There seems to be no good analogy for this in MIGs
-            assert(false);
-            return false;
+            for (int i = 0; i < spec.nr_steps - 1; i++) {
+                for (int l = 2; l < spec.nr_in + i; l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            const auto sel_var = get_sel_var(spec, i, j, k, l);
+                            pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                            for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                                for (int kp = 1; kp < spec.nr_steps + i; kp++) {
+                                    for (int jp = 0; jp < kp; jp++) {
+                                        if ((kp == l && jp == k) || 
+                                            (kp == k && jp == j) ||
+                                            (kp == l && jp == k)) {
+                                            const auto sel_varp = get_sel_var(spec, ip, jp, kp, spec.nr_in + i);
+                                            pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                                            auto status = solver->add_clause(pLits, pLits + 2);
+                                            assert(status);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
+        void fence_create_noreapply_clauses(const spec& spec)
+        {
+            for (int i = 0; i < spec.nr_steps - 1; i++) {
+                const auto level = get_level(spec, spec.nr_in + i);
+                int svar_ctr = 0;
+                for (int l = first_step_on_level(level - 1); 
+                    l < first_step_on_level(level); l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            const auto sel_var = get_sel_var(spec, i, svar_ctr);
+                            pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                            for (int ip = i + 1; ip < spec.nr_steps; ip++) {
+                                const auto levelp = get_level(spec, spec.nr_in + ip);
+                                if (level == levelp) {
+                                    continue;
+                                }
+                                int svar_ctrp = 0;
+                                for (int lp = first_step_on_level(levelp - 1);
+                                    lp < first_step_on_level(levelp); lp++) {
+                                    for (int kp = 1; kp < l; kp++) {
+                                        for (int jp = 0; jp < kp; jp++) {
+                                            if ((lp == spec.nr_in + i) && 
+                                                ((kp == l && jp == k) ||
+                                                (kp == k && jp == j) ||
+                                                (kp == l && jp == k))) {
+                                                const auto sel_varp = get_sel_var(spec, ip, svar_ctrp);
+                                                pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                                                auto status = solver->add_clause(pLits, pLits + 2);
+                                                assert(status);
+                                            }
+                                            svar_ctrp++;
+                                        }
+                                    }
+                                }
+                            }
+                            svar_ctr++;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// Ensure that all steps are in strict co-lexicographic
+        /// order. Unlike the general Boolean chain case, here we 
+        /// don't want two steps pointing to the same inputs since
+        /// they cannot implement different functions.
         void create_colex_clauses(const spec& spec)
         {
             for (int i = 0; i < spec.nr_steps - 1; i++) {
@@ -501,8 +568,8 @@ namespace percy
                         for (int j = 0; j < k; j++) {
                             pLits[0] = pabc::Abc_Var2Lit(get_sel_var(spec, i, j, k, l), 1);
 
-                            // Cannot have lp < l
-                            for (int lp = 2; lp < l; lp++) {
+                            // Cannot have lp <= l
+                            for (int lp = 2; lp <= l; lp++) {
                                 for (int kp = 1; kp < lp; kp++) {
                                     for (int jp = 0; jp < kp; jp++) {
                                         pLits[1] = pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, jp, kp, lp), 1);
@@ -513,7 +580,7 @@ namespace percy
                             }
 
                             // May have lp == l and kp > k
-                            for (int kp = 1; kp < k; kp++) {
+                            for (int kp = 1; kp <= k; kp++) {
                                 for (int jp = 0; jp < kp; jp++) {
                                     pLits[1] = pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, jp, kp, l), 1);
                                     const auto res = solver->add_clause(pLits, pLits + 2);
@@ -521,7 +588,7 @@ namespace percy
                                 }
                             }
                             // OR lp == l and kp == k
-                            for (int jp = 0; jp < j; jp++) {
+                            for (int jp = 0; jp <= j; jp++) {
                                 pLits[1] = pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, jp, k, l), 1);
                                 const auto res = solver->add_clause(pLits, pLits + 2);
                                 assert(res);
@@ -553,7 +620,8 @@ namespace percy
                                 lp < first_step_on_level(levelp); lp++) {
                                 for (int kp = 1; kp < lp; kp++) {
                                     for (int jp = 0; jp < kp; jp++) {
-                                        if ((lp == l && kp == k && jp < j) || (lp == l && kp < k) || (lp < l)) {
+                                        if ((lp == l && kp == k && jp <= j) || 
+                                            (lp == l && kp <= k) || (lp <= l)) {
                                             const auto sel_varp = get_sel_var(spec, i + 1, svar_ctrp);
                                             pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
                                             (void)solver->add_clause(pLits, pLits + 2);
@@ -736,6 +804,10 @@ namespace percy
                 create_colex_clauses(spec);
             }
             
+            if (spec.add_noreapply_clauses) {
+                create_noreapply_clauses(spec);
+            }
+            
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
                 return false;
             }
@@ -805,6 +877,10 @@ namespace percy
                 fence_create_colex_clauses(spec);
             }
 
+            if (spec.add_noreapply_clauses) {
+                fence_create_noreapply_clauses(spec);
+            }
+
             if (spec.add_symvar_clauses) {
                 fence_create_symvar_clauses(spec);
             }
@@ -831,6 +907,10 @@ namespace percy
             
             if (spec.add_colex_clauses) {
                 fence_create_colex_clauses(spec);
+            }
+
+            if (spec.add_noreapply_clauses) {
+                fence_create_noreapply_clauses(spec);
             }
 
             if (spec.add_symvar_clauses) {
