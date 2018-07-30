@@ -1219,6 +1219,7 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
+        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1261,6 +1262,7 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
+        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1309,6 +1311,7 @@ namespace percy
     maj_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
     {
         spec.preprocess();
+        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1370,6 +1373,7 @@ namespace percy
         assert(spec.get_nr_in() >= spec.fanin);
 
         spec.preprocess();
+        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1647,5 +1651,37 @@ namespace percy
         return success;
     }
 
+
+    synth_result
+    next_solution(
+        spec& spec,
+        mig& mig,
+        solver_wrapper& solver,
+        maj_encoder& encoder)
+    {
+        if (!encoder.is_dirty()) {
+            return maj_synthesize(spec, mig, solver, encoder);
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        // In this case, only one solution exists.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            return failure;
+        }
+
+        if (encoder.block_solution(spec)) {
+            const auto status = solver.solve(spec.conflict_limit);
+
+            if (status == success) {
+                encoder.extract_mig(spec, mig);
+                return success;
+            } else {
+                return status;
+            }
+        }
+
+        return failure;
+    }
 }
 

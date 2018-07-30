@@ -9,6 +9,7 @@ namespace percy
     private:
         int nr_in;
         std::vector<int> outputs;
+        using step = std::array<int, 3>;
 
     public:
         std::vector<std::array<int, 3>> steps;
@@ -302,6 +303,25 @@ namespace percy
             }
 
             return true;
+        }
+
+        void to_expression(std::ostream& o, const int i)
+        {
+            if (i < nr_in) {
+                o << static_cast<char>('a' + i);
+            } else {
+                const auto& step = steps[i - nr_in];
+                o << "<";
+                to_expression(o, step[0]);
+                to_expression(o, step[1]);
+                to_expression(o, step[2]);
+                o << ">";
+            }
+        }
+
+        void to_expression(std::ostream& o)
+        {
+            to_expression(o, nr_in + steps.size() - 1);
         }
     };
 }

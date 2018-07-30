@@ -18,6 +18,7 @@ namespace percy
         int sel_offset;
         int res_offset;
         int sim_offset;
+        bool dirty = false;
         pabc::lit pLits[2048];
         solver_wrapper* solver;
 
@@ -1059,16 +1060,38 @@ namespace percy
         
         bool block_solution(const spec& spec)
         {
-            // TODO: implement
-            assert(false);
-            return false;
+            int ctr = 0;
+            for (int i = 0; i < spec.nr_steps; i++) {
+                for (int l = 2; l < spec.nr_in + i; l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            const auto sel_var = get_sel_var(spec, i, j, k, l);
+                            if (solver->var_value(sel_var)) {
+                                pLits[ctr++] = pabc::Abc_Var2Lit(sel_var, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            assert(ctr == spec.nr_steps);
+
+            return solver->add_clause(pLits, pLits + ctr);
         }
         
         bool block_struct_solution(const spec& spec)
         {
-            // TODO: implement
-            assert(false);
-            return false;
+            return block_solution(spec);
+        }
+
+        bool is_dirty() 
+        {
+            return dirty;
+        }
+
+        void set_dirty(bool _dirty)
+        {
+            dirty = _dirty;
         }
         
     };
