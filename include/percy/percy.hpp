@@ -535,30 +535,34 @@ namespace percy
         const partial_dag& dag,
         solver_wrapper& solver, 
         partial_dag_encoder& encoder, 
-        synth_stats * stats = NULL)
+        int timeout = 0)
     {
-        if (stats) {
-            stats->synth_time = 0;
-            stats->sat_time = 0;
-            stats->unsat_time = 0;
-        }
-
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
         if (!encoder.encode(spec, dag)) {
             return failure;
         }
 
-        auto begin = std::chrono::steady_clock::now();
-        const auto status = solver.solve(0);
-        auto end = std::chrono::steady_clock::now();
-        auto elapsed_time =
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                end - begin
+        synth_result status;
+        const auto begin = std::chrono::steady_clock::now();
+        if (!timeout) {
+            status = solver.solve(0);
+        } else {
+            while (true) {
+                status = solver.solve(100);
+                const auto end = std::chrono::steady_clock::now();
+                const auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(
+                    end - begin
                 ).count();
-
-        if (stats) {
-            stats->synth_time += elapsed_time;
+                if (elapsed_time > timeout) {
+                    status = percy::synth_result::timeout;
+                    break;
+                } else if (status == timeout) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
         }
 
         if (status == success) {
@@ -566,17 +570,11 @@ namespace percy
             if (spec.verbosity > 2) {
                 //    encoder.print_solver_state(spec);
             }
-            if (stats) {
-                stats->sat_time = elapsed_time;
-            }
             return success;
         } else if (status == failure) {
             return failure;
-            if (stats) {
-                stats->unsat_time += elapsed_time;
-            }
         } else {
-            return timeout;
+            return percy::synth_result::timeout;
         }
     }
 
@@ -585,15 +583,8 @@ namespace percy
         chain& chain, 
         const partial_dag& dag,
         solver_wrapper& solver, 
-        partial_dag_encoder& encoder,
-        synth_stats* stats = NULL)
+        partial_dag_encoder& encoder)
     {
-        if (stats) {
-            stats->synth_time = 0;
-            stats->sat_time = 0;
-            stats->unsat_time = 0;
-        }
-
         spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
@@ -609,9 +600,6 @@ namespace percy
                     end - begin
                     ).count();
 
-            if (stats) {
-                stats->synth_time += elapsed_time;
-            }
             if (stat == success) {
                 auto sim_tt = encoder.simulate(spec, dag);
                 if (spec.out_inv) {
@@ -620,9 +608,6 @@ namespace percy
                 auto xor_tt = sim_tt ^ (spec[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
-                    if (stats) {
-                        stats->sat_time += elapsed_time;
-                    }
                     encoder.extract_chain(spec, dag, chain);
                     return success;
                 }
@@ -700,7 +685,7 @@ namespace percy
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
         SynthMethod synth_method = SYNTH_STD,
-        synth_stats * stats = NULL)
+        int timeout = 1000000000) // timeout in seconds
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -720,10 +705,10 @@ namespace percy
             synth_result status;
             switch (synth_method) {
             case SYNTH_STD_CEGAR:
-                status = pd_cegar_synthesize(spec, chain, dag, solver, encoder, stats);
+                status = pd_cegar_synthesize(spec, chain, dag, solver, encoder);
                 break;
             default:
-                status = pd_synthesize(spec, chain, dag, solver, encoder, stats);
+                status = pd_synthesize(spec, chain, dag, solver, encoder, timeout);
                 break;
             }
             if (status == success) {
