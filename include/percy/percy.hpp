@@ -534,8 +534,7 @@ namespace percy
         chain& chain, 
         const partial_dag& dag,
         solver_wrapper& solver, 
-        partial_dag_encoder& encoder, 
-        int timeout = 0)
+        partial_dag_encoder& encoder)
     {
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
@@ -545,25 +544,7 @@ namespace percy
 
         synth_result status;
         const auto begin = std::chrono::steady_clock::now();
-        if (!timeout) {
-            status = solver.solve(0);
-        } else {
-            while (true) {
-                status = solver.solve(100);
-                const auto end = std::chrono::steady_clock::now();
-                const auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(
-                    end - begin
-                ).count();
-                if (elapsed_time > timeout) {
-                    status = percy::synth_result::timeout;
-                    break;
-                } else if (status == timeout) {
-                    continue;
-                } else {
-                    break;
-                }
-            }
-        }
+        status = solver.solve(0);
 
         if (status == success) {
             encoder.extract_chain(spec, dag, chain);
@@ -684,8 +665,7 @@ namespace percy
         const std::vector<partial_dag>& dags,
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
-        SynthMethod synth_method = SYNTH_STD,
-        int timeout = 1000000000) // timeout in seconds
+        SynthMethod synth_method = SYNTH_STD)
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -708,7 +688,7 @@ namespace percy
                 status = pd_cegar_synthesize(spec, chain, dag, solver, encoder);
                 break;
             default:
-                status = pd_synthesize(spec, chain, dag, solver, encoder, timeout);
+                status = pd_synthesize(spec, chain, dag, solver, encoder);
                 break;
             }
             if (status == success) {
