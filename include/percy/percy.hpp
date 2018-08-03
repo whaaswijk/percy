@@ -15,11 +15,7 @@
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
-#if defined(_WIN32)
 #include <limits>
-#else
-#include <numeric_limits>
-#endif
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
