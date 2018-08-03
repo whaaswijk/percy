@@ -15,6 +15,11 @@
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
+#if defined(_WIN32)
+#include <limits>
+#else
+#include <numeric_limits>
+#endif
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
@@ -801,7 +806,8 @@ namespace percy
         chain& chain,
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
-        std::string file_prefix = "")
+        std::string file_prefix = "",
+        int max_time = std::numeric_limits<int>::max()) // Timeout in seconds
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -819,6 +825,7 @@ namespace percy
 
         partial_dag g;
         spec.nr_steps = spec.initial_steps;
+        auto begin = std::chrono::steady_clock::now();
         while (true) {
             g.reset(2, spec.nr_steps);
             const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
@@ -842,6 +849,14 @@ namespace percy
                     continue;
                 }
                 const auto status = solver.solve(0);
+                auto end = std::chrono::steady_clock::now();
+                auto elapsed_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        end - begin
+                        ).count();
+                if (elapsed_time > max_time) {
+                    return timeout;
+                }
                 if (status == success) {
                     encoder.extract_chain(spec, g, chain);
                     fclose(fhandle);
