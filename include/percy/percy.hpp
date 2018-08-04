@@ -1659,5 +1659,45 @@ namespace percy
 
         return failure;
     }
+
+    synth_result maj_pd_synthesize(
+        spec& spec,
+        mig& mig,
+        const std::vector<partial_dag>& dags,
+        solver_wrapper& solver,
+        maj_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= 3);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        for (auto& dag : dags) {
+            spec.nr_steps = dag.nr_vertices();
+            solver.restart();
+            if (!encoder.encode(spec, dag)) {
+                continue;
+            }
+
+            const auto begin = std::chrono::steady_clock::now();
+            const auto status = solver.solve(0);
+
+            if (status == success) {
+                encoder.extract_mig(spec, dag, mig);
+                //encoder.print_solver_state(spec, dag);
+                return success;
+            }
+        }
+        return failure;
+    }
 }
 

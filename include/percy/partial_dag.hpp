@@ -1368,12 +1368,11 @@ namespace percy
             fwrite(&buf, sizeof(int), 1, fhandle);
             for (int i = 0; i < dag.nr_vertices(); i++) {
                 auto& v = dag.get_vertex(i);
-                buf = v[0];
-                auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                buf = v[1];
-                stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
+                for (const auto fanin : v) {
+                    buf = fanin;
+                    auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
             }
         }
 
@@ -1410,6 +1409,41 @@ namespace percy
             return dags;
         }
 
+        std::vector<partial_dag> read_partial_dag3s(const char* const filename)
+        {
+            std::vector<partial_dag> dags;
+
+            auto fhandle = fopen(filename, "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            partial_dag g;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                g.reset(3, nr_vertices);
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin1 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin2 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                dags.push_back(g);
+            }
+
+            fclose(fhandle);
+
+            return dags;
+        }
+
         size_t count_partial_dags(FILE* fhandle)
         {
             size_t nr_dags = 0;
@@ -1418,6 +1452,26 @@ namespace percy
                 auto nr_vertices = buf;
                 for (int i = 0; i < nr_vertices; i++) {
                     auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
+                nr_dags++;
+            }
+
+            return nr_dags;
+        }
+
+        size_t count_partial_dag3s(FILE* fhandle)
+        {
+            size_t nr_dags = 0;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
                     assert(stat == 1);
                     stat = fread(&buf, sizeof(int), 1, fhandle);
                     assert(stat == 1);
@@ -1478,15 +1532,16 @@ namespace percy
 
             return dags;
         }
+#endif
 
         void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
         {
             partial_dag g;
             partial_dag_generator gen;
+            auto fhandle = fopen(filename, "wb");
+#ifndef DISABLE_NAUTY
             std::set<std::vector<graph>> can_reprs;
             pd_iso_checker checker(nr_vertices);
-
-            auto fhandle = fopen(filename, "wb");
 
             gen.set_callback([&g, fhandle, &can_reprs, &checker]
             (partial_dag_generator* gen) {
@@ -1498,14 +1553,58 @@ namespace percy
                 if (res.second)
                     write_partial_dag(g, fhandle);
             });
+#else
+            gen.set_callback([&g, fhandle]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                write_partial_dag(g, fhandle);
+            });
 
+#endif
             g.reset(2, nr_vertices);
             gen.reset(nr_vertices);
             gen.count_dags();
 
             fclose(fhandle);
         }
+
+        void pd3_write_nonisomorphic(int nr_vertices, const char* const filename)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            auto fhandle = fopen(filename, "wb");
+#ifndef DISABLE_NAUTY
+            std::set<std::vector<graph>> can_reprs;
+            pd_iso_checker checker(nr_vertices);
+
+            gen.set_callback([&g, fhandle, &can_reprs, &checker]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                const auto can_repr = checker.crepr(g);
+                const auto res = can_reprs.insert(can_repr);
+                if (res.second)
+                    write_partial_dag(g, fhandle);
+            });
+#else
+            gen.set_callback([&g, fhandle]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                write_partial_dag(g, fhandle);
+            });
+
 #endif
+            g.reset(3, nr_vertices);
+            gen.reset(nr_vertices);
+            gen.count_dags();
+
+            fclose(fhandle);
+        }
 
         /// Generate all partial DAGs up to the specified number
         /// of vertices.
@@ -1550,6 +1649,31 @@ namespace percy
 
             for (int i = 1; i <= max_vertices; i++) {
                 g.reset(2, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
+        }
+
+        std::vector<partial_dag> pd3_generate_filtered(int max_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(3, i);
                 gen.reset(i);
                 gen.count_dags();
             }

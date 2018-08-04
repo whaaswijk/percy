@@ -30,7 +30,7 @@ namespace percy
         const int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
-        inline int nr_svars_for_step(
+        int nr_svars_for_step(
             const spec& spec, 
             const partial_dag& dag, 
             int i) const
@@ -510,7 +510,6 @@ namespace percy
                 vcreate_tt_clauses(spec, dag, t);
             }
         }
-
 
         bool reapply_helper(
             const spec& spec,
