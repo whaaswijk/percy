@@ -1580,9 +1580,9 @@ namespace percy
             pd_iso_checker checker(nr_vertices);
 
             gen.set_callback([&g, fhandle, &can_reprs, &checker]
-            (partial_dag_generator* gen) {
+            (partial_dag3_generator* gen) {
                 for (int i = 0; i < gen->nr_vertices(); i++) {
-                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
@@ -1593,7 +1593,7 @@ namespace percy
             gen.set_callback([&g, fhandle]
             (partial_dag3_generator* gen) {
                 for (int i = 0; i < gen->nr_vertices(); i++) {
-                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
                 write_partial_dag(g, fhandle);
             });
