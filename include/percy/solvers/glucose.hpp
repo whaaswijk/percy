@@ -161,6 +161,14 @@ namespace percy
             return solve(cl);
         }
 #endif
+
+#ifdef USE_SYRUP
+        void set_nr_threads(int nr_threads)
+        {
+            delete solver;
+            solver = new Glucose::MultiSolvers(nr_threads);
+        }
+#endif
     };
 }
 
