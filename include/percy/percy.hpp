@@ -574,13 +574,7 @@ namespace percy
             return failure;
         }
         while (true) {
-            auto begin = std::chrono::steady_clock::now();
             auto stat = solver.solve(0);
-            auto end = std::chrono::steady_clock::now();
-            auto elapsed_time =
-                std::chrono::duration_cast<std::chrono::microseconds>(
-                    end - begin
-                    ).count();
 
             if (stat == success) {
                 auto sim_tt = encoder.simulate(spec, dag);
