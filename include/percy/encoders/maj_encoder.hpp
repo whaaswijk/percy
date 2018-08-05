@@ -983,7 +983,6 @@ namespace percy
                     for (int k = 1; k < spec.nr_in; k++) {
                         for (int j = 0; j < k; j++) {
                             const auto sel_var = get_sel_var(spec, dag, i, svar_ctr++);
-                            if (k == 1) continue;
                             colex_helper(spec, dag, i, j, k, l, sel_var);
                         }
                     }
@@ -993,7 +992,6 @@ namespace percy
                         for (int k = 1; k < l; k++) {
                             for (int j = 0; j < k; j++) {
                                 const auto sel_var = get_sel_var(spec, dag, i, svar_ctr++);
-                                if (k == 1) continue;
                                 colex_helper(spec, dag, i, j, k, l, sel_var);
                             }
                         }
@@ -1164,13 +1162,13 @@ namespace percy
                                     auto ctr = 1;
                                     for (int ip = 0; ip < i; ip++) {
                                         const auto vertex2 = dag.get_vertex(ip);
-                                        auto nr_pi_fanins2 = nr_pi_fanins_for_step(dag, ip);
+                                        const auto nr_pi_fanins2 = nr_pi_fanins_for_step(dag, ip);
                                         if (nr_pi_fanins2 == 0) {
                                             continue;
                                         } else if (nr_pi_fanins2 == 1) {
                                             const auto sel_varp = get_sel_var(spec, dag, ip, p);
                                             pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 0);
-                                        } else if (nr_pi_fanins == 2) {
+                                        } else if (nr_pi_fanins2 == 2) {
                                             auto svar_ctrp = 0;
                                             for (int kp = 1; kp < spec.nr_in; kp++) {
                                                 for (int jp = 0; jp < kp; jp++) {
@@ -1184,7 +1182,7 @@ namespace percy
                                         } else {
                                             auto svar_ctrp = 0;
                                             for (int lp = 2; lp < spec.nr_in; lp++) {
-                                                for (int kp = 1; kp < lp; lp++) {
+                                                for (int kp = 1; kp < lp; kp++) {
                                                     for (int jp = 0; jp < kp; jp++) {
                                                         if (jp == p || kp == p || lp == p) {
                                                             const auto sel_varp = get_sel_var(spec, dag, ip, svar_ctrp);
@@ -1222,7 +1220,7 @@ namespace percy
                                             } else if (nr_pi_fanins2 == 1) {
                                                 const auto sel_varp = get_sel_var(spec, dag, ip, p);
                                                 pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 0);
-                                            } else if (nr_pi_fanins == 2) {
+                                            } else if (nr_pi_fanins2 == 2) {
                                                 auto svar_ctrp = 0;
                                                 for (int kp = 1; kp < spec.nr_in; kp++) {
                                                     for (int jp = 0; jp < kp; jp++) {
@@ -1442,8 +1440,10 @@ namespace percy
             return -1;
         }
 
-        void fence_create_fanin_clauses(const spec& spec)
+        bool fence_create_fanin_clauses(const spec& spec)
         {
+            bool res = true;
+
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto nr_svars_for_i = nr_svars_for_step(spec, i);
                 for (int j = 0; j < nr_svars_for_i; j++) {
@@ -1451,9 +1451,10 @@ namespace percy
                     pLits[j] = pabc::Abc_Var2Lit(sel_var, 0);
                 }
 
-                const auto res = solver->add_clause(pLits, pLits + nr_svars_for_i);
-                assert(res);
+                res &= solver->add_clause(pLits, pLits + nr_svars_for_i);
             }
+
+            return res;
         }
 
         bool
@@ -1468,7 +1469,9 @@ namespace percy
                 return false;
             }
 
-            fence_create_fanin_clauses(spec);
+            if (!fence_create_fanin_clauses(spec)) {
+                return false;
+            }
             
             if (spec.add_alonce_clauses) {
                 fence_create_alonce_clauses(spec);
@@ -1499,7 +1502,9 @@ namespace percy
                 (void)fence_create_tt_clauses(spec, t);
             }
 
-            fence_create_fanin_clauses(spec);
+            if (!fence_create_fanin_clauses(spec)) {
+                return false;
+            }
             create_cardinality_constraints(spec);
             
             if (spec.add_alonce_clauses) {

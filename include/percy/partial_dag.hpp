@@ -170,11 +170,10 @@ namespace percy
                 EMPTYGRAPH(g1,m,total_vertices);
                 for (int i = 1; i < total_vertices; i++) {
                     const auto& vertex = get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g1, fanin - 1, i, m);
+                        }
                     }
                 }
 
@@ -183,11 +182,10 @@ namespace percy
                 EMPTYGRAPH(g2,m,total_vertices);
                 for (int i = 0; i < total_vertices; i++) {
                     const auto& vertex = g.get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g2, fanin - 1, i, m);
+                        }
                     }
                 }
 
@@ -1266,21 +1264,19 @@ namespace percy
 
                 for (int i = 1; i < nr_vertices; i++) {
                     const auto& vertex = dag1.get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g1, fanin - 1, i, m);
+                        }
                     }
                 }
 
                 for (int i = 0; i < nr_vertices; i++) {
                     const auto& vertex = dag2.get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g2, fanin - 1, i, m);
+                        }
                     }
                 }
 
@@ -1314,11 +1310,8 @@ namespace percy
 
                 for (int i = 1; i < nr_vertices; i++) {
                     const auto& vertex = dag.get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        ADDONEARC(g1, fanin - 1, i, m);
                     }
                 }
 
@@ -1570,7 +1563,7 @@ namespace percy
             fclose(fhandle);
         }
 
-        void pd3_write_nonisomorphic(int nr_vertices, const char* const filename)
+        void pd3_write_nonisomorphic(int nr_vertices, int nr_in, const char* const filename)
         {
             partial_dag g;
             partial_dag3_generator gen;
@@ -1579,14 +1572,14 @@ namespace percy
             std::set<std::vector<graph>> can_reprs;
             pd_iso_checker checker(nr_vertices);
 
-            gen.set_callback([&g, fhandle, &can_reprs, &checker]
+            gen.set_callback([&g, fhandle, &can_reprs, &checker, nr_in]
             (partial_dag3_generator* gen) {
                 for (int i = 0; i < gen->nr_vertices(); i++) {
                     g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
-                if (res.second)
+                if (g.nr_pi_fanins() >= nr_in && res.second)
                     write_partial_dag(g, fhandle);
             });
 #else
@@ -1624,6 +1617,31 @@ namespace percy
 
             for (int i = 1; i <= max_vertices; i++) {
                 g.reset(2, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
+        }
+
+        std::vector<partial_dag> pd3_generate_max(int max_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(3, i);
                 gen.reset(i);
                 gen.count_dags();
             }
