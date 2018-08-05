@@ -1563,7 +1563,7 @@ namespace percy
             fclose(fhandle);
         }
 
-        void pd3_write_nonisomorphic(int nr_vertices, int nr_in, const char* const filename)
+        void pd3_write_nonisomorphic(int nr_vertices, const char* const filename, int nr_in = -1)
         {
             partial_dag g;
             partial_dag3_generator gen;
@@ -1579,8 +1579,12 @@ namespace percy
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
-                if (g.nr_pi_fanins() >= nr_in && res.second)
-                    write_partial_dag(g, fhandle);
+                if (res.second) {
+                    if (nr_in != -1 && g.nr_pi_fanins() >= nr_in)
+                        write_partial_dag(g, fhandle);
+                    else if (nr_in == -1)
+                        write_partial_dag(g, fhandle);
+                }
             });
 #else
             gen.set_callback([&g, fhandle]
