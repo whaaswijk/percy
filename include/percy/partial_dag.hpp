@@ -1568,17 +1568,19 @@ namespace percy
             partial_dag g;
             partial_dag3_generator gen;
             auto fhandle = fopen(filename, "wb");
+            uint64_t ctr = 0;
 #ifndef DISABLE_NAUTY
             std::set<std::vector<graph>> can_reprs;
             pd_iso_checker checker(nr_vertices);
 
-            gen.set_callback([&g, fhandle, &can_reprs, &checker, nr_in]
+            gen.set_callback([&g, fhandle, &can_reprs, &checker, nr_in, &ctr]
             (partial_dag3_generator* gen) {
                 for (int i = 0; i < gen->nr_vertices(); i++) {
                     g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
+                printf("%zu\r", ++ctr);
                 if (res.second) {
                     if (nr_in != -1 && g.nr_pi_fanins() >= nr_in)
                         write_partial_dag(g, fhandle);
@@ -1587,11 +1589,12 @@ namespace percy
                 }
             });
 #else
-            gen.set_callback([&g, fhandle]
+            gen.set_callback([&g, fhandle, &ctr]
             (partial_dag3_generator* gen) {
                 for (int i = 0; i < gen->nr_vertices(); i++) {
                     g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
+                printf("%zu\r", ++ctr);
                 write_partial_dag(g, fhandle);
             });
 
@@ -1599,6 +1602,7 @@ namespace percy
             g.reset(3, nr_vertices);
             gen.reset(nr_vertices);
             gen.count_dags();
+            printf("\n");
 
             fclose(fhandle);
         }
