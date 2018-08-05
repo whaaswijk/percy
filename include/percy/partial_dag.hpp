@@ -1568,6 +1568,10 @@ namespace percy
             partial_dag g;
             partial_dag3_generator gen;
             auto fhandle = fopen(filename, "wb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open PD file\n");
+                exit(1);
+            }
             uint64_t ctr = 0;
 #ifndef DISABLE_NAUTY
             std::set<std::vector<graph>> can_reprs;
