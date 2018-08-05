@@ -20,7 +20,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "abc/Sort.h"
 #include "abc/SimpSolver.h"
-#include "abc/System.h"
+#include "abc/system.h"
 
 ABC_NAMESPACE_IMPL_START
 
