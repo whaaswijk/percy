@@ -18,7 +18,7 @@
 
 ***********************************************************************/
 
-#include "abc/System.h"
+#include "abc/system.h"
 #include "abc/Dimacs.h"
 #include "abc/SimpSolver.h"
 
