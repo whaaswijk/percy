@@ -1311,7 +1311,8 @@ namespace percy
                 for (int i = 1; i < nr_vertices; i++) {
                     const auto& vertex = dag.get_vertex(i);
                     for (const auto fanin : vertex) {
-                        ADDONEARC(g1, fanin - 1, i, m);
+                        if (fanin != FANIN_PI)
+                            ADDONEARC(g1, fanin - 1, i, m);
                     }
                 }
 
