@@ -5,6 +5,7 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 project(percy LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (UNIX)
     set(CMAKE_CXX_FLAGS "-Wall -pedantic -fPIC ${CMAKE_CXX_FLAGS} -DLIN64")
 endif()
