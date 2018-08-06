@@ -40,6 +40,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 
         spec.verbosity = 0;
         spec.add_lex_func_clauses = true;
+        spec.add_colex_clauses = true;
         spec[0] = tt;
         auto start = std::chrono::steady_clock::now();
         auto res1 = synthesize(spec, c1, solver, encoder1, SYNTH_STD_CEGAR);
@@ -53,6 +54,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 
         //spec.verbosity = 2;
         spec.add_lex_func_clauses = false;
+        spec.add_colex_clauses = false;
         start = std::chrono::steady_clock::now();
         auto res2 = pd_synthesize(spec, c2, dags, solver, encoder2);
         const auto elapsed2 = std::chrono::duration_cast<std::chrono::microseconds>(

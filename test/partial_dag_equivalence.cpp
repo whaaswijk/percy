@@ -143,6 +143,7 @@ void check_pd_equivalence5()
 
         //spec.verbosity = 2;
         spec.add_lex_func_clauses = false;
+        spec.add_colex_clauses = false;
         start = std::chrono::steady_clock::now();
         auto res2 = pd_synthesize(spec, c2, dags, solver, encoder2);
         const auto elapsed2 = std::chrono::duration_cast<std::chrono::microseconds>(
