@@ -93,9 +93,33 @@ int main(void)
         global_total += total_nr_fences;
         printf("Number of fences in F_%d = %d\n", k, total_nr_fences);
     }
+    assert(po_fences.size() == global_total);
+    for (unsigned k = 13; k <= 15; k++) {
+        auto total_nr_fences = 0;
+        for (unsigned l = 1; l <= k; l++) {
+            recgen.reset(k, l);
+            total_nr_fences += recgen.count_fences();
+        }
+        printf("Number of fences in F_%d = %d\n", k, total_nr_fences);
+    }
+
     printf("Nr. of fences relevant to 5-input single-output synthesis is %d\n",
             global_total);
-    assert(po_fences.size() == global_total);
+    // Count the number of fence relevant to synthesizing single-output chains
+    // with 3-input operators
+    global_total = 0;
+    recgen.set_po_filter(true);
+    po_fences.clear();
+    for (unsigned k = 1; k <= 15; k++) {
+        auto total_nr_fences = 0;
+        for (unsigned l = 1; l <= k; l++) {
+            recgen.reset(k, l, 1, 3);
+            total_nr_fences += recgen.count_fences();
+        }
+        generate_fences(po_fences, k);
+        global_total += total_nr_fences;
+        printf("Number of fences in F_%d = %d (3-input gates)\n", k, total_nr_fences);
+    }
 
     return 0;
 }

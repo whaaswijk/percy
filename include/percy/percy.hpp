@@ -55,7 +55,7 @@ namespace percy
         return false;
     }
 
-    synth_result 
+    inline synth_result 
     std_synthesize(
         spec& spec, 
         chain& chain, 
@@ -124,7 +124,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     std_cegar_synthesize(
         spec& spec, 
         chain& chain, 
@@ -206,7 +206,7 @@ namespace percy
         }
     }
 
-    std::unique_ptr<solver_wrapper>
+    inline std::unique_ptr<solver_wrapper>
     get_solver(SolverType type = SLV_BSAT2)
     {
         solver_wrapper * solver = nullptr;
@@ -240,7 +240,7 @@ namespace percy
         return res;
     }
 
-    std::unique_ptr<encoder>
+    inline std::unique_ptr<encoder>
     get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
     {
         encoder * enc = nullptr;
@@ -271,7 +271,7 @@ namespace percy
         return res;
     }
 
-    std::unique_ptr<enumerating_encoder>
+    inline std::unique_ptr<enumerating_encoder>
     get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
     {
         enumerating_encoder * enc = nullptr;
@@ -297,7 +297,7 @@ namespace percy
     }
 
 
-    synth_result 
+    inline synth_result 
     fence_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
         assert(spec.get_nr_in() >= spec.fanin);
@@ -367,7 +367,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     fence_synthesize(
         spec& spec, 
         chain& chain, 
@@ -386,7 +386,7 @@ namespace percy
         return status;
     }
 
-    synth_result
+    inline synth_result
     fence_cegar_synthesize(
         spec& spec, 
         chain& chain, 
@@ -427,7 +427,7 @@ namespace percy
         }
     }
     
-    synth_result 
+    inline synth_result 
     fence_cegar_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
         assert(spec.get_nr_in() >= spec.fanin);
@@ -497,13 +497,13 @@ namespace percy
     }
 
     ///< TODO: implement
-    synth_result
+    inline synth_result
     dag_synthesize(spec& spec, chain& chain, solver_wrapper& solver, dag_encoder<2>& encoder)
     {
         return failure;
     }
 
-    synth_result 
+    inline synth_result 
     synthesize(
         spec& spec, 
         chain& chain, 
@@ -529,7 +529,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize(
         spec& spec, 
         chain& chain, 
@@ -560,7 +560,7 @@ namespace percy
         }
     }
 
-    synth_result pd_cegar_synthesize(
+    inline synth_result pd_cegar_synthesize(
         spec& spec, 
         chain& chain, 
         const partial_dag& dag,
@@ -603,7 +603,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
@@ -622,7 +622,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
@@ -654,7 +654,7 @@ namespace percy
         return failure;
     }
 
-    synth_result pd_synthesize(
+    inline synth_result pd_synthesize(
         spec& spec,
         chain& chain,
         const std::vector<partial_dag>& dags,
@@ -693,7 +693,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_parallel(
         spec& spec, 
         chain& c, 
@@ -791,7 +791,7 @@ namespace percy
 
 
     /// Synthesizes a chain using a set of serialized partial DAGs.
-    synth_result pd_ser_synthesize(
+    inline synth_result pd_ser_synthesize(
         spec& spec,
         chain& chain,
         solver_wrapper& solver,
@@ -861,7 +861,7 @@ namespace percy
     }
 
     /// Same as pd_ser_synthesize, but parallel.  
-    synth_result pd_ser_synthesize_parallel(
+    inline synth_result pd_ser_synthesize_parallel(
         spec& spec,
         chain& c,
         int num_threads = std::thread::hardware_concurrency(),
@@ -978,7 +978,7 @@ namespace percy
         return size_found == PD_SIZE_CONST ? failure : success;
     }
             
-    synth_result
+    inline synth_result
     pf_fence_synthesize(
         spec& spec, 
         chain& c, 
@@ -1067,7 +1067,7 @@ namespace percy
     /// One thread generates fences and places them on a concurrent
     /// queue. The remaining threads dequeue fences and try to
     /// synthesize chains with them.
-    synth_result
+    inline synth_result
     pf_synthesize(
         spec& spec, 
         chain&  chain, 
@@ -1084,7 +1084,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     synthesize(
         spec& spec, 
         chain& chain, 
@@ -1097,7 +1097,7 @@ namespace percy
         return synthesize(spec, chain, *solver, *encoder, method);
     }
 
-    synth_result
+    inline synth_result
     next_solution(
         spec& spec, 
         chain& chain, 
@@ -1139,7 +1139,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     next_struct_solution(
         spec& spec, 
         chain& chain, 
@@ -1181,7 +1181,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     maj_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1224,7 +1224,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     maj_cegar_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1277,7 +1277,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     maj_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
     {
         spec.preprocess();
@@ -1334,7 +1334,7 @@ namespace percy
         }
     }
 
-    synth_result maj_fence_cegar_synthesize(
+    inline synth_result maj_fence_cegar_synthesize(
         spec& spec, 
         mig& mig, 
         solver_wrapper& solver, 
@@ -1409,7 +1409,8 @@ namespace percy
         }
     }
 
-    synth_result parallel_maj_synthesize(
+    inline synth_result 
+    parallel_maj_synthesize(
         spec& spec,
         mig& mig,
         int num_threads = std::thread::hardware_concurrency())
@@ -1522,7 +1523,7 @@ namespace percy
         return success;
     }
 
-    synth_result
+    inline synth_result
     parallel_nocegar_maj_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1620,8 +1621,7 @@ namespace percy
         return success;
     }
 
-
-    synth_result
+    inline synth_result
     next_solution(
         spec& spec,
         mig& mig,
@@ -1653,7 +1653,7 @@ namespace percy
         return failure;
     }
 
-    synth_result maj_pd_synthesize(
+    inline synth_result maj_pd_synthesize(
         spec& spec,
         mig& mig,
         const std::vector<partial_dag>& dags,
@@ -1693,7 +1693,7 @@ namespace percy
         return failure;
     }
 
-    synth_result maj_ser_synthesize(
+    inline synth_result maj_ser_synthesize(
         spec& spec,
         mig& mig,
         solver_wrapper& solver,
@@ -1764,7 +1764,7 @@ namespace percy
         return failure;
     }
 
-    synth_result maj_ser_synthesize_parallel(
+    inline synth_result maj_ser_synthesize_parallel(
         spec& spec,
         mig& m,
         int num_threads = std::thread::hardware_concurrency(),
