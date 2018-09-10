@@ -14,7 +14,7 @@ int main(void)
     spec.verbosity = 0;
 
     bsat_wrapper solver;
-    knuth_encoder encoder(solver);
+    ssv_encoder encoder(solver);
 
 
     // Synthesize a majority 5 with majority 3s

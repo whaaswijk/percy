@@ -15,7 +15,7 @@ void profile(int nr_in, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder(solver);
+    ssv_encoder encoder(solver);
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));

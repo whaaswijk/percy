@@ -36,7 +36,7 @@ main(void)
 
     gen.gen_type(GEN_NOREAPPLY);
     //gen.verbosity(1);
-    for (int i = 1; i <= 8; i++) {
+    for (int i = 1; i <= 10; i++) {
         gen.reset(i);
         auto nr_dags = gen.count_dags();
         printf("Found %llu noreapply dags with %d vertices\n", nr_dags, i);

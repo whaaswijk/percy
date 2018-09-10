@@ -17,9 +17,9 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
     bsat_wrapper solver;
 #ifdef USE_SYRUP
     glucose_wrapper glu_solver;
-    knuth_encoder glu_encoder(glu_solver);
+    ssv_encoder glu_encoder(glu_solver);
 #endif
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
     knuth_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(nr_in);
 
@@ -128,10 +128,10 @@ void check_pf_equivalence5()
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
 #ifdef USE_SYRUP
     glucose_wrapper glu_solver;
-    knuth_encoder glu_encoder(glu_solver);
+    ssv_encoder glu_encoder(glu_solver);
 #endif
     knuth_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(5);

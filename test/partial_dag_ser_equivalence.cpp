@@ -33,7 +33,7 @@ void check_pd_equivalence()
 
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
     partial_dag_encoder encoder2(solver);
     encoder2.reset_sim_tts(nr_in);
 

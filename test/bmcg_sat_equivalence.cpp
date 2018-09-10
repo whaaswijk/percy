@@ -12,9 +12,9 @@ using kitty::dynamic_truth_table;
 void check_std_equivalence(int nr_in, bool full_coverage)
 {
     bsat_wrapper bsat_solver;
-    knuth_encoder bsat_enc(bsat_solver);
+    ssv_encoder bsat_enc(bsat_solver);
     bmcg_wrapper bmcg_solver;
-    knuth_encoder bmcg_enc(bmcg_solver);
+    ssv_encoder bmcg_enc(bmcg_solver);
 
     spec spec;
     spec.verbosity = 0;

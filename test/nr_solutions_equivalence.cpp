@@ -19,7 +19,7 @@ int main(void)
         spec.verbosity = 0;
 
         bsat_wrapper solver;
-        knuth_encoder enc_knuth(solver);
+        ssv_encoder enc_knuth(solver);
         epfl_encoder enc_epfl(solver);
         berkeley_encoder enc_berk(solver);
         chain c;

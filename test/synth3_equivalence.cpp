@@ -26,7 +26,7 @@ void check_equivalence(int nr_in, bool full_coverage)
     chain c3, c3_cegar;
 
     bsat_wrapper solver;
-    knuth_encoder encoder(solver);
+    ssv_encoder encoder(solver);
 
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);

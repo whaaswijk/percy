@@ -182,6 +182,7 @@ int main()
         printf("MAJ-7 time elapsed (MAJ PARR): %lldus\n", parr_elapsed);
         printf("MAJ-7 time elapsed (MAJ PARR NOCEGAR): %lldus\n", parr_nocegar_elapsed);
 
+        /*
         start = std::chrono::steady_clock::now();
         res = maj_pd_synthesize(spec, mig, dags, solver, encoder);
         const auto pd_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -194,7 +195,6 @@ int main()
         
         printf("MAJ-7 time elapsed (MAJ PD): %lldus\n", pd_elapsed);
 
-        /*
         start = std::chrono::steady_clock::now();
         res = maj_synthesize(spec, mig, solver, encoder);
         const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(

@@ -71,7 +71,7 @@ void profile5(const std::vector<partial_dag>& dags)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder(solver);
+    ssv_encoder encoder(solver);
     partial_dag_encoder pd_encoder(solver);
     pd_encoder.reset_sim_tts(5);
 

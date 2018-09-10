@@ -16,9 +16,9 @@ void check_std_equivalence()
 #ifndef DISABLE_SATOKO
 
     bsat_wrapper bsat_solver;
-    knuth_encoder bsat_enc(bsat_solver);
+    ssv_encoder bsat_enc(bsat_solver);
     satoko_wrapper satoko_solver;
-    knuth_encoder satoko_enc(satoko_solver);
+    ssv_encoder satoko_enc(satoko_solver);
 
     percy::spec spec;
     spec.verbosity = 0;

@@ -34,7 +34,7 @@ main(void)
     // Generate cnf formulas up to the minimum nr of steps and
     // make sure that all but the last are UNSAT.
     cnf_formula cnf;
-    knuth_encoder encoder(cnf);
+    ssv_encoder encoder(cnf);
 
     for (int i = 1; i <= min_nr_steps; i++) {
         const auto filename = std::string("cnf_") + std::to_string(i) + std::string(".cnf");

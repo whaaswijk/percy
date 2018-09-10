@@ -16,7 +16,7 @@ int main(void)
     spec.verbosity = 0;
 
     bsat_wrapper solver;
-    knuth_encoder encoder(solver);
+    ssv_encoder encoder(solver);
     chain c;
 
     static_truth_table<2> tt2;

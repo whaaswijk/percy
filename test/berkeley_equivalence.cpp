@@ -12,7 +12,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
     spec.verbosity = 0;
 
     bsat_wrapper solver;
-    knuth_encoder knuth_enc(solver);
+    ssv_encoder knuth_enc(solver);
     berkeley_encoder epfl_enc(solver);
 
     // don't run too many tests.

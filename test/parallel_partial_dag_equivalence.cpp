@@ -15,7 +15,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
     partial_dag_encoder encoder2(solver);
     encoder2.reset_sim_tts(nr_in);
 
@@ -110,7 +110,7 @@ void check_pd_equivalence5()
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
     partial_dag_encoder encoder2(solver);
     encoder2.reset_sim_tts(5);
 

@@ -15,7 +15,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
@@ -77,7 +77,7 @@ void check_pd_equivalence5()
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder encoder1(solver);
+    ssv_encoder encoder1(solver);
 
     // don't run too many tests.
     auto max_tests = MAX_TESTS;

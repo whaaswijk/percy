@@ -248,7 +248,7 @@ namespace percy
 
         switch (enc_type) {
         case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
+            enc = new ssv_encoder(solver);
             break;
         case ENC_EPFL:
             enc = new epfl_encoder(solver);
@@ -279,7 +279,7 @@ namespace percy
 
         switch (enc_type) {
         case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
+            enc = new ssv_encoder(solver);
             break;
         case ENC_EPFL:
             enc = new epfl_encoder(solver);

@@ -11,7 +11,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_encoder knuth_enc(solver);
+    ssv_encoder knuth_enc(solver);
     epfl_encoder epfl_enc(solver);
 
     spec.verbosity = 0;
