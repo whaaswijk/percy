@@ -28,7 +28,7 @@ void check_std_equivalence()
     } 
 
     glucose_wrapper solver2;
-    knuth_encoder encoder2(solver2);
+    ssv_encoder encoder2(solver2);
 
     std::vector<int> nrs_threads = { 1, 2, 3, 4 };
 

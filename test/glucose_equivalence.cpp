@@ -17,8 +17,8 @@ void check_std_equivalence(bool full_coverage)
     bsat_wrapper solver1;
     glucose_wrapper solver2;
 
-    knuth_encoder encoder1(solver1);
-    knuth_encoder encoder2(solver2);
+    ssv_encoder encoder1(solver1);
+    ssv_encoder encoder2(solver2);
 
     spec.verbosity = 0;
 

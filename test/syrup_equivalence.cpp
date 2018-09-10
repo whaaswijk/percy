@@ -14,10 +14,10 @@ using kitty::dynamic_truth_table;
 void check_std_equivalence(int nr_in, bool full_coverage)
 {
     bsat_wrapper solver1;
-    knuth_encoder encoder1(solver1);
+    ssv_encoder encoder1(solver1);
 
     glucose_wrapper solver2;
-    knuth_encoder encoder2(solver2);
+    ssv_encoder encoder2(solver2);
 
     spec spec;
     spec.verbosity = 0;
