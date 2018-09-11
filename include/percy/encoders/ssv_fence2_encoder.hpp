@@ -356,19 +356,19 @@ namespace percy
         }
 
         /// Ensure that each gate has 2 operands.
-        void create_fanin_clauses(const spec& spec)
+        bool create_fanin_clauses(const spec& spec)
         {
+            bool res = true;
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto nr_svars_for_i = nr_svars_for_step(spec, i);
                 for (int j = 0; j < nr_svars_for_i; j++) {
                     const auto sel_var = get_sel_var(spec, i, j);
                     pabc::Vec_IntSetEntry(vLits, j, pabc::Abc_Var2Lit(sel_var, 0));
                 }
-
-                const auto res = solver->add_clause(pabc::Vec_IntArray(vLits), 
+                res &= solver->add_clause(pabc::Vec_IntArray(vLits), 
                         pabc::Vec_IntArray(vLits) + nr_svars_for_i);
-                assert(res);
             }
+            return res;
         }
 
         /// Add clauses which ensure that every step is used at least once.
@@ -738,7 +738,9 @@ namespace percy
                 return false;
             }
 
-            create_fanin_clauses(spec);
+            if (!create_fanin_clauses(spec)) {
+                return false;
+            }
 
             if (spec.add_nontriv_clauses) {
                 create_nontriv_clauses(spec);
@@ -778,7 +780,9 @@ namespace percy
                 vcreate_tt_clauses(spec, t);
             }
             
-            create_fanin_clauses(spec);
+            if (!create_fanin_clauses(spec)) {
+                return false;
+            }
             create_cardinality_constraints(spec);
 
             if (spec.add_nontriv_clauses) {
@@ -882,7 +886,7 @@ namespace percy
             return sim_tts[spec.nr_in + spec.nr_steps - 1];
         }
 
-        void reset_sim_tts(int nr_in)
+        void reset_sim_tts(int nr_in) override 
         {
             for (int i = 0; i < NR_SIM_TTS; i++) {
                 sim_tts[i] = kitty::dynamic_truth_table(nr_in);

@@ -449,6 +449,7 @@ namespace percy
             return success;
         }
 
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
         fence f;
@@ -482,6 +483,9 @@ namespace percy
                         sim_tt = ~sim_tt;
                     }
                     auto xor_tt = sim_tt ^ (spec[0]);
+                    if (spec.has_dc_mask(0)) {
+                        xor_tt &= ~spec.get_dc_mask(0);
+                    }
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
                         encoder.extract_chain(spec, chain);
