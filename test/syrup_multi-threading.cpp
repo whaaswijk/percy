@@ -5,9 +5,6 @@
 
 using namespace percy;
 
-/*******************************************************************************
-    Verifies that our synthesizers' results are equivalent to each other.
-*******************************************************************************/
 template<int nr_in>
 void check_std_equivalence()
 {
@@ -30,7 +27,7 @@ void check_std_equivalence()
     glucose_wrapper solver2;
     ssv_encoder encoder2(solver2);
 
-    std::vector<int> nrs_threads = { 1, 2, 3, 4 };
+    std::vector<int> nrs_threads = { 2 };
 
     int ctr = 0;
     int64_t total_elapsed = 0;
@@ -80,11 +77,6 @@ void check_std_equivalence()
     }
 }
 
-/*******************************************************************************
-    By default, does not check for full equivalence of all n-input functions.
-    Users can specify a arbitrary runtime argument, which removes the limit on
-    the number of equivalence tests.
-*******************************************************************************/
 int main()
 {
 #ifndef TRAVIS_BUILD
