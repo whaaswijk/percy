@@ -297,6 +297,17 @@ namespace percy
                 return dc_functions[f_idx] && kitty::get_bit(dc_masks[f_idx], dc_idx);
             }
 
+            bool has_dc_mask(std::size_t f_idx) const
+            {
+                return dc_functions[f_idx];
+            }
+
+            const kitty::dynamic_truth_table& get_dc_mask(std::size_t f_idx) const
+            {
+                assert(f_idx < capacity);
+                return dc_masks[f_idx];
+            }
+
             int
             triv_func(int i) const
             {

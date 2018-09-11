@@ -177,6 +177,9 @@ namespace percy
                     encoder.extract_chain(spec, chain);
                     auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                    if (spec.has_dc_mask(0)) {
+                        xor_tt &= ~spec.get_dc_mask(0);
+                    }
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
                         if (stats) {

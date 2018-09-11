@@ -19,6 +19,7 @@ bool verify_simulated_dc_tt(
     return true;
 }
 
+template<class Encoder>
 void verify_dc(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_table& dc_mask)
 {
     assert(tt.num_vars() == dc_mask.num_vars());
@@ -29,7 +30,7 @@ void verify_dc(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_
     chain chain;
     spec spec;
     bmcg_wrapper solver;
-    ssv_encoder encoder(solver);
+    Encoder encoder(solver);
     spec[0] = tt;
 
     const auto res = synthesize(spec, chain, solver, encoder);
@@ -45,10 +46,18 @@ void verify_dc(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_
     const auto dc_tt = chain.simulate()[0];
     //printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
     assert(verify_simulated_dc_tt(tt, dc_tt, dc_mask));
+
+    const auto cegar_dc_res = synthesize(spec, chain, solver, encoder, SYNTH_STD_CEGAR);
+    assert(cegar_dc_res == success);
+    //printf("found a %d-step DC chain\n", chain.get_nr_steps());
+    const auto cegar_dc_tt = chain.simulate()[0];
+    //printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+    assert(verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask));
+
 }
 
-int
-main(void)
+template<class Encoder>
+void verify_encoder(void)
 {
     {
         kitty::dynamic_truth_table tt(3), dc(3);
@@ -63,7 +72,7 @@ main(void)
                 }
             }
 
-            verify_dc(tt, dc);
+            verify_dc<Encoder>(tt, dc);
         }
     }
     {
@@ -75,8 +84,8 @@ main(void)
         kitty::create_nth_var(x, 3);
 
         y = (a & b & x) | (~a & c & x);
-        dc = a & ~b & x | ~a & ~x;
-        verify_dc(y, dc);
+        dc = (a & ~b & x) | (~a & ~x);
+        verify_dc<Encoder>(y, dc);
     }
 
     {
@@ -101,7 +110,22 @@ main(void)
         printf("found a %d-step DC chain\n", c.get_nr_steps());
         printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
         verify_simulated_dc_tt(tt, dc_tt, dc_mask);
+
+
+        const auto cegar_result = synthesize(spec, c, solver, encoder, SYNTH_STD_CEGAR);
+        assert(cegar_result == success);
+        const auto cegar_dc_tt = c.simulate()[0];
+        printf("found a %d-step DC chain (CEGAR)\n", c.get_nr_steps());
+        printf("DC simulation tt\t %s (CEGAR)\n", kitty::to_binary(cegar_dc_tt).c_str());
+        verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask);
     }   
+}
+
+int main(void)
+{
+    verify_encoder<ssv_encoder>();
+    verify_encoder<msv_encoder>();
+    verify_encoder<ditt_encoder>();
     return 0;
 }
 

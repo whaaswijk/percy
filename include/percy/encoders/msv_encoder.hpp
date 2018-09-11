@@ -290,6 +290,9 @@ namespace percy
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
+                        if (spec.is_dont_care(h, t + 1)) {
+                            continue;
+                        }
                         auto outbit = kitty::get_bit(
                                 spec[spec.synth_func(h)], t+1);
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {

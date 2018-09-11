@@ -27,6 +27,9 @@ namespace percy
 
         bool fix_output_sim_vars(const spec& spec, int  t)
         {
+            if (spec.is_dont_care(0, t + 1)) {
+                return true;
+            }
             auto ilast_step = spec.nr_steps - 1;
             auto outbit = kitty::get_bit(
                 spec[spec.synth_func(0)], t + 1);
