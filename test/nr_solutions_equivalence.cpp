@@ -19,9 +19,9 @@ int main(void)
         spec.verbosity = 0;
 
         bsat_wrapper solver;
-        ssv_encoder enc_knuth(solver);
-        epfl_encoder enc_epfl(solver);
-        berkeley_encoder enc_berk(solver);
+        ssv_encoder enc_ssv(solver);
+        msv_encoder enc_msv(solver);
+        ditt_encoder enc_ditt(solver);
         chain c;
 
         dynamic_truth_table tt2(2);
@@ -34,11 +34,11 @@ int main(void)
             //kitty::print_binary(tt2);
             //printf("\n");
 
-            enc_knuth.reset();
-            enc_epfl.reset();
-            enc_berk.reset();
+            enc_ssv.reset();
+            enc_msv.reset();
+            enc_ditt.reset();
             auto solutions1 = 0;
-            while (next_solution(spec, c, solver, enc_knuth) == success) {
+            while (next_solution(spec, c, solver, enc_ssv) == success) {
                 assert(c.get_nr_steps() <= 1);
 
                 //printf("Next solution: ");
@@ -50,7 +50,7 @@ int main(void)
             }
 
             auto solutions2 = 0;
-            while (next_solution(spec, c, solver, enc_epfl) == success) {
+            while (next_solution(spec, c, solver, enc_msv) == success) {
                 assert(c.get_nr_steps() <= 1);
 
                 //printf("Next solution: ");
@@ -62,7 +62,7 @@ int main(void)
             }
 
             auto solutions3 = 0;
-            while (next_solution(spec, c, solver, enc_berk) == success) {
+            while (next_solution(spec, c, solver, enc_ditt) == success) {
                 assert(c.get_nr_steps() <= 1);
 
                 //printf("Next solution: ");
@@ -85,12 +85,12 @@ int main(void)
             //kitty::print_binary(tt3);
             //printf("\n");
 
-            enc_knuth.reset();
-            enc_epfl.reset();
-            enc_berk.reset();
+            enc_ssv.reset();
+            enc_msv.reset();
+            enc_ditt.reset();
             auto solutions1 = 0;
             //printf("=== SYNTH 1 ===\n");
-            while (next_solution(spec, c, solver, enc_knuth) == success) {
+            while (next_solution(spec, c, solver, enc_ssv) == success) {
                 //printf("Next solution: ");
                 //c.to_expression(std::cout);
                 //printf("\n");
@@ -100,7 +100,7 @@ int main(void)
             }
             auto solutions2 = 0;
             //printf("=== SYNTH 2 ===\n");
-            while (next_solution(spec, c, solver, enc_epfl) == success) {
+            while (next_solution(spec, c, solver, enc_msv) == success) {
                 //printf("Next solution: ");
                 //c.to_expression(std::cout);
                 //printf("\n");
@@ -111,7 +111,7 @@ int main(void)
 
             auto solutions3 = 0;
             //printf("=== SYNTH 3 ===\n");
-            while (next_solution(spec, c, solver, enc_berk) == success) {
+            while (next_solution(spec, c, solver, enc_ditt) == success) {
                 //printf("Next solution: ");
                 //c.to_expression(std::cout);
                 //printf("\n");
@@ -135,25 +135,25 @@ int main(void)
             //kitty::print_binary(tt4);
             //printf("\n");
 
-            enc_knuth.reset();
-            enc_epfl.reset();
-            enc_berk.reset();
+            enc_ssv.reset();
+            enc_msv.reset();
+            enc_ditt.reset();
             auto solutions1 = 0;
-            while (next_solution(spec, c, solver, enc_knuth) == success) {
+            while (next_solution(spec, c, solver, enc_ssv) == success) {
                 //printf("Next solution: (%d vertices)\n", c.get_nr_steps());
                 assert(c.satisfies_spec(spec));
                 solutions1++;
             }
 
             auto solutions2 = 0;
-            while (next_solution(spec, c, solver, enc_epfl) == success) {
+            while (next_solution(spec, c, solver, enc_msv) == success) {
                 //printf("Next solution: (%d vertices)\n", c.get_nr_steps());
                 assert(c.satisfies_spec(spec));
                 solutions2++;
             }
 
             auto solutions3 = 0;
-            while (next_solution(spec, c, solver, enc_berk) == success) {
+            while (next_solution(spec, c, solver, enc_ditt) == success) {
                 //printf("Next solution: (%d vertices)\n", c.get_nr_steps());
                 assert(c.satisfies_spec(spec));
                 solutions3++;

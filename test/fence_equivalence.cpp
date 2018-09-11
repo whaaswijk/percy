@@ -16,8 +16,8 @@ void profile(int nr_in)
 
     bsat_wrapper solver;
     ssv_encoder encoder(solver);
-    knuth_fence_encoder fence_encoder(solver);
-    knuth_fence2_encoder fence2_encoder(solver);
+    ssv_fence_encoder fence_encoder(solver);
+    ssv_fence2_encoder fence2_encoder(solver);
     fence2_encoder.reset_sim_tts(nr_in);
 
     // don't run too many tests.
@@ -103,8 +103,8 @@ void profile5(void)
 
     bsat_wrapper solver;
     ssv_encoder encoder(solver);
-    knuth_fence_encoder fence_encoder(solver);
-    knuth_fence2_encoder fence2_encoder(solver);
+    ssv_fence_encoder fence_encoder(solver);
+    ssv_fence2_encoder fence2_encoder(solver);
     fence2_encoder.reset_sim_tts(5);
 
     // don't run too many tests.

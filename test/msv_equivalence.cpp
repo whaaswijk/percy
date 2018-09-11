@@ -11,8 +11,8 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    ssv_encoder knuth_enc(solver);
-    epfl_encoder epfl_enc(solver);
+    ssv_encoder ssv_enc(solver);
+    msv_encoder msv_enc(solver);
 
     spec.verbosity = 0;
 
@@ -29,25 +29,25 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
         kitty::create_from_words(tt, &i, &i+1);
 
         spec[0] = tt;
-        auto res1 = synthesize(spec, c1, solver, knuth_enc);
+        auto res1 = synthesize(spec, c1, solver, ssv_enc);
         assert(res1 == success);
         auto sim_tts1 = c1.simulate();
         auto c1_nr_vertices = c1.get_nr_steps();
         assert(c1.satisfies_spec(spec));
 
-        auto res1_cegar = synthesize(spec, c1_cegar, solver, knuth_enc, SYNTH_STD_CEGAR);
+        auto res1_cegar = synthesize(spec, c1_cegar, solver, ssv_enc, SYNTH_STD_CEGAR);
         assert(res1_cegar == success);
         auto sim_tts1_cegar = c1_cegar.simulate();
         auto c1_cegar_nr_vertices = c1_cegar.get_nr_steps();
         assert(c1_cegar.satisfies_spec(spec));
 
-        auto res2 = synthesize(spec, c2, solver, epfl_enc);
+        auto res2 = synthesize(spec, c2, solver, msv_enc);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c2.satisfies_spec(spec));
 
-        auto res2_cegar = synthesize(spec, c2_cegar, solver, epfl_enc, SYNTH_STD_CEGAR);
+        auto res2_cegar = synthesize(spec, c2_cegar, solver, msv_enc, SYNTH_STD_CEGAR);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_vertices = c2.get_nr_steps();
@@ -67,7 +67,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
 }
 
 /*******************************************************************************
-    Verifies that the EPFL encoding is equivalent to the Knuth encoding.
+    Verifies that the MSV encoding is equivalent to the SSV encoding.
 *******************************************************************************/
 int main(int argc, char **argv)
 {

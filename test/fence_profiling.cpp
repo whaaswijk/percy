@@ -15,7 +15,7 @@ void profile(int nr_in, bool full_coverage)
     spec spec;
 
     bsat_wrapper solver;
-    knuth_fence2_encoder encoder(solver);
+    ssv_fence2_encoder encoder(solver);
     encoder.reset_sim_tts(nr_in);
 
     // don't run too many tests.

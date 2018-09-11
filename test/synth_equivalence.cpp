@@ -17,7 +17,7 @@ void check_fence_equivalence(int nr_in, int FI, bool full_coverage)
 
     bsat_wrapper solver;
     ssv_encoder encoder1(solver);
-    knuth_fence2_encoder encoder2(solver);
+    ssv_fence2_encoder encoder2(solver);
     encoder2.reset_sim_tts(nr_in);
 
     // don't run too many tests.

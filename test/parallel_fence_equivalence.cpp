@@ -20,7 +20,7 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
     ssv_encoder glu_encoder(glu_solver);
 #endif
     ssv_encoder encoder1(solver);
-    knuth_fence2_encoder fence_encoder(solver);
+    ssv_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(nr_in);
 
     // don't run too many tests.
@@ -133,7 +133,7 @@ void check_pf_equivalence5()
     glucose_wrapper glu_solver;
     ssv_encoder glu_encoder(glu_solver);
 #endif
-    knuth_fence2_encoder fence_encoder(solver);
+    ssv_fence2_encoder fence_encoder(solver);
     fence_encoder.reset_sim_tts(5);
 
     // don't run too many tests.

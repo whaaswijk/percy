@@ -38,9 +38,9 @@ namespace percy
 
     enum EncoderType
     {
-        ENC_KNUTH,
-        ENC_EPFL,
-        ENC_BERKELEY,
+        ENC_SSV,
+        ENC_MSV,
+        ENC_DITT,
         ENC_FENCE,
         ENC_DAG,
         ENC_TOTAL
@@ -48,9 +48,9 @@ namespace percy
 
     const char* const EncoderTypeToString[ENC_TOTAL] = 
     {
-        "ENC_KNUTH",
-        "ENC_EPFL",
-        "ENC_BERKELEY",
+        "ENC_SSV",
+        "ENC_MSV",
+        "ENC_DITT",
         "ENC_FENCE",
         "ENC_DAG",
     };

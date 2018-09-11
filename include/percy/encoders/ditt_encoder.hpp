@@ -1,38 +1,38 @@
 #pragma once
 
 #include "encoder.hpp"
+#include "../misc.hpp"
 
 namespace percy
 {
-
-    class epfl_encoder : public std_encoder
+    class ditt_encoder : public std_encoder
     {
         private:
 			int nr_op_vars_per_step;
 			int nr_op_vars;
 			int nr_out_vars;
-			int nr_sim_vars;
-			int nr_sel_vars;
-			int nr_res_vars;
+			int nr_tt_vars;
+			int nr_input_tt_vars;
 			int nr_lex_vars;
+			int nr_sel_vars;
             int sel_offset;
-            int res_offset;
             int ops_offset;
             int out_offset;
-            int sim_offset;
+            int tt_offset;
+            int input_tt_offset;
             int lex_offset;
             int total_nr_vars;
             
             pabc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
-            epfl_encoder(solver_wrapper& solver)
+            ditt_encoder(solver_wrapper& solver)
             {
                 vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
-            ~epfl_encoder()
+            ~ditt_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }
@@ -49,35 +49,24 @@ namespace percy
             }
 
             int
-            get_sel_var(const spec& spec, int step_idx, int svar_idx) const
+            get_sel_var(const spec& spec, int i, int j, int k) 
+            const
             {
-                assert(step_idx < spec.nr_steps);
-                assert(svar_idx < (spec.get_nr_in() + step_idx));
+                assert(i < spec.nr_steps);
+                assert(j < spec.get_nr_in() + i);
+                assert(k < spec.fanin);
 
-                auto offset = 0;
-                for (int i = 0; i < step_idx; i++) {
-                    offset += (spec.get_nr_in() + i);
+                auto prev_svars = 0;
+                for (int ip = 0; ip < i; ip++) {
+                    prev_svars += spec.fanin * (spec.get_nr_in() + ip);
                 }
 
-                return sel_offset + offset + svar_idx;
-            }
-
-            int
-            get_res_var(const spec& spec, int step_idx, int res_var_idx) const
-            {
-                assert(step_idx < spec.nr_steps);
-                assert(res_var_idx < (spec.fanin + 2) * (spec.get_nr_in() + step_idx + 1));
-
-                auto offset = 0;
-                for (int i = 0; i < step_idx; i++) {
-                    offset += (spec.get_nr_in() + i + 1) * (spec.fanin + 2);
-                }
-
-                return res_offset + offset + res_var_idx;
+                return sel_offset + prev_svars + k * (spec.get_nr_in() + i) + j;
             }
 
             int 
-            get_out_var(const spec& spec, int h, int i) const
+            get_out_var(const spec& spec, int h, int i) 
+            const
             {
                 assert(h < spec.nr_nontriv);
                 assert(i < spec.nr_steps);
@@ -86,12 +75,28 @@ namespace percy
             }
 
             int
-            get_sim_var(const spec& spec, int step_idx, int t) const
+            get_tt_var(const spec& spec, int i, int t) const
             {
-                assert(step_idx < spec.nr_steps);
+                assert(i < spec.nr_steps);
                 assert(t < spec.get_tt_size());
 
-                return sim_offset + spec.get_tt_size() * step_idx + t;
+                return tt_offset + spec.get_tt_size() * i + t;
+            }
+
+            int
+            get_input_tt_var(const spec& spec, int i, int t, int k)
+            const
+            {
+                assert(k < spec.fanin);
+                assert(t < spec.get_tt_size());
+
+                auto prev_itt_vars = 0;
+                for (int ip = 0; ip < i; ip++) {
+                    prev_itt_vars += spec.fanin * spec.get_tt_size();
+                }
+
+                return input_tt_offset + prev_itt_vars + 
+                    k * spec.get_tt_size() + t;
             }
 
             int
@@ -103,37 +108,56 @@ namespace percy
                 return lex_offset + step_idx * (nr_op_vars_per_step - 1) + op_idx;
             }
 
-            /*******************************************************************
-                Ensures that each gate has FI operands.
-            *******************************************************************/
-            void create_op_clauses(const spec& spec)
+            /// Ensures that each gate has spec.fanin operands AND that
+            /// fanins are ordered tuples.
+            bool 
+            create_op_clauses(const spec& spec)
             {
-                std::vector<int> svars;
-                std::vector<int> res_vars;
+                int pLits[2];
+                auto status = true;
+
+                if (spec.verbosity > 2) {
+                    printf("Creating op clauses (DITT-%d)\n", spec.fanin);
+                    printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
+                }
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    svars.clear();
-                    res_vars.clear();
-
-                    const auto nr_svars = spec.get_nr_in() + i;
-                    for (int j = 0; j < nr_svars; j++) {
-                        svars.push_back(get_sel_var(spec, i, j));
+                    for (int k = 0; k < spec.fanin; k++) {
+                        int ctr = 0;
+                        const auto max_fanin_idx = spec.get_nr_in() + i - spec.fanin + k;
+                        for (int j = k; j <= max_fanin_idx; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            pabc::Vec_IntSetEntry(vLits, ctr++,
+                                pabc::Abc_Var2Lit(s_ij_k, 0));
+                        }
+                        status &= solver->add_clause(
+                            pabc::Vec_IntArray(vLits),
+                            pabc::Vec_IntArray(vLits) + ctr
+                        );
                     }
-
-                    const auto nr_res_vars = (spec.fanin + 2) * (nr_svars + 1);
-                    for (int j = 0; j < nr_res_vars; j++) {
-                        res_vars.push_back(get_res_var(spec, i, j));
-                    }
-
-                    create_cardinality_circuit(solver, svars, res_vars, spec.fanin);
-
-                    // Ensure that the fanin cardinality for each step i is
-                    // exactly FI.
-                    const auto fi_var = 
-                        get_res_var(spec, i, (spec.get_nr_in() + i) * (spec.fanin + 2) + spec.fanin);
-                    auto fi_lit = pabc::Abc_Var2Lit(fi_var, 0);
-                    (void)solver->add_clause(&fi_lit, &fi_lit + 1);
                 }
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    for (int k = 0; k < spec.fanin - 1; k++) {
+                        const auto max_fanin_idx = spec.get_nr_in() + i - spec.fanin + k;
+                        for (int j = k; j <= max_fanin_idx; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            pLits[0] = pabc::Abc_Var2Lit(s_ij_k, 1);
+                            for (int kp = k + 1; kp < spec.fanin; kp++) {
+                                for (int jp = 0; jp <= j; jp++) {
+                                    const auto s_ijp_kp = get_sel_var(spec, i, jp, kp);
+                                    pLits[1] = pabc::Abc_Var2Lit(s_ijp_kp, 1);
+                                    status &= solver->add_clause(pLits, pLits + 2);
+                                    assert(status);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (spec.verbosity > 2) {
+                    printf("Nr. clauses = %d (POST)\n", solver->nr_clauses());
+                }
+
+                return status;
             }
 
             bool 
@@ -142,9 +166,8 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating output clauses (EPFL-%d)\n", spec.fanin);
-                    printf("Nr. clauses = %d (PRE)\n",
-                            solver->nr_clauses());
+                    printf("Creating output clauses (DITT-%d)\n", spec.fanin);
+                    printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 // Every output points to an operand.
                 if (spec.nr_nontriv > 1) {
@@ -186,8 +209,7 @@ namespace percy
                                 h + 1, spec.get_nr_in() + last_op + 1);
                     }
                     printf(") (status = %d)\n", status);
-                    printf("Nr. clauses = %d (POST)\n",
-                            solver->nr_clauses());
+                    printf("Nr. clauses = %d (POST)\n", solver->nr_clauses());
                 }
 
                 return status;
@@ -199,32 +221,32 @@ namespace percy
                 nr_op_vars_per_step = ((1u << spec.fanin) - 1);
                 nr_op_vars = spec.nr_steps * nr_op_vars_per_step;
                 nr_out_vars = spec.nr_nontriv * spec.nr_steps;
-                nr_sim_vars = spec.nr_steps * spec.get_tt_size();
+                nr_tt_vars = spec.nr_steps * spec.get_tt_size();
+                nr_input_tt_vars = spec.fanin * spec.nr_steps * spec.get_tt_size();
                 nr_lex_vars = (spec.nr_steps - 1) * (nr_op_vars_per_step - 1);
                 nr_sel_vars = 0;
-                nr_res_vars = 0;
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    nr_sel_vars += (spec.get_nr_in() + i);
-                    nr_res_vars += (spec.get_nr_in() + i + 1) * (spec.fanin + 2);
+                    const auto nr_svars_for_i = spec.fanin * (spec.get_nr_in() + i);
+                    nr_sel_vars += nr_svars_for_i;
                 }
                 sel_offset = 0;
-                res_offset = nr_sel_vars;
-                ops_offset = nr_res_vars + nr_sel_vars;
-                out_offset = nr_res_vars + nr_sel_vars + nr_op_vars;
-                sim_offset = nr_res_vars + nr_sel_vars + nr_op_vars + nr_out_vars;
-                lex_offset = nr_res_vars + nr_sel_vars + nr_op_vars + nr_out_vars + nr_sim_vars;
+                ops_offset = nr_sel_vars;
+                out_offset = nr_sel_vars + nr_op_vars;
+                tt_offset = nr_sel_vars + nr_op_vars + nr_out_vars;
+                input_tt_offset = nr_sel_vars + nr_op_vars + nr_out_vars + nr_tt_vars;
+                lex_offset = nr_sel_vars + nr_op_vars + nr_out_vars + nr_tt_vars + nr_input_tt_vars;
                 
-                total_nr_vars = nr_op_vars + nr_out_vars + nr_sim_vars +
-                                nr_sel_vars + nr_res_vars + nr_lex_vars;
+                total_nr_vars = nr_op_vars + nr_out_vars + nr_tt_vars +
+                    nr_input_tt_vars + nr_sel_vars + nr_lex_vars;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating variables (EPFL-%d)\n", spec.fanin);
+                    printf("Creating variables (DITT-%d)\n", spec.fanin);
                     printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
-                    printf("nr_res_vars=%d\n", nr_res_vars);
                     printf("nr_op_vars = %d\n", nr_op_vars);
                     printf("nr_out_vars = %d\n", nr_out_vars);
-                    printf("nr_sim_vars = %d\n", nr_sim_vars);
+                    printf("nr_tt_vars = %d\n", nr_tt_vars);
+                    printf("nr_input_tt_vars = %d\n", nr_input_tt_vars);
                     printf("nr_lex_vars = %d\n", nr_lex_vars);
                     printf("creating %d total variables\n", total_nr_vars);
                 }
@@ -233,59 +255,118 @@ namespace percy
             }
 
             bool
+            add_simulation_clause(
+                    const spec& spec, 
+                    const int t, 
+                    const int i, 
+                    const int output, 
+                    const int opvar_idx,
+                    const std::vector<int>& fanin_asgn)
+            {
+                pabc::Vec_IntSetEntry(vLits, 0,
+                    pabc::Abc_Var2Lit(get_tt_var(spec, i, t), output));
+                
+                int ctr = 1;
+                if (spec.verbosity > 3) {
+                    //printf("assignment: %s\n", fanin_asgn.to_string().c_str());
+                }
+                for (int k = 0; k < spec.fanin; k++) {
+                    const auto x_it_k = get_input_tt_var(spec, i, t, k);
+                    pabc::Vec_IntSetEntry(vLits, ctr++,
+                        pabc::Abc_Var2Lit(x_it_k, fanin_asgn[k]));
+                }
+
+                //printf("opvar_idx=%d\n", opvar_idx);
+                if (opvar_idx > 0) {
+                    pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(
+                                get_op_var(spec, i, opvar_idx), 1 - output));
+                }
+
+                const auto status = solver->add_clause(
+                        pabc::Vec_IntArray(vLits),
+                        pabc::Vec_IntArray(vLits) + ctr); 
+
+                return status;
+            }
+
+            bool 
             create_tt_clauses(const spec& spec, const int t)
             {
                 auto ret = true;
-                std::vector<int> fanin_asgn(spec.fanin);
-                std::vector<int> fanins(spec.fanin);
-                std::vector<int> fanin_svars(spec.fanin);
-                int pLits[2];
+                int pLits[3];
+                std::vector<int> fanin_asign(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    // Generate the appropriate constraints for all fanin combinations.
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    std::string bitmask(spec.fanin, 1);
-                    bitmask.resize(nr_svars_for_i, 0);
-                    do {
-                        auto selected_idx = 0;
-                        for (int svar_idx = 0; svar_idx < nr_svars_for_i; svar_idx++) {
-                            if (bitmask[svar_idx]) {
-                                fanins[selected_idx] = svar_idx;
-                                fanin_svars[selected_idx] = get_sel_var(spec, i, svar_idx);
-                                selected_idx++;
+                    // Encode propagation of truth tables:
+                    // if s_ij^k, then x_it^k = x_jt
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto svar = get_sel_var(spec, i, j, k);
+                            const auto x_it_k = get_input_tt_var(spec, i, t, k);
+                            if (j < spec.get_nr_in()) {
+                                // In this case, we know the value of
+                                // x_jt a-priori
+                                const auto val = ((t + 1) & (1 << j)) ? 1 : 0;
+                                pLits[0] = pabc::Abc_Var2Lit(svar, 1);
+                                pLits[1] = pabc::Abc_Var2Lit(x_it_k, 1 - val);
+                                ret &= solver->add_clause(pLits, pLits + 2);
+                            } else {
+                                const auto x_jt = get_tt_var(spec, j - spec.get_nr_in(), t);
+
+                                pLits[0] = pabc::Abc_Var2Lit(svar, 1);
+                                pLits[1] = pabc::Abc_Var2Lit(x_it_k, 1);
+                                pLits[2] = pabc::Abc_Var2Lit(x_jt, 0);
+                                ret &= solver->add_clause(pLits, pLits + 3);
+
+                                pLits[1] = pabc::Abc_Var2Lit(x_it_k, 0);
+                                pLits[2] = pabc::Abc_Var2Lit(x_jt, 1);
+                                ret &= solver->add_clause(pLits, pLits + 3);
                             }
                         }
-                        assert(selected_idx == spec.fanin);
+                    }
 
-                        // First add clauses for all cases where the
-                        // operator i computes zero.
-                        int opvar_idx = 0;
-                        clear_assignment(fanin_asgn);
-                        while (true) {
-                            next_assignment(fanin_asgn);
-                            if (is_zero(fanin_asgn)) {
-                                break;
-                            }
-                            opvar_idx++;
-                            ret &= add_simulation_clause(spec, t, i, 0,
-                                    opvar_idx, fanins, fanin_svars, fanin_asgn);
+                    // Fix the input truth tables if this step has a PI 
+                    // as fanin
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in(); j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            const auto x_it_k = get_input_tt_var(spec, i, t, k);
+                            const auto val = ((t + 1) & (1 << j)) ? 1 : 0;
+                            pLits[0] = pabc::Abc_Var2Lit(s_ij_k, 1);
+                            pLits[1] = pabc::Abc_Var2Lit(x_it_k, 1 - val);
+                            ret &= solver->add_clause(pLits, pLits + 2);
                         }
+                    }
 
-                        // Next, all cases where operator i computes one.
-                        opvar_idx = 0;
+                    // Encode operator/truth table constraints
+                    // First add clauses for all cases where step i
+                    // computes zero.
+                    int opvar_idx = 0;
+                    clear_assignment(fanin_asign);
+                    while (true) {
+                        next_assignment(fanin_asign);
+                        if (is_zero(fanin_asign)) {
+                            break;
+                        }
+                        opvar_idx++;
+                        ret &= add_simulation_clause(spec, t, i, 0, 
+                            opvar_idx, fanin_asign);
+                    }
+
+                    // Next, all the cases where it computes one.
+                    opvar_idx = 0;
+                    ret &= add_simulation_clause(spec, t, i, 1,
+                                opvar_idx, fanin_asign);
+                    while (true) {
+                        next_assignment(fanin_asign);
+                        if (is_zero(fanin_asign)) {
+                            break;
+                        }
+                        opvar_idx++;
                         ret &= add_simulation_clause(spec, t, i, 1,
-                                opvar_idx, fanins, fanin_svars, fanin_asgn);
-                        while (true) {
-                            next_assignment(fanin_asgn);
-                            if (is_zero(fanin_asgn)) {
-                                break;
-                            }
-                            opvar_idx++;
-                            ret &= add_simulation_clause(spec, t, i, 1,
-                                    opvar_idx, fanins, fanin_svars, fanin_asgn);
-                        }
-                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
-
+                            opvar_idx, fanin_asign);
+                    }
+                    
                     // If an output has selected this particular operand, we
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
@@ -296,13 +377,13 @@ namespace percy
                             outbit = 1 - outbit;
                         }
                         pLits[0] = pabc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
-                        pLits[1] = pabc::Abc_Var2Lit(get_sim_var(spec, i, t), 
+                        pLits[1] = pabc::Abc_Var2Lit(get_tt_var(spec, i, t), 
                                 1 - outbit);
                         ret &= solver->add_clause(pLits, pLits+2);
                         if (spec.verbosity > 2) {
                             printf("creating oimp clause: ( ");
                             printf("!g_%d_%d \\/ %sx_%d_%d ) (status=%d)\n", 
-                                    h+1, 
+                                    h + 1, 
                                     spec.get_nr_in() + i + 1, 
                                     (1 - outbit) ?  "!" : "",
                                     spec.get_nr_in() + i + 1, 
@@ -319,9 +400,8 @@ namespace percy
             create_main_clauses(const spec& spec)
             {
                 if (spec.verbosity > 2) {
-                    printf("Creating main clauses (EPFL-%d)\n", spec.fanin);
-                    printf("Nr. clauses = %d (PRE)\n",
-                            solver->nr_clauses());
+                    printf("Creating main clauses (DITT-%d)\n", spec.fanin);
+                    printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 auto success = true;
 
@@ -330,87 +410,11 @@ namespace percy
                 }
 
                 if (spec.verbosity > 2) {
-                    printf("Nr. clauses = %d (POST)\n",
-                            solver->nr_clauses());
+                    printf("Nr. clauses = %d (POST)\n", solver->nr_clauses());
+                    printf("success = %d\n", success);
                 }
 
                 return success;
-            }
-
-            bool 
-            add_simulation_clause(
-                    const spec& spec, 
-                    const int t, 
-                    const int i, 
-                    const int output, 
-                    const int opvar_idx,
-                    const std::vector<int>& fanins,
-                    const std::vector<int>& fanin_svars,
-                    const std::vector<int>& fanin_asgn)
-            {
-                int ctr = 0;
-
-                if (spec.verbosity > 3) {
-                    //printf("assignment: %s\n", fanin_asgn.to_string().c_str());
-                }
-
-                for (int j = 0; j < spec.fanin; j++) {
-                    auto child = fanins[j];
-                    auto assign = fanin_asgn[j];
-                    if (child < spec.get_nr_in()) {
-                        if ((((t + 1) & (1 << child) ) ? 1 : 0 ) != assign) {
-                            return true;
-                        }
-                    } else {
-                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(
-                                    get_sim_var(spec, child - spec.get_nr_in(),
-                                        t), assign));
-                    }
-                }
-
-                for (const auto svar : fanin_svars) {
-                    pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
-                }
-
-                pabc::Vec_IntSetEntry(vLits, ctr++,
-                        pabc::Abc_Var2Lit(get_sim_var(spec, i, t), output));
-
-                //printf("opvar_idx=%d\n", opvar_idx);
-                if (opvar_idx > 0) {
-                    pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(
-                                get_op_var(spec, i, opvar_idx), 1 - output));
-                }
-
-                auto status = solver->add_clause(
-                        pabc::Vec_IntArray(vLits),
-                        pabc::Vec_IntArray(vLits) + ctr); 
-
-                if (spec.verbosity > 2) {
-                    printf("creating sim. clause: (");
-                    for (const auto fanin : fanins) {
-                        printf(" !s_%d_%d ", spec.get_nr_in() + i + 1, fanin);
-                    }
-                    printf(" \\/ %sx_%d_%d ", output ? "!" : "", 
-                            spec.get_nr_in() + i + 1, t + 2);
-
-                    for (int j = 0; j < spec.fanin; j++) {
-                        auto child = fanins[j];
-                        auto assign = fanin_asgn[j];
-                        if (child < spec.get_nr_in()) {
-                            continue;
-                        }
-                        printf(" \\/ %sx_%d_%d ",
-                                    assign ? "!" : "", child + 1, t + 2);
-                    }
-                    if (opvar_idx > 0) {
-                        printf(" \\/ %sf_%d_%d ", 
-                                (1-output) ? "!" : "", 
-                                spec.get_nr_in() + i + 1, opvar_idx + 1);
-                    }
-                    printf(") (status=%d)\n", status);
-                }
-
-                return status;
             }
 
             /*******************************************************************
@@ -454,9 +458,11 @@ namespace percy
             /*******************************************************************
               Add clauses which ensure that every step is used at least once.
             *******************************************************************/
-            void 
+            bool 
             create_alonce_clauses(const spec& spec)
             {
+                bool status = true;
+
                 for (int i = 0; i < spec.nr_steps; i++) {
                     auto ctr = 0;
 
@@ -468,14 +474,21 @@ namespace percy
 
                     // Or one of the succeeding steps points to this step.
                     for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        const auto sel_var = get_sel_var(spec, ip, spec.get_nr_in() + i);
-                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(sel_var, 0));
+                        for (int k = 0; k < spec.fanin; k++) {
+                            const auto sel_var = get_sel_var(spec, ip, spec.get_nr_in() + i, k);
+                            pabc::Vec_IntSetEntry(
+                                vLits, 
+                                ctr++,
+                                pabc::Abc_Var2Lit(sel_var, 0));
+                        }
                     }
-                    auto status = solver->add_clause(
+                        
+                    status &= solver->add_clause(
                             pabc::Vec_IntArray(vLits),
                             pabc::Vec_IntArray(vLits) + ctr);
-                    assert(status);
                 }
+
+                return status;
             }
 
             /*******************************************************************
@@ -486,110 +499,114 @@ namespace percy
             void 
             create_noreapply_clauses(const spec& spec)
             {
+                std::vector<int> remaining_fanins;
                 std::vector<int> fanins(spec.fanin);
-                std::vector<int> fanin_svars(spec.fanin);
-                std::vector<int> pfanin_svars(spec.fanin);
-
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    // Generate the appropriate constraints for all fanin combinations.
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    std::string bitmask(spec.fanin, 1);
-                    bitmask.resize(nr_svars_for_i, 0);
-                    do {
-                        auto selected_idx = 0;
-                        for (int svar_idx = 0; svar_idx < nr_svars_for_i; svar_idx++) {
-                            if (bitmask[svar_idx]) {
-                                fanins[selected_idx] = svar_idx;
-                                fanin_svars[selected_idx] = get_sel_var(spec, i, svar_idx);
-                                selected_idx++;
-                            }
+                    const auto max_fanin = spec.get_nr_in() + i - 1;
+                    clear_assignment(fanins);
+                    while (true) {
+                        for (int k = 0; k < spec.fanin; k++) {
+                            const auto s_ij_k = get_sel_var(spec, i, fanins[k], k);
+                            pabc::Vec_IntSetEntry(vLits, k, pabc::Abc_Var2Lit(s_ij_k, 1));
                         }
-                        assert(selected_idx == spec.fanin);
 
-                        // Step i' cannot have both fanin i and the remaining FI - 1 fanins from
-                        // the same collection as the fanin of step i.
                         for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                            pfanin_svars[spec.fanin - 1] = get_sel_var(spec, ip, spec.get_nr_in() + i);
-                            for (int j = 0; j < spec.fanin; j++) {
-                                std::string bitmaskp(spec.fanin - 1, 1);
-                                bitmaskp.resize(spec.fanin, 0);
-                                do {
-                                    selected_idx = 0;
-                                    for (int fi_idx = 0; fi_idx < spec.fanin; fi_idx++) {
-                                        if (bitmaskp[fi_idx]) {
-                                            pfanin_svars[selected_idx++] = get_sel_var(spec, ip, fanins[fi_idx]);
-                                        }
-                                    }
-                                    assert(selected_idx == (spec.fanin - 1));
-
-                                    auto ctr = 0;
-                                    for (const auto svar : fanin_svars) {
-                                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
-                                    }
-                                    for (const auto svar : pfanin_svars) {
-                                        pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(svar, 1));
-                                    }
-                                    auto status = solver->add_clause(
-                                        pabc::Vec_IntArray(vLits),
-                                        pabc::Vec_IntArray(vLits) + ctr);
-                                    assert(status);
-                                } while (std::prev_permutation(bitmaskp.begin(), bitmaskp.end()));
+                            remaining_fanins.clear();
+                            for (int l = 0; l <= spec.get_nr_in() + ip - 1; l++) {
+                                if (l == spec.get_nr_in() + i) continue;
+                                if (std::find(fanins.begin(), fanins.end(), l) == fanins.end()) {
+                                    remaining_fanins.push_back(l);
+                                }
                             }
+                            // (s_i(j1)_1 /\ ... /\ (s_i(jm)_k) --> (s_(ip)i_1) --> (not one of the other fanins)
+                            // the other fanins be subsumed by the current
+                            // ifanin assignment to i.
+                            for (int k = 0; k < spec.fanin; k++) {
+                                auto ctr = spec.fanin;
+                                const auto s_ip_i_k = get_sel_var(spec, ip,
+                                    spec.get_nr_in() + i, k);
+                                pabc::Vec_IntSetEntry(vLits, ctr++, 
+                                    pabc::Abc_Var2Lit(s_ip_i_k, 1));
+
+                                for (int kp = 0; kp < spec.fanin; kp++) {
+                                    if (kp == k) continue;
+                                    for (const auto fanin : remaining_fanins) {
+                                        const auto s_ip_f_kp = get_sel_var(spec, ip, fanin, kp);
+                                        pabc::Vec_IntSetEntry(vLits, ctr++,
+                                            pabc::Abc_Var2Lit(s_ip_f_kp, 0));
+                                    }
+                                }
+                                const auto status = solver->add_clause(
+                                    pabc::Vec_IntArray(vLits),
+                                    pabc::Vec_IntArray(vLits) + ctr
+                                );
+                                assert(status);
+                            }
+
+                            
                         }
-                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
 
-
+                        inc_assignment(fanins, max_fanin);
+                        if (is_zero(fanins)) {
+                            break;
+                        }
+                    }
                 }
             }
 
             /*******************************************************************
                 Add clauses which ensure that steps occur in co-lexicographical
-                order.
+                order. In other words, we require steps operands to be 
+                co-lexicographically ordered tuples.
             *******************************************************************/
-            void 
+            bool 
             create_colex_clauses(const spec& spec)
             {
-                auto pLits = new int[2 * spec.fanin];
-                std::vector<int> fanins_i(spec.fanin);
-                std::vector<int> fanins_ip(spec.fanin);
+                bool status = true;
+                std::vector<int> fanins(spec.fanin);
+                std::vector<int> ip_fanins(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    std::string bitmask(spec.fanin, 1);
-                    bitmask.resize(nr_svars_for_i, 0);
-                    do {
-                        auto fanin_ctr = 0;
-                        for (int k = 0; k < nr_svars_for_i; k++) {
-                            if (bitmask[k]) {
-                                pLits[fanin_ctr] = pabc::Abc_Var2Lit(get_sel_var(spec, i, k), 1);
-                                fanins_i[fanin_ctr] = k;
-                                fanin_ctr++;
-                            }
-                        }
-                        assert(fanin_ctr == spec.fanin);
-
-                        const auto nr_svars_for_ip = spec.get_nr_in() + i + 1;
-                        std::string bitmask_ip(spec.fanin, 1);
-                        bitmask_ip.resize(nr_svars_for_ip, 0);
-                        do {
-                            fanin_ctr = 0;
-                            for (int k = 0; k < nr_svars_for_ip; k++) {
-                                if (bitmask_ip[k]) {
-                                    pLits[spec.fanin + fanin_ctr] = pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, k), 1);
-                                    fanins_ip[fanin_ctr] = k;
-                                    fanin_ctr++;
+                    clear_assignment(fanins);
+                    const auto max_fanin = spec.get_nr_in() + i - 1;
+                    while (true) {
+                        clear_assignment(ip_fanins);
+                        const auto max_ip_fanin = max_fanin + 1;
+                        while (true) {
+                            if (colex_compare(fanins, ip_fanins) < 1) {
+                                inc_assignment(ip_fanins, max_ip_fanin);
+                                if (is_zero(ip_fanins)) {
+                                    break;
+                                } else {
+                                    continue;
                                 }
                             }
-                            assert(fanin_ctr == spec.fanin);
-                            if (colex_compare(fanins_i, fanins_ip) == 1) {
-                                auto status = solver->add_clause(pLits, pLits + (spec.fanin * 2));
-                                assert(status);
+                            auto ctr = 0;
+                            for (int k = 0; k < spec.fanin; k++) {
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(get_sel_var(spec, i, fanins[k], k), 1));
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, ip_fanins[k], k), 1));
                             }
-                        } while (std::prev_permutation(bitmask_ip.begin(), bitmask_ip.end()));
-                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
-                }
 
-                delete[] pLits;
+                            status &= solver->add_clause(
+                                pabc::Vec_IntArray(vLits),
+                                pabc::Vec_IntArray(vLits) + ctr
+                            );
+                            
+                            inc_assignment(ip_fanins, max_ip_fanin);
+                            if (is_zero(ip_fanins)) {
+                                break;
+                            }
+                        }
+
+                        inc_assignment(fanins, max_fanin);
+                        if (is_zero(fanins)) {
+                            break;
+                        }
+                    }
+                }
+                return status;
             }
 
             /*******************************************************************
@@ -597,79 +614,79 @@ namespace percy
                 order. In other words, we require steps operands to be
                 lexicographically ordered tuples.
             *******************************************************************/
-            void 
+            bool
             create_lex_clauses(const spec& spec)
             {
-                auto pLits = new int[2 * spec.fanin];
-                std::vector<int> fanins_i(spec.fanin);
-                std::vector<int> fanins_ip(spec.fanin);
+                auto status = true;
+                std::vector<int> fanins(spec.fanin);
+                std::vector<int> ip_fanins(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    std::string bitmask(spec.fanin, 1);
-                    bitmask.resize(nr_svars_for_i, 0);
-                    do {
-                        auto fanin_ctr = 0;
-                        for (int k = 0; k < nr_svars_for_i; k++) {
-                            if (bitmask[k]) {
-                                pLits[fanin_ctr] = pabc::Abc_Var2Lit(get_sel_var(spec, i, k), 1);
-                                fanins_i[fanin_ctr] = k;
-                                fanin_ctr++;
-                            }
-                        }
-                        assert(fanin_ctr == spec.fanin);
-
-                        const auto nr_svars_for_ip = spec.get_nr_in() + i + 1;
-                        std::string bitmask_ip(spec.fanin, 1);
-                        bitmask_ip.resize(nr_svars_for_ip, 0);
-                        do {
-                            fanin_ctr = 0;
-                            for (int k = 0; k < nr_svars_for_ip; k++) {
-                                if (bitmask_ip[k]) {
-                                    pLits[spec.fanin + fanin_ctr] = pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, k), 1);
-                                    fanins_ip[fanin_ctr] = k;
-                                    fanin_ctr++;
+                    clear_assignment(fanins);
+                    const auto max_fanin = spec.get_nr_in() + i - 1;
+                    while (true) {
+                        clear_assignment(ip_fanins);
+                        const auto max_ip_fanin = max_fanin + 1;
+                        while (true) {
+                            if (lex_compare(fanins, ip_fanins) < 1) {
+                                inc_assignment(ip_fanins, max_ip_fanin);
+                                if (is_zero(ip_fanins)) {
+                                    break;
+                                } else {
+                                    continue;
                                 }
                             }
-                            assert(fanin_ctr == spec.fanin);
-                            if (lex_compare(fanins_i, fanins_ip) == 1) {
-                                auto status = solver->add_clause(pLits, pLits + (spec.fanin * 2));
-                                assert(status);
+                            auto ctr = 0;
+                            for (int k = 0; k < spec.fanin; k++) {
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(get_sel_var(spec, i, fanins[k], k), 1));
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, ip_fanins[k], k), 1));
                             }
-                        } while (std::prev_permutation(bitmask_ip.begin(), bitmask_ip.end()));
-                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+
+                            status &= solver->add_clause(
+                                pabc::Vec_IntArray(vLits),
+                                pabc::Vec_IntArray(vLits) + ctr
+                            );
+                            
+                            inc_assignment(ip_fanins, max_ip_fanin);
+                            if (is_zero(ip_fanins)) {
+                                break;
+                            }
+                        }
+
+                        inc_assignment(fanins, max_fanin);
+                        if (is_zero(fanins)) {
+                            break;
+                        }
+                    }
                 }
+                return status;
             }
 
             /*******************************************************************
-                Ensure that Boolean operators are lexicographically ordered.
+                Ensure that Boolean operators are lexicographically ordered:
+                (S_ijk /\ S_(i+1)jk) ==> f_i <= f_(i+1)
             *******************************************************************/
             void 
             create_lex_func_clauses(const spec& spec)
             {
+                std::vector<int> fanins(spec.fanin);
+                std::vector<int> fvar_asgns(spec.fanin);
                 int lits[3];
-                std::vector<int> fanin(spec.fanin);
-                std::vector<int> fvar_asgns;
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    std::string bitmask(spec.fanin, 1);
-                    bitmask.resize(nr_svars_for_i, 0);
-                    do {
-                        auto fanin_ctr = 0;
-                        for (int j = 0; j < nr_svars_for_i; j++) {
-                            if (bitmask[j]) {
-                                fanin[fanin_ctr++] = j;
-                            }
-                        }
-                        assert(fanin_ctr == spec.fanin);
-
-                        auto ctr = 0;
+                    clear_assignment(fanins);
+                    const auto max_fanin = spec.get_nr_in() + i - 1;
+                    while (true) {
+                        auto base_ctr = 0;
                         for (int k = 0; k < spec.fanin; k++) {
-                            Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(get_sel_var(spec, i, fanin[k]), 1));
-                            Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(get_sel_var(spec, i + 1, fanin[k]), 1));
+                            auto sel_var = get_sel_var(spec, i, fanins[k], k);
+                            Vec_IntSetEntry(vLits, base_ctr++, pabc::Abc_Var2Lit(sel_var, 1));
+                            sel_var = get_sel_var(spec, i + 1, fanins[k], k);
+                            Vec_IntSetEntry(vLits, base_ctr++, pabc::Abc_Var2Lit(sel_var, 1));
                         }
-                        assert(ctr == spec.fanin * 2);
+
                         // The steps have the same fanin, so enforce lexicographical order.
                         // We do this by constraining the operator variables of both steps.
                         // Note: the operator variable with the highest index is used 
@@ -677,7 +694,7 @@ namespace percy
                         for (int op_idx = 0; op_idx < nr_op_vars_per_step; op_idx++) {
                             // Inequality only has to hold if all previous operator variables
                             // are equal.
-                            ctr = spec.fanin * 2;
+                            auto ctr = base_ctr;
                             for (int prev_idx = 0; prev_idx < op_idx; prev_idx++) {
                                 const auto prev_alpha_i = get_lex_var(spec, i, prev_idx);
                                 Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(prev_alpha_i, 1));
@@ -714,7 +731,12 @@ namespace percy
                             lits[2] = pabc::Abc_Var2Lit(ipop_var, 0);
                             solver->add_clause(lits, lits + 3);
                         }
-                    } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+
+                        inc_assignment(fanins, max_fanin);
+                        if (is_zero(fanins)) {
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -737,25 +759,38 @@ namespace percy
                         if (!symm) {
                             continue;
                         }
-                        if (spec.verbosity > 1) {
+                        if (spec.verbosity) {
                             printf("  variables x_%d and x_%d are symmetric\n",
                                     p+1, q+1);
                         }
 
                         for (int i = 0; i < spec.nr_steps; i++) {
-                            const auto svar_p = get_sel_var(spec, i, p);
-                            const auto svar_q = get_sel_var(spec, i, q);
+                            // If (has_input(i, q) and !has_input(i, p)) --> (has_input(i-1, p) \/ ... \/ has_input(0, p))
+                            for (int k = 0; k < spec.fanin; k++) {
+                                int ctr = 0;
+                                auto sel_var = get_sel_var(spec, i, q, k);
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(sel_var, 1));
 
-                            pabc::Vec_IntSetEntry(vLits, 0, pabc::Abc_Var2Lit(svar_p, 0));
-                            pabc::Vec_IntSetEntry(vLits, 1, pabc::Abc_Var2Lit(svar_q, 1));
+                                for (int kp = 0; kp < spec.fanin; kp++) {
+                                    if (kp == k) continue;
+                                    sel_var = get_sel_var(spec, i, p, kp);
+                                    pabc::Vec_IntSetEntry(vLits, ctr++,
+                                        pabc::Abc_Var2Lit(sel_var, 0));
+                                }
 
-                            auto ctr = 2;
-                            for (int ip = 0; ip < i; ip++) {
-                                const auto ip_svar_p = get_sel_var(spec, ip, p);
-                                pabc::Vec_IntSetEntry(vLits, ctr++, pabc::Abc_Var2Lit(ip_svar_p, 0));
-                            }
-                            if (!solver->add_clause(Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr)) {
-                                return false;
+                                for (int ip = 0; ip < i; ip++) {
+                                    for (int k = 0; k < spec.fanin; k++) {
+                                        sel_var = get_sel_var(spec, ip, p, k);
+                                        pabc::Vec_IntSetEntry(vLits, ctr++,
+                                            pabc::Abc_Var2Lit(sel_var, 0));
+                                    }
+                                }
+
+                                const auto status = solver->add_clause(Vec_IntArray(vLits), Vec_IntArray(vLits) + ctr);
+                                if (!status) {
+                                    return false;
+                                }
                             }
                         }
                     }
@@ -769,14 +804,11 @@ namespace percy
             extract_chain(const spec& spec, chain& chain)
             {
                 std::vector<int> fanins(spec.fanin);
+
                 chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
 
-                if (spec.verbosity > 2) {
-                    print_solver_state(spec);
-                }
-
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    kitty::dynamic_truth_table op(spec.fanin);
+                    dynamic_truth_table op(spec.fanin);
                     for (int j = 1; j <= nr_op_vars_per_step; j++) {
                         if (solver->var_value(get_op_var(spec, i, j))) {
                             kitty::set_bit(op, j); 
@@ -790,20 +822,21 @@ namespace percy
                         printf("\n");
                     }
 
-                    auto svar_idx = 0;
-                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
-                        const auto sel_var = get_sel_var(spec, i, j);
-                        if (solver->var_value(sel_var)) {
-                            fanins[svar_idx++] = j;
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            if (solver->var_value(s_ij_k)) {
+                                fanins[k] = j;
+                            }
                         }
                     }
-                    assert(svar_idx == spec.fanin);
                     if (spec.verbosity) {
                         printf("  with operands ");
                         for (int k = 0; k < spec.fanin; k++) {
                             printf("x_%d ", fanins[k] + 1);
                         }
                     }
+                        
                     chain.set_step(i, fanins, op);
 
                     if (spec.verbosity) {
@@ -836,22 +869,21 @@ namespace percy
             *******************************************************************/
             template<int FI>
             void 
-            extract_dag(spec& spec, dag<FI>& dag)
+            extract_dag(const spec& spec, dag<FI>& dag)
             {
+                std::vector<int> fanins;
                 assert(FI == spec.fanin);
                 dag.reset(spec.get_nr_in(), spec.nr_steps);
-                std::vector<int> fanins(spec.fanin);
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    const auto nr_svars_for_i = spec.get_nr_in() + i;
-                    auto svar_idx = 0;
-                    for (int j = 0; j < nr_svars_for_i; j++) {
-                        const auto sel_var = get_sel_var(spec, i, j);
-                        if (solver->var_value(sel_var)) {
-                            fanins[svar_idx++] = j;
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            if (solver->var_value(s_ij_k)) {
+                                fanins[k] = j;
+                            }
                         }
                     }
-                    assert(svar_idx == spec.fanin);
                     dag.set_vertex(i, fanins);
                 }
             }
@@ -859,8 +891,6 @@ namespace percy
             void
             print_solver_state(const spec& spec)
             {
-                std::vector<int> fanins(spec.fanin);
-
                 printf("\n");
                 printf("========================================"
                         "========================================\n");
@@ -869,67 +899,14 @@ namespace percy
                 printf("  Nr. variables = %d\n", solver->nr_vars());
                 printf("  Nr. clauses = %d\n\n", solver->nr_clauses());
 
+                
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    bool step_has_fanins = false;
-                    auto svar_idx = 0;
-                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
-                        const auto sel_var = get_sel_var(spec, i, j);
-                        if (solver->var_value(sel_var)) {
-                            fanins[svar_idx++] = j;
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k_var = get_sel_var(spec, i, j, k);
+                            printf("  s_%d_%d_%d = %d\n", i, j, k,
+                                solver->var_value(s_ij_k_var));
                         }
-                    }
-                    if (svar_idx == spec.fanin) {
-                        printf("  x_%d has inputs ",
-                            spec.get_nr_in() + i + 1);
-                        for (int k = spec.fanin - 1; k >= 0; k--) {
-                            printf("x_%d ", fanins[k] + 1);
-                        }
-                        step_has_fanins = true;
-                    }
-                    if (!step_has_fanins) {
-                        printf("  only %d fanins found for x_%d\n",
-                                svar_idx, spec.get_nr_in() + i + 1);
-                    }
-
-                    printf("  f_%d = ", spec.get_nr_in() + i + 1);
-                    for (int oidx = nr_op_vars_per_step; oidx > 0; oidx--) {
-                        printf("%d", solver->var_value(get_op_var(spec, i, oidx)));
-                    }
-                    printf("0\n");
-
-                    printf("  tt_%d = ", spec.get_nr_in() + i + 1);
-                    for (int t = spec.get_tt_size() - 1; t >= 0; t--) {
-                        printf("%d", solver->var_value(get_sim_var(spec, i, t)));
-                    }
-                    printf("0\n\n");
-                }
-
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    for (int i = 0; i < spec.nr_steps; i++) {
-                        printf("  g_%d_%d=%d\n", h + 1, 
-                                spec.get_nr_in() + i + 1,
-                                solver->var_value(get_out_var(spec, h, i)));
-                    }
-                }
-                printf("\n");
-
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
-                        printf("  s_%d_%d = %d\n", spec.get_nr_in() + i + 1, j,
-                            solver->var_value(get_sel_var(spec, i, j)));
-                    }
-                    printf("\n");
-
-                    for (int k = 0; k < spec.get_nr_in() + i + 1; k++) {
-                        for (int c = 0; c < spec.fanin + 2; c++) {
-                            printf("res[%d] ", c);
-                        }
-                        printf("\n");
-                        for (int c = 0; c < spec.fanin + 2; c++) {
-                            printf("    %d   ", solver->var_value(
-                                get_res_var(spec, i, k * (spec.fanin + 2) + c)));
-                        }
-                        printf("\n");
                     }
 
                     for (int oidx = nr_op_vars_per_step; oidx > 0; oidx--) {
@@ -944,7 +921,7 @@ namespace percy
 
                     for (int t = spec.get_tt_size() - 1; t >= 0; t--) {
                         printf("  x_%d_%d=%d\n", spec.get_nr_in() + i+1, t + 2, 
-                                solver->var_value( get_sim_var(spec, i, t)));
+                                solver->var_value(get_tt_var(spec, i, t)));
                     }
                     printf("  x_%d_0=0\n", spec.get_nr_in() + i + 1);
                     printf("\n");
@@ -970,8 +947,12 @@ namespace percy
                     return false;
                 }
 
-                create_op_clauses(spec);
+                if (!create_op_clauses(spec)) {
+                    return false;
+                }
                 
+                //create_cardinality_constraints(spec);
+
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
@@ -984,12 +965,12 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
 
-                if (spec.add_colex_clauses) {
-                    create_colex_clauses(spec);
+                if (spec.add_colex_clauses && !create_colex_clauses(spec)) {
+                    return false;
                 }
 
-                if (spec.add_lex_clauses) {
-                    create_lex_clauses(spec);
+                if (spec.add_lex_clauses && !create_lex_clauses(spec)) {
+                    return false;
                 }
                 
                 if (spec.add_lex_func_clauses) {
@@ -1020,7 +1001,9 @@ namespace percy
                     return false;
                 }
                 
-                create_op_clauses(spec);
+                if (!create_op_clauses(spec)) {
+                    return false;
+                }
                 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
@@ -1034,12 +1017,12 @@ namespace percy
                     create_noreapply_clauses(spec);
                 }
                 
-                if (spec.add_colex_clauses) {
-                    create_colex_clauses(spec);
+                if (spec.add_colex_clauses && !create_colex_clauses(spec)) {
+                    return false;
                 }
-                
-                if (spec.add_lex_clauses) {
-                    create_lex_clauses(spec);
+
+                if (spec.add_lex_clauses && !create_lex_clauses(spec)) {
+                    return false;
                 }
 
                 if (spec.add_lex_func_clauses) {
@@ -1073,14 +1056,18 @@ namespace percy
                                     invert));
                     }
 
-                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
-                        const auto sel_var = get_sel_var(spec, i , j);
-                        if (solver->var_value(sel_var)) {
-                            pabc::Vec_IntSetEntry(vLits, ctr++,
-                                    pabc::Abc_Var2Lit(sel_var, 1));
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            if (solver->var_value(s_ij_k)) {
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(s_ij_k, 1));
+                                break;
+                            }
                         }
                     }
                 }
+                
                 return solver->add_clause(
                             pabc::Vec_IntArray(vLits), 
                             pabc::Vec_IntArray(vLits) + ctr);
@@ -1096,11 +1083,14 @@ namespace percy
                 int ctr = 0;
 
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
-                        const auto sel_var = get_sel_var(spec, i, j);
-                        if (solver->var_value(sel_var)) {
-                            pabc::Vec_IntSetEntry(vLits, ctr++,
-                                    pabc::Abc_Var2Lit(sel_var, 1));
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            if (solver->var_value(s_ij_k)) {
+                                pabc::Vec_IntSetEntry(vLits, ctr++,
+                                    pabc::Abc_Var2Lit(s_ij_k, 1));
+                                break;
+                            }
                         }
                     }
                 }
