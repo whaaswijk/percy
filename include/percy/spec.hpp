@@ -74,9 +74,8 @@ namespace percy
 
     enum Primitive
     {
-        AND,
-        OR,
-        MAJ
+        MAJ,
+        AIG
     };
 
     /// Used to gather data on synthesis experiments.
@@ -101,7 +100,6 @@ namespace percy
             std::vector<char> dc_functions; ///< Determines for which functions we look at the DC mask
             std::vector<int> triv_functions; ///< Trivial outputs
             std::vector<int> synth_functions; ///< Nontrivial outputs
-            std::vector<Primitive> primitives; ///< The primitives used in synthesis
             std::vector<kitty::dynamic_truth_table> compiled_primitives; ///< Collection of concrete truth tables induced by primitives
 
         public:
@@ -322,38 +320,7 @@ namespace percy
                 return synth_functions[i];
             }
 
-            void
-            add_primitive(Primitive p)
-            {
-                primitives.push_back(p);
-            }
-
-            void 
-            set_primitives(std::vector<Primitive>& ps) 
-            {
-                primitives = ps;
-            }
-
-            int
-            get_nr_primitives() const
-            {
-                return primitives.size();
-            }
-
-            const std::vector<kitty::dynamic_truth_table>&
-            get_compiled_primitives() const
-            {
-                return compiled_primitives;
-            }
-
-            void
-            clear_primitives()
-            {
-                primitives.clear();
-            }
-
-            void
-            compile_primitives()
+            void set_primitive(Primitive primitive)
             {
                 compiled_primitives.clear();
                 kitty::dynamic_truth_table tt(fanin);
@@ -362,29 +329,38 @@ namespace percy
                     inputs.push_back(kitty::create<kitty::dynamic_truth_table>(fanin));
                     kitty::create_nth_var(inputs[i], i);
                 }
-                for (auto primitive : primitives) {
-                    kitty::clear(tt);
-                    switch (primitive) {
-                    case AND:
-                        tt = inputs[0];
-                        for (int i = 1; i < fanin; i++) {
-                            tt ^= inputs[i];
-                        }
-                        compiled_primitives.push_back(tt);
-                        break;
-                    case OR:
-                        tt = inputs[0];
-                        for (int i = 1; i < fanin; i++) {
-                            tt |= inputs[i];
-                        }
-                        compiled_primitives.push_back(tt);
-                        break;
-                    case MAJ:
-                        kitty::create_majority(tt);
-                        compiled_primitives.push_back(tt);
-                        break;
-                    }
+                switch (primitive) {
+                case AIG:
+                    tt = inputs[0] & inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = ~inputs[0] & inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = inputs[0] & ~inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = inputs[0] | inputs[1];
+                    compiled_primitives.push_back(tt);
+                    break;
+                case MAJ:
+                    kitty::create_majority(tt);
+                    compiled_primitives.push_back(tt);
+                    break;
                 }
+            }
+
+            bool is_primitive_set() const
+            {
+                return compiled_primitives.size() > 0;
+            }
+
+            const std::vector<kitty::dynamic_truth_table>&
+            get_compiled_primitives() const
+            {
+                return compiled_primitives;
+            }
+
+            void clear_primitive()
+            {
+                compiled_primitives.clear();
             }
 
     };

@@ -227,6 +227,113 @@ void verify_fence_encoder(void)
     }   
 }
 
+template<class Encoder>
+void verify_aig_dc(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_table& dc_mask)
+{
+    assert(tt.num_vars() == dc_mask.num_vars());
+
+    //printf("got truth table\t %s\n", kitty::to_binary(tt).c_str());
+    //printf("got DC mask\t %s\n", kitty::to_binary(dc_mask).c_str());
+
+    chain chain;
+    spec spec;
+    bmcg_wrapper solver;
+    Encoder encoder(solver);
+    spec[0] = tt;
+    spec.set_primitive(AIG);
+
+    const auto res = synthesize(spec, chain, solver, encoder);
+    assert(res == success);
+    //printf("found a %d-step chain\n", chain.get_nr_steps());
+    const auto full_tt = chain.simulate()[0];
+    assert(full_tt == tt);
+    assert(chain.is_aig());
+
+    spec.set_dont_care(0, dc_mask);
+    const auto dc_res = synthesize(spec, chain, solver, encoder);
+    assert(dc_res == success);
+    //printf("found a %d-step DC chain\n", chain.get_nr_steps());
+    const auto dc_tt = chain.simulate()[0];
+    //printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+    assert(verify_simulated_dc_tt(tt, dc_tt, dc_mask));
+    assert(chain.is_aig());
+
+    const auto cegar_dc_res = synthesize(spec, chain, solver, encoder, SYNTH_STD_CEGAR);
+    assert(cegar_dc_res == success);
+    //printf("found a %d-step DC chain\n", chain.get_nr_steps());
+    const auto cegar_dc_tt = chain.simulate()[0];
+    //printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+    assert(verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask));
+    assert(chain.is_aig());
+}
+
+template<class Encoder>
+void verify_aig_encoder(void)
+{
+    {
+        kitty::dynamic_truth_table tt(3), dc(3);
+        for (int i = 0; i < 256; i++) {
+            kitty::create_from_words(tt, &i, &i + 1);
+
+            kitty::clear(dc);
+            for (int i = 0; i < 8; i++) {
+                const auto number = rand() % 100 + 1; // Random number between 1 and 100
+                if (number <= 25) {
+                    kitty::set_bit(dc, i);
+                }
+            }
+
+            verify_aig_dc<Encoder>(tt, dc);
+        }
+    }
+    {
+        kitty::dynamic_truth_table a(4), b(4), c(4), x(4), y(4), dc;
+
+        kitty::create_nth_var(a, 0);
+        kitty::create_nth_var(b, 1);
+        kitty::create_nth_var(c, 2);
+        kitty::create_nth_var(x, 3);
+
+        y = (a & b & x) | (~a & c & x);
+        dc = (a & ~b & x) | (~a & ~x);
+        verify_aig_dc<Encoder>(y, dc);
+    }
+
+    {
+        // Even a random 6-input function can be made trivial by
+        // using a don't care mask
+        spec spec;
+        spec.set_primitive(AIG);
+        chain c;
+        bsat_wrapper solver;
+        Encoder encoder(solver);
+        kitty::dynamic_truth_table tt(6), dc_mask(6);
+        kitty::create_random(tt);
+        dc_mask = ~dc_mask;
+        spec[0] = tt;
+        spec.set_dont_care(0, dc_mask);
+
+        printf("got truth table\t %s\n", kitty::to_binary(tt).c_str());
+        printf("got DC mask\t %s\n", kitty::to_binary(dc_mask).c_str());
+
+        const auto result = synthesize(spec, c, solver, encoder);
+        assert(result == success);
+        assert(c.is_aig());
+        const auto dc_tt = c.simulate()[0];
+        printf("found a %d-step DC AIG\n", c.get_nr_steps());
+        printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+        verify_simulated_dc_tt(tt, dc_tt, dc_mask);
+
+        const auto cegar_result = synthesize(spec, c, solver, encoder, SYNTH_STD_CEGAR);
+        assert(cegar_result == success);
+        assert(c.is_aig());
+        const auto cegar_dc_tt = c.simulate()[0];
+        printf("found a %d-step DC AIG (CEGAR)\n", c.get_nr_steps());
+        printf("DC simulation tt\t %s (CEGAR)\n", kitty::to_binary(cegar_dc_tt).c_str());
+        verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask);
+    }   
+}
+
 int main(void)
 {
     verify_encoder<ssv_encoder>();
@@ -234,6 +341,7 @@ int main(void)
     verify_encoder<ditt_encoder>();
    // verify_fence_encoder<ssv_fence_encoder>();
     verify_fence_encoder<ssv_fence2_encoder>();
+    verify_aig_encoder<ssv_encoder>();
     return 0;
 }
 
