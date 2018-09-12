@@ -21,8 +21,7 @@ int main(void)
     dynamic_truth_table maj5(5);
     kitty::create_majority(maj5);
     spec.fanin = 3;
-    spec.add_primitive(MAJ);
-    spec.compile_primitives();
+    spec.set_primitive(MAJ);
     spec[0] = maj5;
 
     printf("synthesizing %s\n", kitty::to_binary(maj5).c_str());

@@ -85,8 +85,7 @@ main(void)
     kitty::dynamic_truth_table maj3(3);
     kitty::create_majority(maj3);
     spec.fanin = 3;
-    spec.add_primitive(MAJ);
-    spec.compile_primitives();
+    spec.set_primitive(MAJ);
     spec[0] = maj3;
     status = synthesize(spec, c);
     assert(status == success);
@@ -141,8 +140,7 @@ main(void)
     kitty::dynamic_truth_table maj5(5);
     kitty::create_majority(maj5);
     spec.fanin = 3;
-    spec.add_primitive(MAJ);
-    spec.compile_primitives();
+    spec.set_primitive(MAJ);
     spec[0] = maj5;
     status = synthesize(spec, c);
     assert(status == success);
