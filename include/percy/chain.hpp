@@ -159,9 +159,15 @@ namespace percy
             /// not be changed.
             void denormalize()
             {
+                // Does nothing if there are no steps to push inverters into.
+                if (steps.size() == 0) {
+                    return;
+                }
+                
                 if (outputs.size() == 1) {
                     if (outputs[0] & 1) {
-                        invert();
+                        operators[steps.size() - 1] = ~operators[steps.size() - 1];
+                        outputs[0] = (outputs[0] ^ 1);
                     }
                     return;
                 }

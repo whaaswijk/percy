@@ -12,6 +12,33 @@ using kitty::dynamic_truth_table;
 *******************************************************************************/
 int main(void)
 {
+
+    {
+        chain c;
+        spec spec;
+
+        kitty::dynamic_truth_table tt(3);
+        for (int i = 0; i < 256; i++) {
+            kitty::create_from_words(tt, &i, &i + 1);
+            spec[0] = tt;
+            const auto result = synthesize(spec, c);
+            assert(result == success);
+            if (!is_normal(tt)) {
+                assert(c.is_output_inverted(0));
+            }
+            const auto sim_tt = c.simulate()[0];
+            assert(sim_tt == tt);
+            const auto nr_steps = c.get_nr_steps();
+            c.denormalize();
+            // If there are no steps, denormalization does nothing
+            if (nr_steps > 0) {
+                assert(!c.is_output_inverted(0));
+            }
+            assert(c.get_nr_steps() == nr_steps);
+            const auto dsim_tt = c.simulate()[0];
+            assert(dsim_tt == tt);
+        }
+    }
     
     {
         spec spec(2);
