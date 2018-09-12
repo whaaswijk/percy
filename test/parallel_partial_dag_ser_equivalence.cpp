@@ -7,9 +7,6 @@
 using namespace percy;
 using kitty::dynamic_truth_table;
 
-/*******************************************************************************
-    Verifies that our synthesizers' results are equivalent to each other.
-*******************************************************************************/
 void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 {
     spec spec;
@@ -53,11 +50,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         spec.add_colex_clauses = false;
 
         start = std::chrono::steady_clock::now();
-#if defined(_WIN32) || defined(_WIN64)
         const auto res2 = pd_ser_synthesize(spec, c2, solver, encoder2, "../../test/");
-#else
-        const auto res2 = pd_ser_synthesize(spec, c2, solver, encoder2, "../test/");
-#endif
         const auto elapsed2 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();
@@ -69,11 +62,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         assert(sim_tts1[0] == sim_tts2[0]);
 
         start = std::chrono::steady_clock::now();
-#if defined(_WIN32) || defined(_WIN64)
         const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../../test/");
-#else
-        const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../test/");
-#endif
         const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();
@@ -120,6 +109,7 @@ void check_pd_equivalence5()
 
         spec.verbosity = 0;
         spec.add_lex_func_clauses = true;
+        spec.add_colex_clauses = true;
         spec[0] = tt;
         auto start = std::chrono::steady_clock::now();
         auto res1 = synthesize(spec, c1, solver, encoder1);
@@ -139,12 +129,9 @@ void check_pd_equivalence5()
         assert(c1.satisfies_spec(spec));
 
         spec.add_lex_func_clauses = false;
+        spec.add_colex_clauses = false;
         start = std::chrono::steady_clock::now();
-#if defined(_WIN32) || defined(_WIN64)
         const auto res2 = pd_ser_synthesize(spec, c2, solver, encoder2, "../../test/");
-#else
-        const auto res2 = pd_ser_synthesize(spec, c2, solver, encoder2, "../test/");
-#endif
         const auto elapsed2 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();
@@ -156,11 +143,7 @@ void check_pd_equivalence5()
         assert(sim_tts1[0] == sim_tts2[0]);
 
         start = std::chrono::steady_clock::now();
-#if defined(_WIN32) || defined(_WIN64)
         const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../../test/");
-#else
-        const auto res3 = pd_ser_synthesize_parallel(spec, c3, 4, "../test/");
-#endif
         const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();

@@ -77,11 +77,7 @@ void check_pd_equivalence()
         assert(sim_tts1[0] == sim_tts2[0]);
 
         start = std::chrono::steady_clock::now();
-#if defined(_WIN32) || defined(_WIN64)
         auto res3 = pd_ser_synthesize(spec, c3, solver, encoder2, "../../test/");
-#else
-        auto res3 = pd_ser_synthesize(spec, c3, solver, encoder2, "../test/");
-#endif
         const auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
             ).count();

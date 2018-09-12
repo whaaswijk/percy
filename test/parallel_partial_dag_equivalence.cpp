@@ -131,6 +131,7 @@ void check_pd_equivalence5()
 
         spec.verbosity = 0;
         spec.add_lex_func_clauses = true;
+        spec.add_colex_clauses = true;
         spec[0] = tt;
         auto start = std::chrono::steady_clock::now();
         const auto res1 = synthesize(spec, c1, solver, encoder1);
@@ -150,6 +151,7 @@ void check_pd_equivalence5()
         assert(c1.satisfies_spec(spec));
 
         //spec.verbosity = 2;
+        spec.add_colex_clauses = false;
         spec.add_lex_func_clauses = false;
         start = std::chrono::steady_clock::now();
         const auto res2 = pd_synthesize(spec, c2, dags, solver, encoder2);
