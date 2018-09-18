@@ -99,7 +99,7 @@ namespace percy
                     }
                 }
             }
-            printf("The number of structural variables = %d\n", iVar);
+            //printf("The number of structural variables = %d\n", iVar);
         }
 
         void add_base_variables(const spec& spec, const fence& fence)
@@ -130,7 +130,7 @@ namespace percy
                     }
                 }
             }
-            printf("The number of structural variables = %d\n", iVar);
+            //printf("The number of structural variables = %d\n", iVar);
         }
 
         void add_base_cnf(const spec& spec)
@@ -200,7 +200,7 @@ namespace percy
             for (int i = 0; i < spec.nr_in; i++)
                 varVals[i] = (iMint >> i) & 1;
             solver->set_nr_vars(iVar + 4 * spec.nr_steps);
-            printf( "Adding clauses for minterm %d.\n", iMint );
+            //printf( "Adding clauses for minterm %d.\n", iMint );
             for (int i = spec.nr_in; i < spec.nr_in + spec.nr_steps; i++) {
                 // fanin connectivity
                 const auto iBaseSatVarI = iVar + 4 * (i - spec.nr_in);
@@ -310,10 +310,26 @@ namespace percy
         }
 
         int get_nr_vars() const { return iVar; }
+
+        void extract_chain(const spec& spec, chain& chain)
+        {
+            chain.reset(spec.nr_in, 1, spec.nr_steps, 3);
+            kitty::dynamic_truth_table op(3);
+            kitty::create_majority(op);
+
+            int fanins[3];
+            for (int i = 0; i < spec.nr_steps; i++) {
+                fanins[0] = find_fanin(spec, spec.nr_in + i, 0);
+                fanins[1] = find_fanin(spec, spec.nr_in + i, 1);
+                fanins[2] = find_fanin(spec, spec.nr_in + i, 2);
+                chain.set_step(i, fanins, op);
+            }
+            chain.set_output(0, spec.nr_in + spec.nr_steps, 0);
+        }
         
     };
 
-    inline void ditt_maj_synthesize(int nr_in)
+    inline void ditt_maj_synthesize(int nr_in, chain& c)
     {
         spec spec;
         bmcg_wrapper solver;
@@ -328,7 +344,7 @@ namespace percy
         po_filter<unbounded_generator> g(unbounded_generator(spec.initial_steps), 1, 3);
         while (true) {
             g.next_fence(f);
-            printf("next fence:\n"); print_fence(f); printf("\n");
+            //printf("next fence:\n"); print_fence(f); printf("\n");
             spec.nr_steps = f.nr_nodes();
             solver.restart();
             if (!encoder.cegar_encode(spec, f)) {
@@ -339,21 +355,114 @@ namespace percy
                 if (!encoder.add_cnf(spec, iMint)) {
                     break;
                 }
-                printf("Iter %3d : ", i);
-                printf("Var =%5d  ", encoder.get_nr_vars());
-                printf("Cla =%6d  ", solver.nr_clauses());
-                printf("Conf =%9d\n", solver.nr_conflicts());
+                //printf("Iter %3d : ", i);
+                //printf("Var =%5d  ", encoder.get_nr_vars());
+                //printf("Cla =%6d  ", solver.nr_clauses());
+                //printf("Conf =%9d\n", solver.nr_conflicts());
                 const auto status = solver.solve(0);
                 if (status == failure) {
-                    printf("The problem has no solution\n");
+                    //printf("The problem has no solution\n");
                     break;
                 }
                 iMint = encoder.simulate(spec);
             }
             if (iMint == -1) {
-                printf("found solution!\n");
+                //printf("found solution!\n");
+                encoder.extract_chain(spec, c);
                 break;
             }
         }
+    }
+
+    inline synth_result pf_ditt_maj_synthesize(
+        int nr_in, 
+        chain& c, 
+        int num_threads = std::thread::hardware_concurrency())
+    {
+        spec spec;
+
+        kitty::dynamic_truth_table tt(nr_in);
+        kitty::create_majority(tt);
+
+        spec[0] = tt;
+        spec.preprocess();
+
+        std::vector<std::thread> threads(num_threads);
+        moodycamel::ConcurrentQueue<fence> q(num_threads * 3);
+
+        bool finished_generating = false;
+        bool* pfinished = &finished_generating;
+        bool found = false;
+        bool* pfound = &found;
+        std::mutex found_mutex;
+
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            for (int i = 0; i < num_threads; i++) {
+                threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {
+                    bmcg_wrapper solver;
+                    ditt_maj_encoder encoder(solver);
+                    fence local_fence;
+
+                    while (!(*pfound)) {
+                        if (!q.try_dequeue(local_fence)) {
+                            if (*pfinished) {
+                                std::this_thread::yield();
+                                if (!q.try_dequeue(local_fence)) {
+                                    break;
+                                }
+                            } else {
+                                std::this_thread::yield();
+                                continue;
+                            }
+                        }
+                        synth_result status;
+                        solver.restart();
+                        if (!encoder.cegar_encode(spec, local_fence)) {
+                            continue;
+                        }
+                        auto iMint = 0;
+                        for (int i = 0; iMint != -1; i++) {
+                            if (!encoder.add_cnf(spec, iMint)) {
+                                break;
+                            }
+                            synth_result status = timeout;
+                            do {
+                                status = solver.solve(10);
+                                if (*pfound) {
+                                    break;
+                                } 
+                            } while (status == timeout);
+                            if (status == failure) {
+                                //printf("The problem has no solution\n");
+                                break;
+                            }
+                            iMint = encoder.simulate(spec);
+                        }
+                        if (iMint == -1) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (!(*pfound)) {
+                                //printf("found solution!\n");
+                                encoder.extract_chain(spec, c);
+                                *pfound = true;
+                            }
+                        }
+                    }
+                });
+            }
+            generate_fences(spec, q);
+            finished_generating = true;
+
+            for (auto& thread : threads) {
+                thread.join();
+            }
+            if (found) {
+                break;
+            }
+            finished_generating = false;
+            spec.nr_steps++;
+        }
+
+        return success;
     }
 }
