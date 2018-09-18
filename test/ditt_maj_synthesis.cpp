@@ -79,7 +79,7 @@ int main(void)
         }
     }
 
-    ditt_maj_synthesize(7);
+    //ditt_maj_synthesize(7);
 
     return 0;
 }
