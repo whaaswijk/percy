@@ -421,7 +421,7 @@ namespace percy
                             continue;
                         }
                         auto iMint = 0;
-                        for (int i = 0; iMint != -1; i++) {
+                        for (int i = 0; !(*pfound) && iMint != -1; i++) {
                             if (!encoder.add_cnf(spec, iMint)) {
                                 break;
                             }

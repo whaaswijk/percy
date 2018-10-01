@@ -108,7 +108,6 @@ int main(void)
     }
 
     //ditt_maj_synthesize(7);
-    /*
     {
         chain c;
         kitty::dynamic_truth_table maj_tt(7);
@@ -128,7 +127,6 @@ int main(void)
         c.print_mag();
         printf("Time elapsed: %ldus (PAR FENCE)\n", elapsed);
     }
-    */
 
     return 0;
 }
