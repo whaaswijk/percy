@@ -91,10 +91,10 @@ void profile(int nr_in)
         total_elapsed4 += elapsed4;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (FENCE): %lldus\n", total_elapsed2);
-    printf("Time elapsed (FENCE2): %lldus\n", total_elapsed3);
-    printf("Time elapsed (FENCE2 CEGAR): %lldus\n", total_elapsed4);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (FENCE): %ldus\n", total_elapsed2);
+    printf("Time elapsed (FENCE2): %ldus\n", total_elapsed3);
+    printf("Time elapsed (FENCE2 CEGAR): %ldus\n", total_elapsed4);
 }
 
 void profile5(void)
@@ -188,10 +188,10 @@ void profile5(void)
     }
     printf("\n");
     printf("Nr. of solved instances: (%d/%d)\n", solved_instances, MAX_TESTS);
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (FENCE): %lldus\n", total_elapsed2);
-    printf("Time elapsed (FENCE2): %lldus\n", total_elapsed3);
-    printf("Time elapsed (FENCE2 CEGAR): %lldus\n", total_elapsed4);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (FENCE): %ldus\n", total_elapsed2);
+    printf("Time elapsed (FENCE2): %ldus\n", total_elapsed3);
+    printf("Time elapsed (FENCE2 CEGAR): %ldus\n", total_elapsed4);
 }
 
 int main()

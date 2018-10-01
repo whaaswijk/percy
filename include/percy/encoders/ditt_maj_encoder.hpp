@@ -102,7 +102,7 @@ namespace percy
             //printf("The number of structural variables = %d\n", iVar);
         }
 
-        void add_base_variables(const spec& spec, const fence& fence)
+        void add_base_variables(const spec& spec, const fence&)
         {
             for (int i = 0; i < MAJ_NOBJS; i++) {
                 pabc::Vec_IntClear(pabc::Vec_WecEntry(vOutLits, i));
@@ -293,7 +293,7 @@ namespace percy
             kitty::static_truth_table<6> tt;
             for (int i = 1; i < (1 << spec.nr_in); i++) {
                 kitty::create_from_words(tt, &i, &i + 1);
-                const auto nOnes = kitty::count_ones(tt);
+                const int nOnes = kitty::count_ones(tt);
                 if (nOnes < spec.nr_in / 2 || nOnes > ((spec.nr_in/2) + 1)) {
                     continue;
                 }
@@ -416,7 +416,6 @@ namespace percy
                                 continue;
                             }
                         }
-                        synth_result status;
                         solver.restart();
                         if (!encoder.cegar_encode(spec, local_fence)) {
                             continue;

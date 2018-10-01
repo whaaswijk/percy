@@ -51,7 +51,7 @@ void profile(int nr_in, bool full_coverage)
         total_elapsed += elapsed;
     }
     printf("\n");
-    printf("Time elapsed: %lldus\n", total_elapsed);
+    printf("Time elapsed: %ldus\n", total_elapsed);
 }
 
 int main()

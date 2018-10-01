@@ -83,7 +83,7 @@ void check_std_equivalence()
         assert(c1.satisfies_spec(spec));
         assert(c2.satisfies_spec(spec));
         
-        printf("(%d/%d)\r", ++ctr, nr_classes);
+        printf("(%d/%zu)\r", ++ctr, nr_classes);
         fflush(stdout);
 
         synth_time1 += elapsed1;
@@ -104,7 +104,7 @@ void check_std_equivalence()
     Users can specify a arbitrary runtime argument, which removes the limit on
     the number of equivalence tests.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main(int argc, char **)
 {
     bool full_coverage = false;
     if (argc > 1) {

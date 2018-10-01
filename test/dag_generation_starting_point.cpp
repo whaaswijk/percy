@@ -37,10 +37,10 @@ int main(void)
             auto nr_dags2 = rec_gen2.count_dags();
             auto nr_dags3 = rec_gen3.count_dags();
 
-            printf("nr_dags=%d\n", nr_dags);
-            printf("nr_dags1=%d\n", nr_dags1);
-            printf("nr_dags2=%d\n", nr_dags2);
-            printf("nr_dags3=%d\n", nr_dags3);
+            printf("nr_dags=%zu\n", nr_dags);
+            printf("nr_dags1=%zu\n", nr_dags1);
+            printf("nr_dags2=%zu\n", nr_dags2);
+            printf("nr_dags3=%zu\n", nr_dags3);
             assert(nr_dags == (nr_dags1 + nr_dags2 + nr_dags3));
             printf("\n");
         }
@@ -81,12 +81,12 @@ int main(void)
             printf("seq_dags.size()=%lu\n", seq_dags.size());
             assert(seq_dags.size() == nr_dags);
 
-            printf("nr_dags1=%d\n", nr_dags1);
-            printf("nr_dags2=%d\n", nr_dags2);
-            printf("nr_dags3=%d\n", nr_dags3);
-            printf("nr_dags4=%d\n", nr_dags4);
-            printf("nr_dags5=%d\n", nr_dags5);
-            printf("nr_dags6=%d\n", nr_dags6);
+            printf("nr_dags1=%zu\n", nr_dags1);
+            printf("nr_dags2=%zu\n", nr_dags2);
+            printf("nr_dags3=%zu\n", nr_dags3);
+            printf("nr_dags4=%zu\n", nr_dags4);
+            printf("nr_dags5=%zu\n", nr_dags5);
+            printf("nr_dags6=%zu\n", nr_dags6);
 
             rec_gen.reset(4, 7);
             rec_gen1.reset(4, 7);
@@ -134,8 +134,8 @@ int main(void)
                 nr_dags5 + nr_dags6;
             assert(total_par == par_dags.size());
             
-            printf("nr_dags=%d (SEQ)\n", nr_dags);
-            printf("nr_dags=%d (PAR)\n", total_par);
+            printf("nr_dags=%zu (SEQ)\n", nr_dags);
+            printf("nr_dags=%zu (PAR)\n", total_par);
             assert(nr_dags == total_par);
 
         }

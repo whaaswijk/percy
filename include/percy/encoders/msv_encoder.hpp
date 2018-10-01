@@ -5,7 +5,7 @@
 namespace percy
 {
 
-    class msv_encoder : public std_encoder
+    class msv_encoder : public std_encoder, public enumerating_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -766,7 +766,7 @@ namespace percy
 
                 return true;
             }
-
+            
             /// Extracts chain from encoded CNF solution.
             void 
             extract_chain(const spec& spec, chain& chain)

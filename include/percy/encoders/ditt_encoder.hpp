@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class ditt_encoder : public std_encoder
+    class ditt_encoder : public std_encoder, public enumerating_encoder
     {
         private:
 			int nr_op_vars_per_step;

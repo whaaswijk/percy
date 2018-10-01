@@ -193,12 +193,8 @@ namespace percy
             return nr_pi_fanins;
         }
 
-        int nr_svars_for_step(
-            const spec& spec, 
-            const partial_dag& dag, 
-            int i) const
+        int nr_svars_for_step(const spec& spec, const partial_dag& dag, int i) const
         {
-            const auto& vertex = dag.get_vertex(i);
             const auto nr_pi_fanins = nr_pi_fanins_for_step(dag, i);
             switch (nr_pi_fanins) {
             case 1:
@@ -1334,8 +1330,7 @@ namespace percy
                         }
                     }
                 }
-                assert(svars.size() == nr_svars_for_step(spec, i));
-                const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
+                const int nr_res_vars = (1 + 2) * (svars.size() + 1);
                 for (int j = 0; j < nr_res_vars; j++) {
                     rvars.push_back(get_res_var(spec, i, j));
                 }
@@ -1779,12 +1774,14 @@ namespace percy
             }
         }
         
+        /*
         bool cegar_encode(const spec& spec)
         {
             // TODO: implement
             assert(false);
             return false;
         }
+        */
         
         bool block_solution(const spec& spec)
         {

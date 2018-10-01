@@ -15,7 +15,7 @@ block_solution(solver_wrapper* s, vector<int> sum_vars)
 {
     int lits[MAX_SUM_VARS];
 
-    for (int i = 0; i < sum_vars.size(); i++) {
+    for (auto i = 0u; i < sum_vars.size(); i++) {
         const auto sum_var = sum_vars[i];
         lits[i] = pabc::Abc_Var2Lit(sum_var, s->var_value(sum_var));
     }
@@ -45,7 +45,7 @@ enumerate_solutions(int nr_svars, int C, SolverType stype)
     }
     create_cardinality_circuit(s.get(), sum_vars, res_vars, C);
 
-    int nr_valid_cardinality_solutions = 0;
+    auto nr_valid_cardinality_solutions = 0u;
     while (true) {
         auto status = s->solve();
         if (status != success) {

@@ -67,11 +67,11 @@ int main()
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 1);
 
-        printf("MAJ-3 time elapsed (MAJ): %lldus\n", elapsed);
-        printf("MAJ-3 time elapsed (MAJ CEGAR): %lldus\n", elapsed_cegar);
-        printf("MAJ-3 time elapsed (MAJ FENCE): %lldus\n", elapsed_fence);
-        printf("MAJ-3 time elapsed (MAJ FENCE CEGAR): %lldus\n", elapsed_fence_cegar);
-        printf("MAJ-3 time elapsed (MAJ PD): %lldus\n", elapsed_pd);
+        printf("MAJ-3 time elapsed (MAJ): %ldus\n", elapsed);
+        printf("MAJ-3 time elapsed (MAJ CEGAR): %ldus\n", elapsed_cegar);
+        printf("MAJ-3 time elapsed (MAJ FENCE): %ldus\n", elapsed_fence);
+        printf("MAJ-3 time elapsed (MAJ FENCE CEGAR): %ldus\n", elapsed_fence_cegar);
+        printf("MAJ-3 time elapsed (MAJ PD): %ldus\n", elapsed_pd);
     }
     {
         const auto dags = pd3_generate_filtered(4, 5);
@@ -140,12 +140,12 @@ int main()
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 4);
 
-        printf("MAJ-5 time elapsed (MAJ): %lldus\n", elapsed);
-        printf("MAJ-5 time elapsed (MAJ CEGAR): %lldus\n", elapsed_cegar);
-        printf("MAJ-5 time elapsed (MAJ FENCE): %lldus\n", fence_elapsed);
-        printf("MAJ-5 time elapsed (MAJ FENCE CEGAR): %lldus\n", fence_cegar_elapsed);
-        printf("MAJ-5 time elapsed (MAJ PARR): %lldus\n", parr_elapsed);
-        printf("MAJ-5 time elapsed (MAJ PD): %lldus\n", pd_elapsed);
+        printf("MAJ-5 time elapsed (MAJ): %ldus\n", elapsed);
+        printf("MAJ-5 time elapsed (MAJ CEGAR): %ldus\n", elapsed_cegar);
+        printf("MAJ-5 time elapsed (MAJ FENCE): %ldus\n", fence_elapsed);
+        printf("MAJ-5 time elapsed (MAJ FENCE CEGAR): %ldus\n", fence_cegar_elapsed);
+        printf("MAJ-5 time elapsed (MAJ PARR): %ldus\n", parr_elapsed);
+        printf("MAJ-5 time elapsed (MAJ PD): %ldus\n", pd_elapsed);
     }
 
     {
@@ -179,8 +179,8 @@ int main()
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
 
-        printf("MAJ-7 time elapsed (MAJ PARR): %lldus\n", parr_elapsed);
-        printf("MAJ-7 time elapsed (MAJ PARR NOCEGAR): %lldus\n", parr_nocegar_elapsed);
+        printf("MAJ-7 time elapsed (MAJ PARR): %ldus\n", parr_elapsed);
+        printf("MAJ-7 time elapsed (MAJ PARR NOCEGAR): %ldus\n", parr_nocegar_elapsed);
 
         /*
         start = std::chrono::steady_clock::now();
@@ -193,7 +193,7 @@ int main()
         assert(mig.get_nr_steps() == 7);
         mig.to_expression(std::cout, true);
         
-        printf("MAJ-7 time elapsed (MAJ PD): %lldus\n", pd_elapsed);
+        printf("MAJ-7 time elapsed (MAJ PD): %ldus\n", pd_elapsed);
 
         start = std::chrono::steady_clock::now();
         res = maj_synthesize(spec, mig, solver, encoder);
@@ -212,8 +212,8 @@ int main()
         assert(res == success);
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
-        printf("MAJ-7 time elapsed (MAJ): %lldus\n", elapsed);
-        printf("MAJ-7 time elapsed (MAJ CEGAR): %lldus\n", elapsed_cegar);
+        printf("MAJ-7 time elapsed (MAJ): %ldus\n", elapsed);
+        printf("MAJ-7 time elapsed (MAJ CEGAR): %ldus\n", elapsed_cegar);
 
         start = std::chrono::steady_clock::now();
         res = maj_fence_synthesize(spec, mig, solver, encoder);
@@ -223,7 +223,7 @@ int main()
         assert(res == success);
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
-        printf("MAJ-7 time elapsed (MAJ FENCE): %lldus\n", fence_elapsed);
+        printf("MAJ-7 time elapsed (MAJ FENCE): %ldus\n", fence_elapsed);
 
         start = std::chrono::steady_clock::now();
         res = maj_fence_cegar_synthesize(spec, mig, solver, encoder);
@@ -233,7 +233,7 @@ int main()
         assert(res == success);
         assert(mig.satisfies_spec(spec));
         assert(mig.get_nr_steps() == 7);
-        printf("MAJ-7 time elapsed (MAJ FENCE CEGAR): %lldus\n", fence_cegar_elapsed);
+        printf("MAJ-7 time elapsed (MAJ FENCE CEGAR): %ldus\n", fence_cegar_elapsed);
         */
     }
     

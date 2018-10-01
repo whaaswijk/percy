@@ -77,7 +77,7 @@ void check_std_equivalence(int nr_in, bool full_coverage)
     Users can specify a arbitrary runtime argument, which removes the limit on
     the number of equivalence tests.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main(int argc, char **)
 {
     bool full_coverage = false;
     if (argc > 1) {

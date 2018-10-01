@@ -16,9 +16,9 @@ int main(void)
     fence f;
     auto total_expected_fences = 0u;
     for (unsigned k = 1; k <= 5; k++) {
-        printf("F_%d\n", k);
+        printf("F_%u\n", k);
         for (unsigned l = 1; l <= k; l++) {
-            printf("F(%d, %d)\n", k, l);
+            printf("F(%u, %u)\n", k, l);
             partition_generator g(k, l);
 
             auto nfences = 0u;
@@ -34,7 +34,7 @@ int main(void)
         auto nfences = 0u;
         family_generator g(k);
         auto expected_fences = 0u;
-        for (int l = 1; l <= k; l++) {
+        for (auto l = 1u; l <= k; l++) {
             expected_fences += binomial_coeff(k-1, l-1);
         }
         while (g.next_fence(f)) {
@@ -56,8 +56,8 @@ int main(void)
     rec_fence_generator recgen;
     recgen.set_po_filter(false);
     for (unsigned k = 1; k <= 5; k++) {
-        printf("F_%d\n", k);
-        auto total_nr_fences = 0;
+        printf("F_%u\n", k);
+        auto total_nr_fences = 0u;
         for (unsigned l = 1; l <= k; l++) {
             printf("F(%u, %u)\n", k, l);
             recgen.reset(k, l);
@@ -80,11 +80,11 @@ int main(void)
 
     // Count the maximum number of fences needed to synthesize all 5-input
     // functions.
-    auto global_total = 0;
+    auto global_total = 0u;
     recgen.set_po_filter(true);
     vector<fence> po_fences;
     for (unsigned k = 1; k <= 12; k++) {
-        auto total_nr_fences = 0;
+        auto total_nr_fences = 0u;
         for (unsigned l = 1; l <= k; l++) {
             recgen.reset(k, l);
             total_nr_fences += recgen.count_fences();
@@ -95,12 +95,12 @@ int main(void)
     }
     assert(po_fences.size() == global_total);
     for (unsigned k = 13; k <= 15; k++) {
-        auto total_nr_fences = 0;
+        auto total_nr_fences = 0u;
         for (unsigned l = 1; l <= k; l++) {
             recgen.reset(k, l);
             total_nr_fences += recgen.count_fences();
         }
-        printf("Number of fences in F_%d = %d\n", k, total_nr_fences);
+        printf("Number of fences in F_%u = %d\n", k, total_nr_fences);
     }
 
     printf("Nr. of fences relevant to 5-input single-output synthesis is %d\n",
@@ -118,7 +118,7 @@ int main(void)
         }
         generate_fences(po_fences, k);
         global_total += total_nr_fences;
-        printf("Number of fences in F_%d = %d (3-input gates)\n", k, total_nr_fences);
+        printf("Number of fences in F_%u = %u (3-input gates)\n", k, total_nr_fences);
     }
 
     return 0;

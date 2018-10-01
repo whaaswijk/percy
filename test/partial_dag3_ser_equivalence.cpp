@@ -79,10 +79,10 @@ void check_maj_equivalence(int nr_in)
     assert(m3.get_nr_steps() ==  expected_size);
     assert(m4.get_nr_steps() == expected_size);
         
-    //printf("Time elapsed (PD): %lldus\n", elapsed1);
-    //printf("Time elapsed (PD SER): %lldus\n", elapsed2);
-    printf("Time elapsed (PARR): %lldus\n", elapsed3);
-    printf("Time elapsed (PD PARR): %lldus\n", elapsed4);
+    //printf("Time elapsed (PD): %ldus\n", elapsed1);
+    //printf("Time elapsed (PD SER): %ldus\n", elapsed2);
+    printf("Time elapsed (PARR): %ldus\n", elapsed3);
+    printf("Time elapsed (PD PARR): %ldus\n", elapsed4);
 }
 
 /// Tests synthesis based on partial DAGs by comparing it to conventional
@@ -92,13 +92,6 @@ void check_maj_equivalence(int nr_in)
 int main()
 {
 #ifndef TRAVIS_BUILD
-    bool full_coverage = false;
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
-
     check_maj_equivalence(3);
     check_maj_equivalence(5);
     check_maj_equivalence(7);

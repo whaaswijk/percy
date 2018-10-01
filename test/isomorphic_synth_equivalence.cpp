@@ -7,7 +7,7 @@ using kitty::static_truth_table;
 
 /*
 template<int nr_in>
-void check_equivalence(bool full_coverage)
+void check_equivalence()
 {
     printf("Checking synthesis equivalence for %d-input functions\n", nr_in);
 
@@ -24,9 +24,7 @@ void check_equivalence(bool full_coverage)
 
     // don't run too many tests.
     auto max_tests = (1ul << (1ul << nr_in));
-    if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
-    }
+    max_tests = std::min(max_tests, MAX_TESTS);
     for (auto i = 1ul; i < max_tests; i++) {
         printf("i = %lu\n", i);
         kitty::create_from_words(tt, &i, &i+1);
@@ -145,25 +143,11 @@ void check_npn_equivalence()
 }
 */
 
-int main(int argc, char **argv)
+int main()
 {
-    bool full_coverage = false;
-    if (argc > 1) {
-        full_coverage = true;
-    }
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
 
-//    check_equivalence<2>(full_coverage);
-//    check_equivalence<3>(full_coverage);
-
-    if (full_coverage) {
- //       check_equivalence<5>(full_coverage);
-//        check_npn_equivalence<4>();
-    }
+//    check_equivalence<2>();
+//    check_equivalence<3>();
 
     return 0;
 }

@@ -20,7 +20,7 @@ int main(void)
         spec.nr_steps = k;
         auto v = generate_fences(k);
         generate_fences(spec, q);
-        auto qfences = 0;
+        auto qfences = 0u;
         while (q.try_dequeue(f)) {
             ++qfences;
         }

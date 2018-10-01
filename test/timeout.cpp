@@ -3,7 +3,6 @@
 #include <percy/percy.hpp>
 #include <ctime>
 
-#define NR_IN 5
 #define NR_FUNCS 2
 
 using namespace percy;
@@ -13,7 +12,7 @@ using std::vector;
 /*******************************************************************************
     Verifies that our timeouts work correctly.
 *******************************************************************************/
-void check_timeout(int nr_in, dynamic_truth_table& tt, int conflict_limit, vector<double>& times)
+void check_timeout(dynamic_truth_table& tt, int conflict_limit, vector<double>& times)
 {
     spec spec;
     spec.conflict_limit = conflict_limit;
@@ -35,7 +34,7 @@ int main(void)
     vector<double> times;
     for (int i = 0; i < NR_FUNCS; i++) {
         kitty::create_random(tt);
-        check_timeout(NR_IN, tt, 100000, times);
+        check_timeout(tt, 100000, times);
     }
 
     for (int i = 0; i < NR_FUNCS; i++) {

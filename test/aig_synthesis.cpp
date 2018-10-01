@@ -27,11 +27,13 @@ int main(void)
         
         spec[0] = tt1 | tt2;
         result = synthesize(spec, c);
+        assert(result == success);
         assert(c.simulate()[0] == spec[0]);
         assert(c.is_aig());
 
         spec[0] = tt1 ^ tt2;
         result = synthesize(spec, c);
+        assert(result == success);
         assert(c.simulate()[0] == spec[0]);
         assert(c.is_aig());
     }
@@ -64,6 +66,7 @@ int main(void)
             kitty::create_from_words(tt, &i, &i + 1);
             spec[0] = tt;
             const auto result = synthesize(spec, c);
+            assert(result == success);
             assert(c.is_aig());
             assert(c.simulate()[0] == tt);
         }

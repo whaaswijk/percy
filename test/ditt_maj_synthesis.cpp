@@ -50,7 +50,7 @@ int main(void)
                 std::chrono::steady_clock::now() - start
             ).count();
             c.print_mag();
-            printf("Time elapsed: %lldus (STD CEGAR)\n", elapsed);
+            printf("Time elapsed: %ldus (STD CEGAR)\n", elapsed);
         }
     }
     
@@ -103,7 +103,7 @@ int main(void)
             assert(c.get_nr_steps() == 7);
 
             c.print_mag();
-            printf("Time elapsed: %lldus (SAT FENCE)\n", elapsed);
+            printf("Time elapsed: %ldus (SAT FENCE)\n", elapsed);
         }
     }
 
@@ -126,7 +126,7 @@ int main(void)
         assert(c.is_mag());
         assert(c.get_nr_steps() == 7);
         c.print_mag();
-        printf("Time elapsed: %lldus (PAR FENCE)\n", elapsed);
+        printf("Time elapsed: %ldus (PAR FENCE)\n", elapsed);
     }
     */
 

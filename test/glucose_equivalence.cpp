@@ -10,7 +10,7 @@ using kitty::static_truth_table;
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
 template<int NrIn>
-void check_std_equivalence(bool full_coverage)
+void check_std_equivalence()
 {
     spec spec;
 
@@ -26,9 +26,7 @@ void check_std_equivalence(bool full_coverage)
 
     // Don't run too many tests.
     auto max_tests = (1 << (1 << NrIn));
-    if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
-    }
+    max_tests = std::min(max_tests, MAX_TESTS);
     static_truth_table<NrIn> tt;
     for (auto i = 1; i < max_tests; i++) {
         kitty::create_from_words(tt, &i, &i+1);
@@ -77,23 +75,13 @@ void check_std_equivalence(bool full_coverage)
     Users can specify a arbitrary runtime argument, which removes the limit on
     the number of equivalence tests.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main()
 {
 #ifndef DISABLE_GLUCOSE
 #ifndef USE_SYRUP
-    bool full_coverage = false;
-    if (argc > 1) {
-        full_coverage = true;
-    }
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
-    
-    check_std_equivalence<2>(full_coverage);
-    check_std_equivalence<3>(full_coverage);
-    check_std_equivalence<4>(full_coverage);
+    check_std_equivalence<2>();
+    check_std_equivalence<3>();
+    check_std_equivalence<4>();
 #endif
 #endif
     return 0;

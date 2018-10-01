@@ -65,7 +65,6 @@ namespace percy
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         if (stats) {
             stats->synth_time = 0;
@@ -134,7 +133,6 @@ namespace percy
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         if (stats) {
             stats->synth_time = 0;
@@ -305,7 +303,6 @@ namespace percy
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -436,7 +433,6 @@ namespace percy
         assert(spec.get_nr_in() >= spec.fanin);
 
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -504,11 +500,13 @@ namespace percy
     }
 
     ///< TODO: implement
+    /*
     inline synth_result
     dag_synthesize(spec& spec, chain& chain, solver_wrapper& solver, dag_encoder<2>& encoder)
     {
         return failure;
     }
+    */
 
     inline synth_result 
     synthesize(
@@ -528,8 +526,8 @@ namespace percy
             return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
         case SYNTH_FENCE_CEGAR:
             return fence_cegar_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
-        case SYNTH_DAG:
-            return dag_synthesize(spec, chain, solver, static_cast<dag_encoder<2>&>(encoder));
+     //   case SYNTH_DAG:
+      //      return dag_synthesize(spec, chain, solver, static_cast<dag_encoder<2>&>(encoder));
         default:
             fprintf(stderr, "Error: synthesis method %d not supported\n", synth_method);
             exit(1);
@@ -551,7 +549,6 @@ namespace percy
         }
 
         synth_result status;
-        const auto begin = std::chrono::steady_clock::now();
         status = solver.solve(0);
 
         if (status == success) {
@@ -614,8 +611,7 @@ namespace percy
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
-        const partial_dag& dag,
-        synth_stats * stats = NULL)
+        const partial_dag& dag)
     {
         partial_dag_generator gen;
         chain.reset(spec.get_nr_in(), 1, dag.nr_vertices(), 2);
@@ -633,8 +629,7 @@ namespace percy
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
-        const std::vector<partial_dag>& dags,
-        synth_stats * stats = NULL)
+        const std::vector<partial_dag>& dags)
     {
         partial_dag_generator gen;
         spec.preprocess();
@@ -652,7 +647,7 @@ namespace percy
 
         for (const auto& dag : dags) {
             const auto result = 
-                pd_synthesize_enum(spec, chain, dag, stats);
+                pd_synthesize_enum(spec, chain, dag);
             if (result == success) {
                 return success;
             }
@@ -835,9 +830,11 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
@@ -956,9 +953,11 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
@@ -1113,12 +1112,13 @@ namespace percy
         SynthMethod synth_method = SYNTH_STD)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             switch (synth_method) {
             case SYNTH_STD:
             case SYNTH_STD_CEGAR:
-                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+                return std_synthesize(spec, chain, solver, dynamic_cast<std_encoder&>(encoder));
             case SYNTH_FENCE:
-                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+                return fence_synthesize(spec, chain, solver, dynamic_cast<fence_encoder&>(encoder));
             default:
                 fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
                 exit(1);
@@ -1155,12 +1155,13 @@ namespace percy
         SynthMethod synth_method = SYNTH_STD)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             switch (synth_method) {
             case SYNTH_STD:
             case SYNTH_STD_CEGAR:
-                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+                return std_synthesize(spec, chain, solver, dynamic_cast<std_encoder&>(encoder));
             case SYNTH_FENCE:
-                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+                return fence_synthesize(spec, chain, solver, dynamic_cast<fence_encoder&>(encoder));
             default:
                 fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
                 exit(1);
@@ -1196,7 +1197,6 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1239,7 +1239,6 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1288,7 +1287,6 @@ namespace percy
     maj_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1350,7 +1348,6 @@ namespace percy
         assert(spec.get_nr_in() >= spec.fanin);
 
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1636,6 +1633,7 @@ namespace percy
         maj_encoder& encoder)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             return maj_synthesize(spec, mig, solver, encoder);
         }
 
@@ -1688,7 +1686,6 @@ namespace percy
                 continue;
             }
 
-            const auto begin = std::chrono::steady_clock::now();
             const auto status = solver.solve(0);
 
             if (status == success) {
@@ -1737,11 +1734,14 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin3 = buf;
                     g.set_vertex(i, fanin1, fanin2, fanin3);
                 }
@@ -1859,11 +1859,14 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin3 = buf;
                     g.set_vertex(i, fanin1, fanin2, fanin3);
                 }

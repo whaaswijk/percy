@@ -95,9 +95,9 @@ void check_pd_equivalence()
         total_elapsed3 += elapsed3;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (PD): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PD SER): %lldus\n", total_elapsed3);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (PD): %ldus\n", total_elapsed2);
+    printf("Time elapsed (PD SER): %ldus\n", total_elapsed3);
 }
 
 /// Tests synthesis based on partial DAGs by comparing it to conventional

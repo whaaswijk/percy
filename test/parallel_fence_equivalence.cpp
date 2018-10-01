@@ -10,7 +10,7 @@ using kitty::dynamic_truth_table;
 /*******************************************************************************
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
-void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
+void check_pf_equivalence(int nr_in)
 {
     spec spec;
 
@@ -25,9 +25,7 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
-    if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
-    }
+    max_tests = std::min(max_tests, MAX_TESTS);
     dynamic_truth_table tt(nr_in);
 
     chain c1, c2, c2_cegar, c3, c5;
@@ -116,11 +114,11 @@ void check_pf_equivalence(int nr_in, int FI, bool full_coverage)
         total_elapsed4 += elapsed4;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (FENCE): %lldus\n", total_elapsed4);
-    printf("Time elapsed (PF): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PF CEGAR): %lldus\n", total_elapsed3);
-    printf("Time elapsed (STD MULTI): %lldus\n", total_elapsed5);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (FENCE): %ldus\n", total_elapsed4);
+    printf("Time elapsed (PF): %ldus\n", total_elapsed2);
+    printf("Time elapsed (PF CEGAR): %ldus\n", total_elapsed3);
+    printf("Time elapsed (STD MULTI): %ldus\n", total_elapsed5);
 }
 
 void check_pf_equivalence5()
@@ -209,24 +207,17 @@ void check_pf_equivalence5()
         total_elapsed3 += elapsed3;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (FENCE): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PF): %lldus\n", total_elapsed3);
-    printf("Time elapsed (STD MULTI): %lldus\n", total_elapsed4);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (FENCE): %ldus\n", total_elapsed2);
+    printf("Time elapsed (PF): %ldus\n", total_elapsed3);
+    printf("Time elapsed (STD MULTI): %ldus\n", total_elapsed4);
 }
 
 int main()
 {
-    bool full_coverage = false;
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
-
-    check_pf_equivalence(2, 2, full_coverage);
-    check_pf_equivalence(3, 2, full_coverage);
-    check_pf_equivalence(4, 2, full_coverage);
+    check_pf_equivalence(2);
+    check_pf_equivalence(3);
+    check_pf_equivalence(4);
 #ifndef TRAVIS_BUILD
     check_pf_equivalence5();
 #endif

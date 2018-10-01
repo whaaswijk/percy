@@ -9,9 +9,9 @@ using kitty::dynamic_truth_table;
 /*******************************************************************************
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
+#ifdef USE_CMS
 void check_std_equivalence(int nr_in, bool full_coverage)
 {
-#ifdef USE_CMS
 
     bsat_wrapper bsat_solver;
     ssv_encoder bsat_enc(bsat_solver);
@@ -66,15 +66,15 @@ void check_std_equivalence(int nr_in, bool full_coverage)
         fflush(stdout);
     }
     printf("\n");
-#endif
 }
+#endif
 
 /*******************************************************************************
     By default, does not check for full equivalence of all n-input functions.
     Users can specify a arbitrary runtime argument, which removes the limit on
     the number of equivalence tests.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main(int argc, char **)
 {
     bool full_coverage = false;
     if (argc > 1) {
@@ -85,10 +85,12 @@ int main(int argc, char **argv)
     } else {
         printf("Doing partial equivalence check\n");
     }
+#ifdef USE_CMS
     
     check_std_equivalence(2, full_coverage);
     check_std_equivalence(3, full_coverage);
     check_std_equivalence(4, full_coverage);
+#endif
 
     return 0;
 }

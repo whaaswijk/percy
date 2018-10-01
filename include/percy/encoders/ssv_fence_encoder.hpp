@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class ssv_fence_encoder : public fence_encoder
+    class ssv_fence_encoder : public fence_encoder, public enumerating_encoder
     {
         private:
             int level_dist[65]; // How many steps are below a certain level

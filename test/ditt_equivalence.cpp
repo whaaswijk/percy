@@ -6,7 +6,7 @@
 using namespace percy;
 using kitty::dynamic_truth_table;
 
-void check_equivalence(int nr_in, int FI, bool full_coverage)
+void check_equivalence(int nr_in)
 {
     spec spec;
     spec.verbosity = 0;
@@ -17,9 +17,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
-    if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
-    }
+    max_tests = std::min(max_tests, MAX_TESTS);
     dynamic_truth_table tt(nr_in);
 
     chain c1, c1_cegar, c2, c2_cegar;
@@ -68,23 +66,13 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
 /*******************************************************************************
     Verifies that the DITT encoding is equivalent to the SSV encoding.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main()
 {
-    bool full_coverage = false;
-    if (argc > 1) {
-        full_coverage = true;
-    }
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
-
-    check_equivalence(2, 2, full_coverage);
-    check_equivalence(3, 2, full_coverage);
-    check_equivalence(4, 2, full_coverage);
-    check_equivalence(4, 3, full_coverage);
-    check_equivalence(4, 4, full_coverage);
+    check_equivalence(2);
+    check_equivalence(3);
+    check_equivalence(4);
+    check_equivalence(4);
+    check_equivalence(4);
 
     return 0;
 }

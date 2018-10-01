@@ -73,7 +73,7 @@ void check_std_equivalence()
             fflush(stdout);
         }
         printf("\n");
-        printf("nthreads=%d, elapsed time=%d\n", nr_threads, total_elapsed);
+        printf("nthreads=%d, elapsed time=%zd\n", nr_threads, total_elapsed);
     }
 }
 

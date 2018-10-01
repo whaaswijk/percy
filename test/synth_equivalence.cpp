@@ -9,7 +9,7 @@ using kitty::dynamic_truth_table;
 /*******************************************************************************
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
-void check_fence_equivalence(int nr_in, int FI, bool full_coverage)
+void check_fence_equivalence(int nr_in, bool full_coverage)
 {
     spec spec;
     spec.add_lex_func_clauses = false;
@@ -79,9 +79,9 @@ int main()
         printf("Doing partial equivalence check\n");
     }
 
-    check_fence_equivalence(2, 2, full_coverage);
-    check_fence_equivalence(3, 2, full_coverage);
-    check_fence_equivalence(4, 2, full_coverage);
+    check_fence_equivalence(2, full_coverage);
+    check_fence_equivalence(3, full_coverage);
+    check_fence_equivalence(4, full_coverage);
     
     return 0;
 }

@@ -25,7 +25,7 @@ namespace percy
         }
     };
 
-    class enumerating_encoder : public encoder
+    class enumerating_encoder
     {
     protected:
         bool dirty = false;
@@ -33,7 +33,6 @@ namespace percy
     public:
         virtual bool block_solution(const spec& spec) = 0;
         virtual bool block_struct_solution(const spec& spec) = 0;
-        virtual void extract_chain(const spec& spec, chain& chain) = 0;
 
         void reset()
         {
@@ -42,18 +41,20 @@ namespace percy
 
         bool is_dirty() { return dirty; }
         void set_dirty(bool dirty) { this->dirty = dirty;  }
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
     };
 
-    class std_encoder : public enumerating_encoder
+    class std_encoder : public encoder
     {
     public:
         virtual bool encode(const spec& spec) = 0;
         virtual bool cegar_encode(const spec& spec) = 0;
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
         virtual void print_solver_state(const spec& spec) = 0;
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
     };
 
-    class fence_encoder : public enumerating_encoder
+    class fence_encoder : public encoder
     {
     public:
         virtual bool encode(const spec& spec, const fence& f) = 0;
@@ -61,6 +62,7 @@ namespace percy
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
         virtual kitty::dynamic_truth_table& simulate(const spec& spec) = 0;
 
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
         virtual void reset_sim_tts(int) { }
     };
 

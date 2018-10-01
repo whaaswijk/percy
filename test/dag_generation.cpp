@@ -42,7 +42,6 @@ int main(void)
     nr_vertices = 3;
     gen.reset(nr_vars, nr_vertices);
     nr_dags = 0;
-    char buf[64];
     while (gen.next_dag(g)) {
         nr_dags++;
     }

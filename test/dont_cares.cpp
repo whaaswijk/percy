@@ -9,7 +9,7 @@ bool verify_simulated_dc_tt(
     const kitty::dynamic_truth_table& dc_tt,
     const kitty::dynamic_truth_table& dc_mask)
 {
-    for (int i = 0; i < tt.num_bits(); i++) {
+    for (auto i = 0u; i < tt.num_bits(); i++) {
         if (kitty::get_bit(dc_mask, i)) {
             continue;
         }
@@ -52,6 +52,43 @@ void verify_dc(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_
     //printf("found a %d-step DC chain\n", chain.get_nr_steps());
     const auto cegar_dc_tt = chain.simulate()[0];
     //printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+    assert(verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask));
+}
+
+template<class Encoder>
+void verify_dc3(const kitty::dynamic_truth_table& tt, const kitty::dynamic_truth_table& dc_mask)
+{
+    assert(tt.num_vars() == dc_mask.num_vars());
+
+    printf("got truth table\t %s\n", kitty::to_binary(tt).c_str());
+    printf("got DC mask\t %s\n", kitty::to_binary(dc_mask).c_str());
+
+    chain chain;
+    spec spec;
+    spec.fanin = 3;
+    bmcg_wrapper solver;
+    Encoder encoder(solver);
+    spec[0] = tt;
+
+    const auto res = synthesize(spec, chain, solver, encoder);
+    assert(res == success);
+    printf("found a %d-step chain\n", chain.get_nr_steps());
+    const auto full_tt = chain.simulate()[0];
+    assert(full_tt == tt);
+
+    spec.set_dont_care(0, dc_mask);
+    const auto dc_res = synthesize(spec, chain, solver, encoder);
+    assert(dc_res == success);
+    printf("found a %d-step DC chain\n", chain.get_nr_steps());
+    const auto dc_tt = chain.simulate()[0];
+    printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
+    assert(verify_simulated_dc_tt(tt, dc_tt, dc_mask));
+
+    const auto cegar_dc_res = synthesize(spec, chain, solver, encoder, SYNTH_STD_CEGAR);
+    assert(cegar_dc_res == success);
+    printf("found a %d-step DC chain\n", chain.get_nr_steps());
+    const auto cegar_dc_tt = chain.simulate()[0];
+    printf("DC simulation tt\t %s\n", kitty::to_binary(dc_tt).c_str());
     assert(verify_simulated_dc_tt(tt, cegar_dc_tt, dc_mask));
 }
 
@@ -117,6 +154,23 @@ void verify_encoder(void)
             verify_dc<Encoder>(tt, dc);
         }
     }
+
+    {
+        kitty::dynamic_truth_table tt(4), dc(4);
+        for (int i = 0; i < 256; i++) {
+            kitty::create_random(tt);
+            kitty::clear(dc);
+            for (int i = 0; i < 16; i++) {
+                const auto number = rand() % 100 + 1; // Random number between 1 and 100
+                if (number <= 11) {
+                    kitty::set_bit(dc, i);
+                }
+            }
+
+            verify_dc3<Encoder>(tt, dc);
+        }
+    }
+
     {
         kitty::dynamic_truth_table a(4), b(4), c(4), x(4), y(4), dc;
 

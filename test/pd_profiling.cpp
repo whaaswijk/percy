@@ -62,8 +62,8 @@ void profile(int nr_in, bool full_coverage, const std::vector<partial_dag>& dags
         total_elapsed2 += elapsed2;
     }
     printf("\n");
-    printf("Time elapsed: %lldus\n", total_elapsed1);
-    printf("Time elapsed (CEGAR): %lldus\n", total_elapsed2);
+    printf("Time elapsed: %ldus\n", total_elapsed1);
+    printf("Time elapsed (CEGAR): %ldus\n", total_elapsed2);
 }
 
 void profile5(const std::vector<partial_dag>& dags)
@@ -125,8 +125,8 @@ void profile5(const std::vector<partial_dag>& dags)
         total_elapsed2 += elapsed2;
     }
     printf("\n");
-    printf("Time elapsed: %lldus\n", total_elapsed1);
-    printf("Time elapsed (CEGAR): %lldus\n", total_elapsed2);
+    printf("Time elapsed: %ldus\n", total_elapsed1);
+    printf("Time elapsed (CEGAR): %ldus\n", total_elapsed2);
 }
 
 int main()

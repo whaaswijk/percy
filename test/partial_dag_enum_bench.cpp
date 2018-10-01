@@ -33,7 +33,6 @@ void bench(int nr_in, bool full_coverage)
         spec.verbosity = 0;
         spec[0] = tt;
      
-        auto had_success = false;
         const auto start = std::clock();
         auto res2 = pd_synthesize_enum(spec, c2, dags);
         auto elapsed2 = std::clock() - start;

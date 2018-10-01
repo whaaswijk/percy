@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class ssv_encoder : public std_encoder
+    class ssv_encoder : public std_encoder, public enumerating_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -100,7 +100,7 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     const auto nr_svars_for_i = nr_svar_map[i];
                     
-                    for (int j = 0; j < nr_svars_for_i; j++) {
+                    for (int j = 0u; j < nr_svars_for_i; j++) {
                         pabc::Vec_IntSetEntry(vLits, j, 
                                 pabc::Abc_Var2Lit(get_sel_var(j + svar_offset), 0));
                     }
@@ -111,12 +111,12 @@ namespace percy
 
                     if (spec.verbosity > 2) {
                         printf("creating op clause: ( ");
-                        for (int j = 0; j < nr_svars_for_i; j++) {
+                        for (int j = 0u; j < nr_svars_for_i; j++) {
                             printf("%ss_%d_%d ", j > 0 ? "\\/ " : "",
                                     spec.get_nr_in() + i + 1, j + 1);
                         }
                         printf(") (status=%d)\n", status);
-                        for (int j = 0; j < nr_svars_for_i; j++) {
+                        for (int j = 0u; j < nr_svars_for_i; j++) {
                             printf("svar(%d) = %d\n", j + svar_offset,
                                     get_sel_var(j + svar_offset));
                         }
@@ -207,7 +207,7 @@ namespace percy
                     }
                     //spec.nr_sel_vars += binomial_coeff(i, FI); 
 					//( i * ( i - 1 ) ) / 2;
-                    auto nr_svars_for_i = 0;
+                    auto nr_svars_for_i = 0u;
                     fanin_init(fanins, spec.fanin - 1);
                     do  {
                         if (spec.verbosity > 4) {
@@ -218,7 +218,7 @@ namespace percy
                     } while (fanin_inc(fanins, i-1));
                     
                     if (spec.verbosity > 2) {
-                        printf("added %d sel vars\n", nr_svars_for_i);
+                        printf("added %u sel vars\n", nr_svars_for_i);
                     }
 
                     nr_sel_vars += nr_svars_for_i;

@@ -4,7 +4,7 @@
 #include <vector>
 #include "tt_utils.hpp"
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-pedantic"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <kitty/kitty.hpp>
 #include <kitty/print.hpp>
 #pragma GCC diagnostic pop
@@ -302,7 +302,6 @@ namespace percy
 
             const kitty::dynamic_truth_table& get_dc_mask(std::size_t f_idx) const
             {
-                assert(f_idx < capacity);
                 return dc_masks[f_idx];
             }
 

@@ -6,7 +6,7 @@
 using namespace percy;
 using kitty::dynamic_truth_table;
 
-void check_equivalence(int nr_in, int FI, bool full_coverage)
+void check_equivalence(int nr_in, bool full_coverage)
 {
     spec spec;
 
@@ -69,7 +69,7 @@ void check_equivalence(int nr_in, int FI, bool full_coverage)
 /*******************************************************************************
     Verifies that the MSV encoding is equivalent to the SSV encoding.
 *******************************************************************************/
-int main(int argc, char **argv)
+int main(int argc, char **)
 {
     bool full_coverage = false;
     if (argc > 1) {
@@ -81,11 +81,11 @@ int main(int argc, char **argv)
         printf("Doing partial equivalence check\n");
     }
 
-    check_equivalence(2, 2, full_coverage);
-    check_equivalence(3, 2, full_coverage);
-    check_equivalence(3, 4, full_coverage);
-    check_equivalence(4, 3, full_coverage);
-    check_equivalence(4, 4, full_coverage);
+    check_equivalence(2, full_coverage);
+    check_equivalence(3, full_coverage);
+    check_equivalence(3, full_coverage);
+    check_equivalence(4, full_coverage);
+    check_equivalence(4, full_coverage);
 
     return 0;
 }

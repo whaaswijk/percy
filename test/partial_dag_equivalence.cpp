@@ -10,7 +10,7 @@ using kitty::dynamic_truth_table;
 /*******************************************************************************
     Verifies that our synthesizers' results are equivalent to each other.
 *******************************************************************************/
-void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
+void check_pd_equivalence(int nr_in)
 {
     spec spec;
 
@@ -28,9 +28,7 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
-    if (!full_coverage) {
-        max_tests = std::min(max_tests, MAX_TESTS);
-    }
+    max_tests = std::min(max_tests, MAX_TESTS);
     dynamic_truth_table tt(nr_in);
 
     chain c1, c2, c2_cegar;
@@ -91,9 +89,9 @@ void check_pd_equivalence(int nr_in, int FI, bool full_coverage)
         total_elapsed3 += elapsed3;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (PD): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PD CEGAR): %lldus\n", total_elapsed3);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (PD): %ldus\n", total_elapsed2);
+    printf("Time elapsed (PD CEGAR): %ldus\n", total_elapsed3);
 }
 
 void check_pd_equivalence5()
@@ -175,9 +173,9 @@ void check_pd_equivalence5()
         total_elapsed3 += elapsed3;
     }
     printf("\n");
-    printf("Time elapsed (STD): %lldus\n", total_elapsed1);
-    printf("Time elapsed (PD): %lldus\n", total_elapsed2);
-    printf("Time elapsed (PD CEGAR): %lldus\n", total_elapsed3);
+    printf("Time elapsed (STD): %ldus\n", total_elapsed1);
+    printf("Time elapsed (PD): %ldus\n", total_elapsed2);
+    printf("Time elapsed (PD CEGAR): %ldus\n", total_elapsed3);
 }
 
 /// Tests synthesis based on partial DAGs by comparing it to conventional
@@ -186,13 +184,6 @@ void check_pd_equivalence5()
 /// the number of equivalence tests.
 int main()
 {
-    bool full_coverage = false;
-    if (full_coverage) {
-        printf("Doing full equivalence check\n");
-    } else {
-        printf("Doing partial equivalence check\n");
-    }
-
     {
         bsat_wrapper solver;
         partial_dag_encoder encoder(solver);
@@ -215,9 +206,9 @@ int main()
         printf("found chain\n");
     }
 
-    check_pd_equivalence(2, 2, full_coverage);
-    check_pd_equivalence(3, 2, full_coverage);
-    check_pd_equivalence(4, 2, full_coverage);
+    check_pd_equivalence(2);
+    check_pd_equivalence(3);
+    check_pd_equivalence(4);
 #ifndef TRAVIS_BUILD
     check_pd_equivalence5();
 #endif

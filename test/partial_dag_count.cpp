@@ -15,10 +15,10 @@ main(void)
                 expected_dags *= (1 + binomial_coeff(j + 1, 2));
             }
         }
-        printf("Expecting %llu dags with %d vertices\n", expected_dags, i);
+        printf("Expecting %lu dags with %d vertices\n", expected_dags, i);
         gen.reset(i);
         auto nr_dags = gen.count_dags();
-        printf("Found %llu dags with %d vertices\n", nr_dags, i);
+        printf("Found %lu dags with %d vertices\n", nr_dags, i);
         assert(nr_dags == expected_dags);
     }
 
@@ -26,7 +26,7 @@ main(void)
     for (int i = 1; i <= 8; i++) {
         gen.reset(i);
         auto nr_dags = gen.count_dags();
-        printf("Found %llu connected dags with %d vertices\n", nr_dags, i);
+        printf("Found %lu connected dags with %d vertices\n", nr_dags, i);
     }
 
     gen.gen_type(GEN_COLEX);
@@ -34,7 +34,7 @@ main(void)
     for (int i = 1; i <= 8; i++) {
         gen.reset(i);
         auto nr_dags = gen.count_dags();
-        printf("Found %llu colex dags with %d vertices\n", nr_dags, i);
+        printf("Found %lu colex dags with %d vertices\n", nr_dags, i);
     }
 
     gen.gen_type(GEN_NOREAPPLY);
@@ -42,7 +42,7 @@ main(void)
     for (int i = 1; i <= 4; i++) {
         gen.reset(i);
         auto nr_dags = gen.count_dags();
-        printf("Found %llu noreapply dags with %d vertices\n", nr_dags, i);
+        printf("Found %lu noreapply dags with %d vertices\n", nr_dags, i);
     }
 
     return 0;
