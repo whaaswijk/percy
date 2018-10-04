@@ -154,7 +154,7 @@ int main()
         // Exact synthesis of MAJ-7
         mig mig;
         spec spec;
-        bsat_wrapper solver;
+        bmcg_wrapper solver;
         maj_encoder encoder(solver);
         kitty::dynamic_truth_table tt(7);
         kitty::create_majority(tt);
@@ -184,6 +184,35 @@ int main()
 
         /*
         start = std::chrono::steady_clock::now();
+        res = maj_synthesize(spec, mig, solver, encoder);
+        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res == success);
+        assert(mig.satisfies_spec(spec));
+        assert(mig.get_nr_steps() == 7);
+
+        
+        printf("MAJ-7 time elapsed (MAJ): %ldus\n", elapsed);
+        */
+
+
+        spec.add_alonce_clauses = false;
+        spec.add_colex_clauses = false;
+        spec.add_noreapply_clauses = false;
+        spec.add_symvar_clauses = false;
+        start = std::chrono::steady_clock::now();
+        res = maj_cegar_synthesize(spec, mig, solver, encoder);
+        const auto elapsed_cegar = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - start
+            ).count();
+        assert(res == success);
+        assert(mig.satisfies_spec(spec));
+        assert(mig.get_nr_steps() == 7);
+        printf("MAJ-7 time elapsed (MAJ CEGAR): %ldus\n", elapsed_cegar);
+
+        /*
+        start = std::chrono::steady_clock::now();
         res = maj_pd_synthesize(spec, mig, dags, solver, encoder);
         const auto pd_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - start
@@ -195,26 +224,7 @@ int main()
         
         printf("MAJ-7 time elapsed (MAJ PD): %ldus\n", pd_elapsed);
 
-        start = std::chrono::steady_clock::now();
-        res = maj_synthesize(spec, mig, solver, encoder);
-        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - start
-            ).count();
-        assert(res == success);
-        assert(mig.satisfies_spec(spec));
-        assert(mig.get_nr_steps() == 7);
-
-        start = std::chrono::steady_clock::now();
-        res = maj_cegar_synthesize(spec, mig, solver, encoder);
-        const auto elapsed_cegar = std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - start
-            ).count();
-        assert(res == success);
-        assert(mig.satisfies_spec(spec));
-        assert(mig.get_nr_steps() == 7);
-        printf("MAJ-7 time elapsed (MAJ): %ldus\n", elapsed);
-        printf("MAJ-7 time elapsed (MAJ CEGAR): %ldus\n", elapsed_cegar);
-
+        
         start = std::chrono::steady_clock::now();
         res = maj_fence_synthesize(spec, mig, solver, encoder);
         const auto fence_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(

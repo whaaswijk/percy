@@ -272,32 +272,6 @@ namespace percy
         return res;
     }
 
-    inline std::unique_ptr<enumerating_encoder>
-    get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_SSV)
-    {
-        enumerating_encoder * enc = nullptr;
-        std::unique_ptr<enumerating_encoder> res;
-
-        switch (enc_type) {
-        case ENC_SSV:
-            enc = new ssv_encoder(solver);
-            break;
-        case ENC_MSV:
-            enc = new msv_encoder(solver);
-            break;
-        case ENC_FENCE:
-            enc = new ssv_fence_encoder(solver);
-            break;
-        default:
-            fprintf(stderr, "Error: enumerating encoder of ctype %d not found\n", enc_type);
-            exit(1);
-        }
-
-        res.reset(enc);
-        return res;
-    }
-
-
     inline synth_result 
     fence_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
@@ -1231,6 +1205,23 @@ namespace percy
         }
     }
 
+    int get_init_imint(const spec& spec)
+    {
+        int iMint = -1;
+        kitty::static_truth_table<6> tt;
+        for (int i = 1; i < (1 << spec.nr_in); i++) {
+            kitty::create_from_words(tt, &i, &i + 1);
+            const int nOnes = kitty::count_ones(tt);
+            if (nOnes < (spec.nr_in / 2) + 1) {
+                continue;
+            }
+            iMint = i;
+            break;
+        }
+
+        return iMint;
+    }
+
     inline synth_result
     maj_cegar_synthesize(
         spec& spec, 
@@ -1251,34 +1242,40 @@ namespace percy
             return success;
         }
 
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_steps = spec.initial_steps;
         while (true) {
             solver.restart();
-            if (!encoder.encode(spec)) {
+            if (!encoder.cegar_encode(spec)) {
                 spec.nr_steps++;
                 continue;
             }
-            while (true) {
-                const auto status = solver.solve(spec.conflict_limit);
+            auto iMint = get_init_imint(spec);
+            //printf("initial iMint: %d\n", iMint);
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.create_tt_clauses(spec, iMint - 1)) {
+                    spec.nr_steps++;
+                    break;
+                }
 
+                printf("Iter %3d : ", i);
+                printf("Var =%5d  ", solver.nr_vars());
+                printf("Cla =%6d  ", solver.nr_clauses());
+                printf("Conf =%9d\n", solver.nr_conflicts());
+
+                const auto status = solver.solve(spec.conflict_limit);
                 if (status == success) {
-                    encoder.extract_mig(spec, mig);
-                    auto sim_tt = mig.simulate()[0];
-                    auto xor_tt = sim_tt ^ (spec[0]);
-                    auto first_one = kitty::find_first_one_bit(xor_tt);
-                    if (first_one == -1) {
-                        return success;
-                    }
-                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
-                        spec.nr_steps++;
-                        break;
-                    }
+                    iMint = encoder.simulate(spec);
                 } else if (status == failure) {
                     spec.nr_steps++;
                     break;
                 } else {
                     return timeout;
                 }
+            }
+            if (iMint == -1) {
+                encoder.extract_mig(spec, mig);
+                return success;
             }
         }
     }
@@ -1447,10 +1444,10 @@ namespace percy
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &mig, &q] {
-                    percy::mig local_mig;
                     bmcg_wrapper solver;
                     maj_encoder encoder(solver);
                     fence local_fence;
+                    encoder.reset_sim_tts(spec.nr_in);
 
                     while (!(*pfound)) {
                         if (!q.try_dequeue(local_fence)) {
@@ -1465,6 +1462,7 @@ namespace percy
                             }
                         }
 
+                        /*
                         if (spec.verbosity)
                         {
                             std::lock_guard<std::mutex> vlock(found_mutex);
@@ -1475,39 +1473,37 @@ namespace percy
                                 local_fence.nr_nodes(),
                                 local_fence.nr_levels());
                         }
+                        */
 
                         synth_result status;
                         solver.restart();
                         if (!encoder.cegar_encode(spec, local_fence)) {
                             continue;
                         }
-                        do {
-                            status = solver.solve(10);
-                            if (*pfound) {
+                        auto iMint = get_init_imint(spec);
+                        for (int i = 0; !(*pfound) && iMint != -1; i++) {
+                            if (!encoder.fence_create_tt_clauses(spec, iMint - 1)) {
                                 break;
-                            } else if (status == success) {
-                                encoder.fence_extract_mig(spec, local_mig);
-                                auto sim_tt = local_mig.simulate()[0];
-                                //auto sim_tt = encoder.simulate(spec);
-                                //if (spec.out_inv) {
-                                //    sim_tt = ~sim_tt;
-                                //}
-                                auto xor_tt = sim_tt ^ (spec[0]);
-                                auto first_one = kitty::find_first_one_bit(xor_tt);
-                                if (first_one != -1) {
-                                    if (!encoder.fence_create_tt_clauses(spec, first_one - 1)) {
-                                        break;
-                                    }
-                                    status = timeout;
-                                    continue;
-                                }
-                                std::lock_guard<std::mutex> vlock(found_mutex);
-                                if (!(*pfound)) {
-                                    encoder.fence_extract_mig(spec, mig);
-                                    *pfound = true;
-                                }
                             }
-                        } while (status == timeout);
+                            do {
+                                status = solver.solve(10);
+                                if (*pfound) {
+                                    break;
+                                }
+                            } while (status == timeout);
+
+                            if (status == failure) {
+                                break;
+                            }
+                            iMint = encoder.fence_simulate(spec);
+                        }
+                        if (iMint == -1) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (!(*pfound)) {
+                                encoder.fence_extract_mig(spec, mig);
+                                *pfound = true;
+                            }
+                        }
                     }
                 });
             }

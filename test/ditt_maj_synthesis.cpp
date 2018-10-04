@@ -9,7 +9,7 @@ using kitty::dynamic_truth_table;
 int main(void)
 {
     {
-        bsat_wrapper solver;
+        bmcg_wrapper solver;
         ditt_maj_encoder encoder(solver);
         percy::spec spec;
         dynamic_truth_table maj_tt(7);
@@ -28,10 +28,10 @@ int main(void)
                 //printf("The problem has no solution\n");
                 break;
             }
-            //printf( "Iter %3d : ", i);
-            //printf( "Var =%5d  ", encoder.get_nr_vars());
-            //printf( "Cla =%6d  ", solver.nr_clauses());
-            //printf( "Conf =%9d\n", solver.nr_conflicts());
+            printf( "Iter %3d : ", i);
+            printf( "Var =%5d  ", encoder.get_nr_vars());
+            printf( "Cla =%6d  ", solver.nr_clauses());
+            printf( "Conf =%9d\n", solver.nr_conflicts());
             const auto status = solver.solve(0);
             if (status == failure) {
                 //printf("The problem has no solution\n");
@@ -107,7 +107,17 @@ int main(void)
         }
     }
 
-    //ditt_maj_synthesize(7);
+    {
+        const auto start = std::chrono::steady_clock::now();
+        chain c;
+
+        ditt_maj_synthesize(7, c);
+
+        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - start).count();
+        printf("Time elapsed: %ldus (STD CEGAR)\n", elapsed);
+    }
+
     {
         chain c;
         kitty::dynamic_truth_table maj_tt(7);

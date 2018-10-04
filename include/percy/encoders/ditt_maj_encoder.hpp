@@ -85,6 +85,10 @@ namespace percy
 
         void add_base_variables(const spec& spec)
         {
+            for (int i = 0; i < MAJ_NOBJS; i++) {
+                pabc::Vec_IntClear(pabc::Vec_WecEntry(vOutLits, i));
+            }
+
             iVar = 1;
             for (int k = 0; k < 3; k++) {
                 const auto j = 2 - k;
@@ -133,12 +137,8 @@ namespace percy
             //printf("The number of structural variables = %d\n", iVar);
         }
 
-        void add_base_cnf(const spec& spec)
+        bool add_base_cnf(const spec& spec)
         {
-            for (int i = 0; i < MAJ_NOBJS; i++) {
-                pabc::Vec_IntClear(pabc::Vec_WecEntry(vOutLits, i));
-            }
-
             int tmpLits[2];
             for (int i = spec.nr_in; i < spec.nr_in + spec.nr_steps; i++) {
                 for (int k = 0; k < 3; k++) {
@@ -167,7 +167,6 @@ namespace percy
                                 if (varMarks[i][k + 1][n]) {
                                     tmpLits[0] = pabc::Abc_Var2Lit(varMarks[i][k][j], 1);
                                     tmpLits[1] = pabc::Abc_Var2Lit(varMarks[i][k + 1][n], 1);
-                                    //printf("%d --> !%d\n", varMarks[i][k][j], varMarks[i][k + 1][n]);
                                     if (!solver->add_clause(tmpLits, tmpLits + 2))
                                         assert(false);
                                 }
@@ -178,11 +177,17 @@ namespace percy
             }
             for (int i = 0; i < spec.nr_in + spec.nr_steps - 1; i++) {
                 auto vArray = pabc::Vec_WecEntry(vOutLits, i);
-                if (Vec_IntSize(vArray) == 0)
+                if (Vec_IntSize(vArray) == 0) {
+                    // Note that this can happen e.g. if we synthesize a chain
+                    // with 1 step and > 3 variables.
                     continue;
-                if (!solver->add_clause(pabc::Vec_IntArray(vArray), pabc::Vec_IntArray(vArray) + pabc::Vec_IntSize(vArray)))
-                    assert(false);
+                }
+                if (!solver->add_clause(pabc::Vec_IntArray(vArray), pabc::Vec_IntArray(vArray) + pabc::Vec_IntSize(vArray))) {
+                    return false;
+                }
             }
+
+            return true;
         }
 
         int Maj_ManValue(int iMint, int nVars)
@@ -252,7 +257,8 @@ namespace percy
                 }
             }
             add_base_variables(spec);
-            add_base_cnf(spec);
+            if (!add_base_cnf(spec))
+                return false;
 
             return true;
         }
@@ -268,13 +274,14 @@ namespace percy
             }
             update_level_map(spec, fence);
             add_base_variables(spec, fence);
-            add_base_cnf(spec);
+            if (!add_base_cnf(spec))
+                return false;
 
             return true;
         }
         
-        /// Simulates the current state of the encoder and returns the index
-        /// of the first minterm which is different from the specified function.
+        /// Simulates the current state of the encoder and returns an index
+        /// of a minterm which is different from the specified function.
         /// Returns -1 if no such index exists.
         int simulate(const spec& spec)
         {
@@ -330,6 +337,50 @@ namespace percy
     };
 
     inline void ditt_maj_synthesize(int nr_in, chain& c)
+    {
+        spec spec;
+        bmcg_wrapper solver;
+        ditt_maj_encoder encoder(solver);
+        kitty::dynamic_truth_table tt(nr_in);
+        kitty::create_majority(tt);
+
+        spec[0] = tt;
+        spec.nr_steps = 1;
+        spec.preprocess();
+
+        while (true) {
+            //printf("nr_steps=%d\n", spec.nr_steps);
+            solver.restart();
+            if (!encoder.cegar_encode(spec)) {
+                spec.nr_steps++;
+                continue;
+            }
+            auto iMint = 0;
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.add_cnf(spec, iMint)) {
+                    break;
+                }
+                //printf("Iter %3d : ", i);
+                //printf("Var =%5d  ", encoder.get_nr_vars());
+                //printf("Cla =%6d  ", solver.nr_clauses());
+                //printf("Conf =%9d\n", solver.nr_conflicts());
+                const auto status = solver.solve(0);
+                if (status == failure) {
+                    //printf("The problem has no solution\n");
+                    break;
+                }
+                iMint = encoder.simulate(spec);
+            }
+            if (iMint == -1) {
+                //printf("found solution!\n");
+                encoder.extract_chain(spec, c);
+                break;
+            }
+            spec.nr_steps++;
+        }
+    }
+
+    inline void fence_ditt_maj_synthesize(int nr_in, chain& c)
     {
         spec spec;
         bmcg_wrapper solver;
