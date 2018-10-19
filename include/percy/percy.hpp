@@ -685,6 +685,7 @@ namespace percy
                 bsat_wrapper solver;
                 partial_dag_encoder encoder(solver);
                 partial_dag dag;
+                local_spec.nr_steps = 0;
 
                 while (*psize_found > local_spec.nr_steps) {
                     if (!q.try_dequeue(dag)) {
