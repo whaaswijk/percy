@@ -175,7 +175,14 @@ namespace percy
                     stats->synth_time += elapsed_time;
                 }
                 if (stat == failure) {
+                    if (stats) {
+                        stats->unsat_time += elapsed_time;
+                    }
                     break;
+                } else {
+                    if (stats) {
+                        stats->sat_time += elapsed_time;
+                    }
                 }
                 iMint = encoder.simulate(spec);
             }
