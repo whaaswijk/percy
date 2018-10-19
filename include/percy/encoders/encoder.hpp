@@ -54,6 +54,34 @@ namespace percy
         virtual void extract_chain(const spec& spec, chain& chain) = 0;
     };
 
+    class std_cegar_encoder : public std_encoder
+    {
+    protected:
+        static const int NR_SIM_TTS = 18;
+        std::vector<kitty::dynamic_truth_table> sim_tts{ NR_SIM_TTS };
+
+    public:
+        /// Simulates the current state of the encoder and returns an index
+        /// of a minterm which is different from the specified function.
+        /// Returns -1 if no such index exists.
+        /// Note: we subtract 1 from the actual index, as we encode only
+        /// normal functions.
+        virtual int simulate(const spec& spec) = 0;
+        
+        virtual void cegar_extract_chain(const spec& spec, chain& chain) = 0;
+
+        /// Resets the simulation truth tables, based on the number of PIs.
+        void reset_sim_tts(int nr_in)
+        {
+            for (int i = 0; i < NR_SIM_TTS; i++) {
+                sim_tts[i] = kitty::dynamic_truth_table(nr_in);
+                if (i < nr_in) {
+                    kitty::create_nth_var(sim_tts[i], i);
+                }
+            }
+        }
+    };
+
     class fence_encoder : public encoder
     {
     public:

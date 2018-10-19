@@ -742,11 +742,6 @@ namespace percy
 
                 update_level_map(spec, f);
                 create_variables(spec);
-                for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                    if (!create_tt_clauses(spec, rand()%spec.get_tt_size())) {
-                        return false;
-                    }
-                }
                 
                 create_output_clauses(spec);
                 create_op_clauses(spec);

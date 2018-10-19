@@ -771,10 +771,6 @@ namespace percy
 
             update_level_map(spec, f);
             cegar_create_variables(spec);
-            for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                const auto t = rand() % spec.get_tt_size();
-                vcreate_tt_clauses(spec, t);
-            }
             
             if (!create_fanin_clauses(spec)) {
                 return false;

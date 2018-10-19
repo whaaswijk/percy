@@ -900,12 +900,14 @@ namespace percy
         cegar_encode(const spec& spec, const partial_dag& dag)
         {
             cegar_create_variables(spec, dag);
+            /*
             for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
                 const auto t = rand() % spec.get_tt_size();
                 //printf("creating tt/IO clause at idx %d\n", t+1);
                 vcreate_tt_clauses(spec, dag, t);
                 vfix_output_sim_vars(spec, t);
             }
+            */
 
             create_cardinality_constraints(spec, dag);
 

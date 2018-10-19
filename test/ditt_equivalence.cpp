@@ -13,7 +13,7 @@ void check_equivalence(int nr_in)
 
     bsat_wrapper solver;
     ssv_encoder ssv_enc(solver);
-    ditt_encoder msv_enc(solver);
+    ditt_encoder ditt_enc(solver);
 
     // don't run too many tests.
     auto max_tests = (1 << (1 << nr_in));
@@ -38,13 +38,13 @@ void check_equivalence(int nr_in)
         auto c1_cegar_nr_vertices = c1_cegar.get_nr_steps();
         assert(c1_cegar.satisfies_spec(spec));
 
-        auto res2 = synthesize(spec, c2, solver, msv_enc);
+        auto res2 = synthesize(spec, c2, solver, ditt_enc);
         assert(res2 == success);
         auto sim_tts2 = c2.simulate();
         auto c2_nr_vertices = c2.get_nr_steps();
         assert(c2.satisfies_spec(spec));
 
-        auto res2_cegar = synthesize(spec, c2_cegar, solver, msv_enc, SYNTH_STD_CEGAR);
+        auto res2_cegar = synthesize(spec, c2_cegar, solver, ditt_enc, SYNTH_STD_CEGAR);
         assert(res2_cegar == success);
         auto sim_tts2_cegar = c2_cegar.simulate();
         auto c2_cegar_nr_vertices = c2.get_nr_steps();

@@ -128,7 +128,7 @@ namespace percy
         spec& spec, 
         chain& chain, 
         solver_wrapper& solver, 
-        std_encoder& encoder,
+        std_cegar_encoder& encoder,
         synth_stats* stats = NULL)
     {
         assert(spec.get_nr_in() >= spec.fanin);
@@ -151,7 +151,7 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_steps = spec.initial_steps;
         while (true) {
             solver.restart();
@@ -159,7 +159,11 @@ namespace percy
                 spec.nr_steps++;
                 continue;
             }
-            while (true) {
+            auto iMint = 1;
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.create_tt_clauses(spec, iMint - 1)) {
+                    break;
+                }
                 auto begin = std::chrono::steady_clock::now();
                 auto stat = solver.solve(spec.conflict_limit);
                 auto end = std::chrono::steady_clock::now();
@@ -167,44 +171,22 @@ namespace percy
                     std::chrono::duration_cast<std::chrono::microseconds>(
                         end - begin
                         ).count();
-
                 if (stats) {
                     stats->synth_time += elapsed_time;
                 }
-                if (stat == success) {
-                    encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate();
-                    auto xor_tt = (sim_tts[0]) ^ (spec[0]);
-                    if (spec.has_dc_mask(0)) {
-                        xor_tt &= ~spec.get_dc_mask(0);
-                    }
-                    auto first_one = kitty::find_first_one_bit(xor_tt);
-                    if (first_one == -1) {
-                        if (stats) {
-                            stats->sat_time += elapsed_time;
-                        }
-                        return success;
-                    }
-                    // Add additional constraint.
-                    if (spec.verbosity) {
-                        printf("  CEGAR difference at tt index %ld\n",
-                            first_one);
-                    }
-                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
-                        spec.nr_steps++;
-                        break;
-                    }
-                } else if (stat == failure) {
-                    if (stats) {
-                        stats->unsat_time += elapsed_time;
-                    }
-                    spec.nr_steps++;
+                if (stat == failure) {
                     break;
-                } else {
-                    return timeout;
                 }
+                iMint = encoder.simulate(spec);
             }
+            if (iMint == -1) {
+                encoder.cegar_extract_chain(spec, chain);
+                break;
+            }
+            spec.nr_steps++;
         }
+
+        return synth_result::success;
     }
 
     inline std::unique_ptr<solver_wrapper>
@@ -368,7 +350,6 @@ namespace percy
         fence_encoder& encoder, 
         fence& fence)
     {
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         solver.restart();
         if (!encoder.cegar_encode(spec, fence)) {
             return failure;
@@ -420,7 +401,6 @@ namespace percy
         }
 
         encoder.reset_sim_tts(spec.nr_in);
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
         fence f;
         po_filter<unbounded_generator> g(
@@ -495,7 +475,7 @@ namespace percy
         case SYNTH_STD:
             return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder), stats);
         case SYNTH_STD_CEGAR:
-            return std_cegar_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder), stats);
+            return std_cegar_synthesize(spec, chain, solver, static_cast<std_cegar_encoder&>(encoder), stats);
         case SYNTH_FENCE:
             return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
         case SYNTH_FENCE_CEGAR:
@@ -545,7 +525,6 @@ namespace percy
         solver_wrapper& solver, 
         partial_dag_encoder& encoder)
     {
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
         if (!encoder.cegar_encode(spec, dag)) {
@@ -1357,7 +1336,6 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
         fence f;
         po_filter<unbounded_generator> g(
@@ -1438,7 +1416,6 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
-        spec.nr_rand_tt_assigns = 0;// 2 * spec.get_nr_in();
         spec.fanin = 3;
         spec.nr_steps = spec.initial_steps;
         while (true) {
@@ -1551,7 +1528,6 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.fanin = 3;
         spec.nr_steps = spec.initial_steps;
         while (true) {
