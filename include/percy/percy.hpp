@@ -1192,7 +1192,7 @@ namespace percy
         }
     }
 
-    int get_init_imint(const spec& spec)
+    inline int get_init_imint(const spec& spec)
     {
         int iMint = -1;
         kitty::static_truth_table<6> tt;

@@ -8,6 +8,9 @@ else()
 endif()
 
 file(GLOB FILENAMES *.cpp)
+set(lt1name ${CMAKE_CURRENT_SOURCE_DIR}/link_test1.cpp)
+set(lt2name ${CMAKE_CURRENT_SOURCE_DIR}/link_test2.cpp)
+list(REMOVE_ITEM FILENAMES ${lt1name} ${lt2name})
 
 foreach(FILENAME ${FILENAMES})
     get_filename_component(BASENAME ${FILENAME} NAME_WE)
@@ -59,3 +62,7 @@ foreach(FILENAME ${FILENAMES})
     endif()
     add_test(${TARGET_NAME} ${TARGET_NAME})
 endforeach()
+
+# Make sure that there are no linking issues
+add_executable(link_test link_test1.cpp link_test2.cpp)
+target_link_libraries(link_test percy)
