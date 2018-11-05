@@ -90,6 +90,10 @@ namespace percy
                 spec.nr_steps++;
                 continue;
             }
+            if (stats) {
+                stats->nr_vars = solver.nr_vars();
+                stats->nr_clauses = solver.nr_clauses();
+            }
 
             auto begin = std::chrono::steady_clock::now();
             const auto status = solver.solve(spec.conflict_limit);
