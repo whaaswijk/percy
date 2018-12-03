@@ -1199,13 +1199,13 @@ namespace percy
             size_t orbits_sz = 0;
             int *map;
             size_t map_sz = 0;
-            graph *g1;
+            graph *g1 = NULL;
             size_t g1_sz = 0;
-            graph *g2;
+            graph *g2 = NULL;
             size_t g2_sz = 0;
-            graph *cg1;
+            graph *cg1 = NULL;
             size_t cg1_sz = 0;
-            graph *cg2;
+            graph *cg2 = NULL;
             size_t cg2_sz = 0;
             statsblk stats;
             int m;
@@ -1328,34 +1328,6 @@ namespace percy
         };
 #endif
 
-        /// Writes a collection of partial DAGs to the specified filename
-        /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
-        /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
-        inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
-        {
-            auto fhandle = fopen(filename, "wb");
-            if (fhandle == NULL) {
-                fprintf(stderr, "Error: unable to open output file\n");
-                exit(1);
-            }
-
-            for (auto& dag : dags) {
-                int buf = dag.nr_vertices();
-                fwrite(&buf, sizeof(int), 1, fhandle);
-                for (int i = 0; i < dag.nr_vertices(); i++) {
-                    auto& v = dag.get_vertex(i);
-                    buf = v[0];
-                    auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                    assert(stat == 1);
-                    buf = v[1];
-                    stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                    assert(stat == 1);
-                }
-            }
-
-            fclose(fhandle);
-        }
-
         inline void write_partial_dag(const partial_dag& dag, FILE* fhandle)
         {
             int buf = dag.nr_vertices();
@@ -1368,6 +1340,22 @@ namespace percy
                     assert(stat == 1);
                 }
             }
+        }
+
+        /// Writes a collection of partial DAGs to the specified filename
+        inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+        {
+            auto fhandle = fopen(filename, "wb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            for (auto& dag : dags) {
+                write_partial_dag(dag, fhandle);
+            }
+
+            fclose(fhandle);
         }
 
         /// Reads serialized partial DAGs from file
@@ -1707,6 +1695,31 @@ namespace percy
                 gen.reset(i);
                 gen.count_dags();
             }
+
+            return dags;
+        }
+
+        // Same as pd_generate_filtered, but generates only those PDs with the
+        // exact number of specified vertices.
+        inline std::vector<partial_dag> pd3_exact_generate_filtered(int nr_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            g.reset(3, nr_vertices);
+            gen.reset(nr_vertices);
+            gen.count_dags();
 
             return dags;
         }
