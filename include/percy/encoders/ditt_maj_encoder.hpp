@@ -519,12 +519,171 @@ namespace percy
                 const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::steady_clock::now() - start
                 ).count();
-                printf("Synthesizing %.2f PDs/second\r", (pd_count / (elapsed * 1.0)));
+                printf("Processing %.2f PDs/second\r", (pd_count / (elapsed * 1.0)));
             }
         }
         printf("\n");
 
         return failure;
+    }
+
+    // Same as pd_ditt_maj_synthesize, but enumerates and prints found solutions.
+    inline int pd_ditt_maj_enumerate(int nr_in, const std::vector<partial_dag>& dags, bool verbose=false)
+    {
+        int num_solutions = 0;
+        spec spec;
+        bmcg_wrapper solver;
+        ditt_maj_encoder encoder(solver);
+        kitty::dynamic_truth_table tt(nr_in);
+        kitty::create_majority(tt);
+
+        chain c;
+
+        spec[0] = tt;
+        spec.preprocess();
+
+        const auto start = std::chrono::steady_clock::now();
+        auto pd_count = 0;
+
+        for (const auto& pd : dags) {
+            spec.nr_steps = pd.nr_vertices();
+            solver.restart();
+            if (!encoder.cegar_encode(spec, pd)) {
+                continue;
+            }
+            auto iMint = 0;
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.add_cnf(spec, iMint)) {
+                    break;
+                }
+                //printf("Iter %3d : ", i);
+                //printf("Var =%5d  ", encoder.get_nr_vars());
+                //printf("Cla =%6d  ", solver.nr_clauses());
+                //printf("Conf =%9d\n", solver.nr_conflicts());
+                const auto status = solver.solve(0);
+                if (status == failure) {
+                    //printf("The problem has no solution\n");
+                    break;
+                }
+                iMint = encoder.simulate(spec);
+            }
+            if (iMint == -1) {
+                encoder.extract_chain(spec, c);
+                const auto chain_func = c.simulate()[0];
+                assert(chain_func == tt);
+                printf("\nfound chain:\n");
+                c.to_mag_expression(std::cout);
+                printf("\n");
+                num_solutions++;
+            }
+            if (verbose) {
+                ++pd_count;
+                const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - start
+                ).count();
+                printf("Processing %.2f PDs/second\r", (pd_count / (elapsed * 1.0)));
+            }
+        }
+        printf("\n");
+
+        return num_solutions;
+    }
+
+    inline synth_result parallel_pd_ditt_maj_synthesize(
+        int nr_in, 
+        const std::vector<partial_dag>& dags, 
+        chain& c,
+        int num_threads = std::thread::hardware_concurrency(),
+        bool verbose = false)
+    {
+        assert(dags.size() > 0);
+        spec spec;
+
+        kitty::dynamic_truth_table tt(nr_in);
+        kitty::create_majority(tt);
+
+        spec[0] = tt;
+        spec.preprocess();
+
+        std::vector<std::thread> threads(num_threads);
+        moodycamel::ConcurrentQueue<partial_dag> q(num_threads * 3);
+
+        bool found = false;
+        bool* pfound = &found;
+        std::mutex found_mutex;
+
+        spec.nr_steps = dags[0].nr_vertices();
+
+        std::atomic<int> nr_processed(0);
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = std::thread([&spec, pfound, &found_mutex, &c, &q, &nr_processed] {
+                bmcg_wrapper solver;
+                ditt_maj_encoder encoder(solver);
+                partial_dag local_pd;
+
+                while (!(*pfound)) {
+                    if (!q.try_dequeue(local_pd)) {
+                        std::this_thread::yield();
+                        if (!q.try_dequeue(local_pd)) {
+                            break;
+                        }
+                    }
+                    solver.restart();
+                    if (!encoder.cegar_encode(spec, local_pd)) {
+                        nr_processed++;
+                        continue;
+                    }
+                    auto iMint = 0;
+                    for (int i = 0; !(*pfound) && iMint != -1; i++) {
+                        if (!encoder.add_cnf(spec, iMint)) {
+                            nr_processed++;
+                            break;
+                        }
+                        synth_result status = timeout;
+                        do {
+                            status = solver.solve(10);
+                            if (*pfound) {
+                                break;
+                            } 
+                        } while (status == timeout);
+                        if (status == failure) {
+                            //printf("The problem has no solution\n");
+                            nr_processed++;
+                            break;
+                        }
+                        iMint = encoder.simulate(spec);
+                    }
+                    if (iMint == -1) {
+                        std::lock_guard<std::mutex> vlock(found_mutex);
+                        if (!(*pfound)) {
+                            encoder.extract_chain(spec, c);
+                            *pfound = true;
+                        }
+                    }
+                }
+            });
+        }
+        for (const auto& pd : dags) {
+            while (!found) {
+                if (!q.try_enqueue(pd)) {
+                    if (!found)
+                        std::this_thread::yield();
+                } else {
+                    break;
+                }
+                if (verbose)
+                    printf("Processed (%d/%zu)\r", nr_processed.load(), dags.size());
+            }
+        }
+        if (verbose)
+            printf("Processed (%d/%zu)\n", nr_processed.load(), dags.size());
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        return found ? success : failure;
     }
 
     inline synth_result pf_ditt_maj_synthesize(
