@@ -137,6 +137,38 @@ namespace percy
             //printf("The number of structural variables = %d\n", iVar);
         }
 
+        void add_base_variables(const spec& spec, const partial_dag& pd)
+        {
+            for (int i = 0; i < MAJ_NOBJS; i++) {
+                pabc::Vec_IntClear(pabc::Vec_WecEntry(vOutLits, i));
+            }
+
+            iVar = 1;
+            for (int k = 0; k < 3; k++) {
+                const auto j = 2 - k;
+                pabc::Vec_WecPush(vOutLits, j, pabc::Abc_Var2Lit(iVar, 0));
+                varMarks[spec.nr_in][k][j] = iVar++;
+            }
+            for (int i = spec.nr_in + 1; i < spec.nr_in + spec.nr_steps; i++) {
+                const auto& vertex = pd.get_vertex(i - spec.nr_in);
+
+                for (int k = 0; k < 3; k++) {
+                    const auto fanin = vertex[2 - k];
+                    if (fanin == 0) {
+                        for (int j = 0; j < i - k; j++) {
+                            pabc::Vec_WecPush(vOutLits, j, pabc::Abc_Var2Lit(iVar, 0));
+                            varMarks[i][k][j] = iVar++;
+                        }
+                    } else {
+                        const auto fanin_idx = fanin + spec.nr_in - 1;
+                        pabc::Vec_WecPush(vOutLits, fanin_idx, pabc::Abc_Var2Lit(iVar, 0));
+                        varMarks[i][k][fanin_idx] = iVar++;
+                    }
+                }
+            }
+            //printf("The number of structural variables = %d\n", iVar);
+        }
+
         bool add_base_cnf(const spec& spec)
         {
             int tmpLits[2];
@@ -274,6 +306,22 @@ namespace percy
             }
             update_level_map(spec, fence);
             add_base_variables(spec, fence);
+            if (!add_base_cnf(spec))
+                return false;
+
+            return true;
+        }
+
+        bool cegar_encode(const spec& spec, const partial_dag& pd)
+        {
+            memset(varMarks, 0, sizeof(varMarks));
+            for (int i = 0; i < spec.nr_in + spec.nr_steps; i++) {
+                sim_tts[i] = kitty::dynamic_truth_table(spec.nr_in);
+                if (i < spec.nr_in) {
+                    kitty::create_nth_var(sim_tts[i], i);
+                }
+            }
+            add_base_variables(spec, pd);
             if (!add_base_cnf(spec))
                 return false;
 
@@ -423,6 +471,60 @@ namespace percy
                 break;
             }
         }
+    }
+
+    inline synth_result pd_ditt_maj_synthesize(int nr_in, const std::vector<partial_dag>& dags, chain& c, bool verbose=false)
+    {
+        spec spec;
+        bmcg_wrapper solver;
+        ditt_maj_encoder encoder(solver);
+        kitty::dynamic_truth_table tt(nr_in);
+        kitty::create_majority(tt);
+
+        spec[0] = tt;
+        spec.preprocess();
+
+        const auto start = std::chrono::steady_clock::now();
+        auto pd_count = 0;
+
+        for (const auto& pd : dags) {
+            spec.nr_steps = pd.nr_vertices();
+            solver.restart();
+            if (!encoder.cegar_encode(spec, pd)) {
+                continue;
+            }
+            auto iMint = 0;
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.add_cnf(spec, iMint)) {
+                    break;
+                }
+                //printf("Iter %3d : ", i);
+                //printf("Var =%5d  ", encoder.get_nr_vars());
+                //printf("Cla =%6d  ", solver.nr_clauses());
+                //printf("Conf =%9d\n", solver.nr_conflicts());
+                const auto status = solver.solve(0);
+                if (status == failure) {
+                    //printf("The problem has no solution\n");
+                    break;
+                }
+                iMint = encoder.simulate(spec);
+            }
+            if (iMint == -1) {
+                //printf("found solution!\n");
+                encoder.extract_chain(spec, c);
+                return success;
+            }
+            if (verbose) {
+                ++pd_count;
+                const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - start
+                ).count();
+                printf("Synthesizing %.2f PDs/second\r", (pd_count / (elapsed * 1.0)));
+            }
+        }
+        printf("\n");
+
+        return failure;
     }
 
     inline synth_result pf_ditt_maj_synthesize(
