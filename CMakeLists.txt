@@ -11,6 +11,7 @@ if (UNIX)
 endif()
 
 option(TRAVIS_BUILD "Use Travis build configuration" OFF)
+option(PERCY_EXAMPLES "Build examples" ON)
 option(PERCY_TEST "Build tests" OFF)
 option(PERCY_BENCH "Build benchmarks" OFF)
 option(PERCY_BUILD_KITTY "Build kitty for percy" ON)
@@ -85,6 +86,10 @@ if (NOT ${DISABLE_NAUTY})
 endif()
 
 add_subdirectory(include)
+
+if(PERCY_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 if (${PERCY_TEST})
     enable_testing()

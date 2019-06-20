@@ -5,6 +5,7 @@
 
 using namespace percy;
 
+#ifdef USE_SYRUP
 template<int nr_in>
 void check_std_equivalence()
 {
@@ -76,6 +77,7 @@ void check_std_equivalence()
         printf("nthreads=%d, elapsed time=%zd\n", nr_threads, total_elapsed);
     }
 }
+#endif
 
 int main()
 {

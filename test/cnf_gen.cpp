@@ -3,6 +3,8 @@
 #if !defined(_WIN32) && !defined(_WIN64)
 #ifdef USE_GLUCOSE
 #include <glucose/utils/ParseUtils.h>
+#include <glucose/simp/SimpSolver.h>
+#include <glucose/core/Dimacs.h>
 #else
 #include <syrup/core/Dimacs.h>
 #include <syrup/utils/ParseUtils.h>
@@ -57,7 +59,7 @@ main(void)
 #if !defined(_WIN32) && !defined(_WIN64)
         Glucose::SimpSolver s;
         s.parsing = 1;
-        s.use_simplification = 1;
+        // s.use_simplification = 1;
         gzFile in = gzopen(filename.c_str(), "rb");
         Glucose::parse_DIMACS(in, s);
         s.parsing = 0;
@@ -113,7 +115,7 @@ main(void)
 #if !defined(_WIN32) && !defined(_WIN64)
         Glucose::SimpSolver s;
         s.parsing = 1;
-        s.use_simplification = 1;
+        // s.use_simplification = 1;
         gzFile in = gzopen(filename.c_str(), "rb");
         Glucose::parse_DIMACS(in, s);
         s.parsing = 0;
@@ -168,7 +170,7 @@ main(void)
 #if !defined(_WIN32) && !defined(_WIN64)
         Glucose::SimpSolver s;
         s.parsing = 1;
-        s.use_simplification = 1;
+        // s.use_simplification = 1;
         gzFile in = gzopen(filename.c_str(), "rb");
         Glucose::parse_DIMACS(in, s);
         s.parsing = 0;
