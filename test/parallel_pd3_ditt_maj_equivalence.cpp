@@ -26,6 +26,7 @@ int main(void)
         assert(result == failure);
     }
 
+#ifndef TRAVIS_BUILD
     std::vector<partial_dag> non_iso_dags;
 
     const auto nr_steps = 7;
@@ -48,7 +49,7 @@ int main(void)
     printf("Found chain:\n");
     c.to_mag_expression(std::cout);
     printf("\n");
-
+#endif
 
     return 0;
 }
