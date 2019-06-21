@@ -6,6 +6,7 @@ using namespace percy;
 // properly.
 int main(void)
 {
+#ifndef TRAVIS_BUILD
     chain c;
 
     {
@@ -26,7 +27,6 @@ int main(void)
         assert(result == failure);
     }
 
-#ifndef TRAVIS_BUILD
     std::vector<partial_dag> non_iso_dags;
 
     const auto nr_steps = 7;
