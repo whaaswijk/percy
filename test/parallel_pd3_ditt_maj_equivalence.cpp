@@ -6,6 +6,7 @@ using namespace percy;
 // properly.
 int main(void)
 {
+#ifndef TRAVIS_BUILD
     chain c;
 
     {
@@ -48,7 +49,7 @@ int main(void)
     printf("Found chain:\n");
     c.to_mag_expression(std::cout);
     printf("\n");
-
+#endif
 
     return 0;
 }

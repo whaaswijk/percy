@@ -45,7 +45,6 @@ int main(void)
     // Synthesize a full adder
     // Create the truth table specification object. It has three inputs and two outputs.
     spec.fanin = 3;
-    spec.set_nr_out(2);
     spec.verbosity = 0;
 
     // Create the functions to synthesize.
