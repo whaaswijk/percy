@@ -10,8 +10,7 @@ using kitty::dynamic_truth_table;
     Tests the exact synthesis functionality of the package.
 *******************************************************************************/
 int main(void)
-{
-    
+{    
     spec spec;
     spec.verbosity = 0;
 
