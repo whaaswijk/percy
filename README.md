@@ -1,6 +1,6 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.org/whaaswijk/percy.svg?branch=master)](https://travis-ci.org/whaaswijk/percy)
 [![Documentation Status](https://readthedocs.org/projects/percy/badge/?version=latest)](http://percy.readthedocs.io/en/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # percy
 <img src="https://cdn.rawgit.com/whaaswijk/percy/master/percy.svg" width="78" height="64" align="left" style="margin-right: 12pt" />
