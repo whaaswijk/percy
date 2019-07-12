@@ -12,6 +12,8 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "partial_dag.hpp"
+#include "generators/partial_dag_generator.hpp"
+#include "generators/partial_dag3_generator.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
