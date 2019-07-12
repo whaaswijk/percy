@@ -563,7 +563,7 @@ namespace percy
 
   /*! \brief Writes DAG in DOT format to output stream
    *
-   *  Convers a DAG to the GraphViz DOT format and writes it to the
+   *  Converts a DAG to the GraphViz DOT format and writes it to the
    *  specified output stream
    */
   template<int FI>
@@ -606,7 +606,7 @@ namespace percy
 
   /*! \brief Writes DAG in DOT format into file
    *
-   *  Convers a DAG to the GraphViz DOT format and writes it to the
+   *  Converts a DAG to the GraphViz DOT format and writes it to the
    *  specified file
    */
   template<int FI>
