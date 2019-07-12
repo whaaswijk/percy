@@ -1922,5 +1922,48 @@ namespace percy
         return ni_dags;
     }
 #endif
-}
 
+  /*! \brief Writes a partial DAG in DOT format to output stream
+   *
+   *  Converts a partial DAG to the GraphViz DOT format and writes it
+   *  to the specified output stream
+   */
+  inline void to_dot( partial_dag const& pdag, std::ostream& os )
+  {
+    os << "graph{\n";
+    os << "rankdir = BT;\n";
+
+    pdag.foreach_vertex( [&pdag, &os]( auto const& v, int index ){
+        std::string label = "(";
+        for ( auto i = 0; i < v.size(); ++i )
+        {
+          label += std::to_string( v.at( i ) );
+          if ( i+1 < v.size() )
+            label += ',';
+        }
+        label += ")";
+
+        auto const dot_index = index + 1;
+        os << "n" << dot_index << " [label=<<sub>" << dot_index << "</sub> " << label << ">];\n";
+
+        for ( const auto& child : v )
+        {
+          if ( child != 0u )
+            os << "n" << child << " -- n" << dot_index << ";\n";
+        }
+      });
+    os << "}\n";
+  }
+
+  /*! \brief Writes partial DAG in DOT format into file
+   *
+   *  Converts a partial DAG to the GraphViz DOT format and writes it
+   *  to the specified file
+   */
+  inline void to_dot( partial_dag const& pdag, std::string const& filename )
+  {
+    std::ofstream ofs( filename, std::ofstream::out );
+    to_dot( pdag, ofs );
+    ofs.close();
+  }
+}
