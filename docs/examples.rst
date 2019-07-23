@@ -1,6 +1,9 @@
 Examples
 ============
 
+Synthesis of an optimum full adder
+----------------------------------
+
 In the following example, we show how `percy` can be used to synthesize an
 optimum full adder.  While simple, the example shows some common interactions
 between the library's components.
@@ -69,5 +72,23 @@ as solver backend:
     auto solver = get_solver( solver_type );
     auto encoder = get_encoder( *solver, encoder_type );
     auto const result = synthesize( spec, c, *solver, *encoder, synth_method );
+
+Enumerate (and count) partial DAGs
+----------------------------------
+
+In the following code snippet, we use `percy` to enumerate partial
+DAGs for a given number of nodes (up to 7 nodes), count them, and
+print the numbers.
+
+.. code-black:: c++
+
+  #include <percy/partial_dag.hpp>
+
+  for ( auto i = 1u; i < 8; ++i )
+  {
+    const auto dags = percy::pd_generate( i );
+    std::cout << i << ' ' << dags.size() << std::endl;
+  }
+
 
 .. [1] https://github.com/berkeley-abc/abc

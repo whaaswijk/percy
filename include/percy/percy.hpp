@@ -12,6 +12,8 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "partial_dag.hpp"
+#include "generators/partial_dag_generator.hpp"
+#include "generators/partial_dag3_generator.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
@@ -36,24 +38,6 @@ namespace percy
 	using std::chrono::time_point;
 
     const int PD_SIZE_CONST = 1000; // Some "impossibly large" number
-
-    static inline bool is_trivial(const kitty::dynamic_truth_table& tt)
-    {
-        kitty::dynamic_truth_table tt_check(tt.num_vars());
-
-        if (tt == tt_check || tt == ~tt_check) {
-            return true;
-        }
-
-        for (auto i = 0; i < tt.num_vars(); i++) {
-            kitty::create_nth_var(tt_check, i);
-            if (tt == tt_check || tt == ~tt_check) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     inline synth_result 
     std_synthesize(
