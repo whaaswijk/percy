@@ -1164,8 +1164,15 @@ namespace percy
         while (true) {
             solver.restart();
             if (!encoder.encode(spec)) {
+              if ( spec.nr_steps < MAX_STEPS )
+              {
                 spec.nr_steps++;
                 continue;
+              }
+              else
+              {
+                return failure;
+              }
             }
 
             const auto status = solver.solve(spec.conflict_limit);
@@ -1175,7 +1182,15 @@ namespace percy
                 encoder.extract_mig(spec, mig);
                 return success;
             } else if (status == failure) {
+              if ( spec.nr_steps < MAX_STEPS )
+              {
                 spec.nr_steps++;
+                continue;
+              }
+              else
+              {
+                return failure;
+              }
             } else {
                 return timeout;
             }
