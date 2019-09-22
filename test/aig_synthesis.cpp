@@ -150,7 +150,7 @@ void test_aig_from_two_input_function()
   assert( c.simulate()[0] == spec[0] );
   assert( c.is_aig() );
 
-  spec[0] = ~( a |  b );
+  spec[0] = ~( a | b );
   result = percy::synthesize( spec, c );
   assert( result == percy::success );
   assert( c.get_nr_steps() == 1 );
