@@ -41,7 +41,7 @@ class majority_chain;
 
 namespace detail
 {
-void to_expression( majority_chain const& chain, std::ostream& os, bool write_newline = false );
+inline void to_expression( majority_chain const& chain, std::ostream& os, bool write_newline = false );
 } /* detail */
 
 /*! \brief Majority chain
@@ -399,7 +399,7 @@ public:
 namespace detail
 {
 
-void to_expression_recur( majority_chain const& chain, int32_t const index, std::ostream& os )
+inline void to_expression_recur( majority_chain const& chain, int32_t const index, std::ostream& os )
 {
   int32_t const num_inputs = chain.get_nr_inputs();
   if ( index < num_inputs )
@@ -417,7 +417,7 @@ void to_expression_recur( majority_chain const& chain, int32_t const index, std:
   }
 }
 
-void to_expression( majority_chain const& chain, std::ostream& os, bool write_newline )
+inline void to_expression( majority_chain const& chain, std::ostream& os, bool write_newline )
 {
   to_expression_recur( chain, chain.get_nr_inputs() + chain.get_nr_steps() - 1, os );
   if ( write_newline )
