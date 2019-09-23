@@ -190,49 +190,64 @@ public:
    */
   bool satisfies_spec( spec const& spec )
   {
-    if (spec.nr_triv == spec.get_nr_out()) {
+    /* If all functions are trivial, nothing needs to be checked */
+    if ( spec.nr_triv == spec.get_nr_out() )
       return true;
-    }
-    auto tts = simulate();
 
+    /* Ensure that all non-trivial are correct (wrt. spec) when simulated */
+    auto const tts = simulate();
     auto nr_nontriv = 0;
-    for (int i = 0; i < spec.nr_nontriv; i++) {
-      if ((spec.triv_flag >> i) & 1) {
+    for ( int32_t i = 0u; i < spec.nr_nontriv; ++i )
+    {
+      if ( ( spec.triv_flag >> i ) & 1 )
         continue;
-      }
-      if (tts[nr_nontriv++] != spec[i]) {
-        assert(false);
+
+      if ( tts[nr_nontriv++] != spec[i] )
+      {
+        assert( false );
         return false;
       }
     }
 
-    if (spec.add_alonce_clauses) {
-      // Ensure that each step is used at least once.
-      std::vector<int> nr_uses(steps.size());
+    if ( spec.add_alonce_clauses )
+    {
+      /* Ensure that each step is used at least once */
+      std::vector<int32_t> nr_uses( steps.size() );
 
-      for (auto i = 1u; i < steps.size(); i++) {
-        const auto& step = steps[i];
-        for (const auto fid : step) {
-          if (fid >= nr_in) {
-            nr_uses[fid - nr_in]++;
+      for ( auto i = 0u; i < steps.size(); ++i )
+      {
+        auto const& step = steps.at( i );
+        for ( auto const& fid : step )
+        {
+          if ( fid > nr_in )
+          {
+            ++nr_uses[fid - nr_in - 1u];
           }
         }
       }
-      for (auto output : outputs) {
-        const auto step_idx = output >> 1;
-        if (step_idx > nr_in) {
-          nr_uses[step_idx - nr_in - 1]++;
+
+      for ( auto output : outputs )
+      {
+        std::cout << ( output >> 1 ) << std::endl;
+        
+        auto const step_index = output >> 1;
+        if ( step_index > nr_in )
+        {
+          ++nr_uses[step_index - nr_in - 1u];
         }
       }
 
-      for (auto nr : nr_uses) {
-        if (nr == 0) {
-          assert(false);
-          return false;
+      for ( auto const nr : nr_uses )
+      {
+        if ( nr == 0 )
+        {
+          assert( false );
+          return( false );
         }
       }
     }
-
+    
+#if 0
     if (spec.add_noreapply_clauses) {
       // Ensure there is no re-application of operands.
       for (auto i = 0u; i < steps.size() - 1; i++) {
@@ -312,8 +327,8 @@ public:
 
     if (spec.add_symvar_clauses) {
       // Ensure that symmetric variables are ordered.
-      for (int q = 1; q < spec.get_nr_in(); q++) {
-        for (int p = 0; p < q; p++) {
+      for (int q = 1; q < spec.get_nr_in() + 1; q++) {
+        for (int p = 1; p < q; p++) {
           auto symm = true;
           for (int i = 0; i < spec.get_nr_out(); i++) {
             auto outfunc = spec[i];
@@ -363,6 +378,7 @@ public:
         }
       }
     }
+#endif
 
     return true;
   }
@@ -385,7 +401,7 @@ public:
   {
     assert( outputs.size() == 1u );
     std::stringstream ss;
-    detail::to_expression( *this, ss );
+    detail::to_expression( *this, ss, false );
     return ss.str();
   }
 
@@ -402,16 +418,27 @@ namespace detail
 inline void to_expression_recur( majority_chain const& chain, int32_t const index, std::ostream& os )
 {
   int32_t const num_inputs = chain.get_nr_inputs();
-  if ( index < num_inputs )
+  if ( index == 0 )
   {
-    os << static_cast<char>( 'a' + index );
+    os << '0';
+  }
+  else if ( index <= num_inputs )
+  {
+    os << static_cast<char>( 'a' + index - 1u );
   }
   else
   {
-    auto const& step = chain.steps[index - num_inputs];
+    auto const& step = chain.steps[ index - num_inputs - 1u ];
+    auto const op = chain.operators[ index - num_inputs - 1u ];
     os << "<";
+    if ( op == 1 )
+      os << "~";
     to_expression_recur( chain, step.at( 0 ), os );
+    if ( op == 2 )
+      os << "~";
     to_expression_recur( chain, step.at( 1 ), os );
+    if ( op == 3 )
+      os << "~";
     to_expression_recur( chain, step.at( 2 ), os );
     os << ">";
   }
@@ -419,7 +446,7 @@ inline void to_expression_recur( majority_chain const& chain, int32_t const inde
 
 inline void to_expression( majority_chain const& chain, std::ostream& os, bool write_newline )
 {
-  to_expression_recur( chain, chain.get_nr_inputs() + chain.get_nr_steps() - 1, os );
+  to_expression_recur( chain, chain.get_nr_inputs() + chain.get_nr_steps(), os );
   if ( write_newline )
     os << '\n';
 }

@@ -41,9 +41,34 @@ void test_majority_chain()
   assert( kitty::to_hex( chain.simulate()[0u] ) == "e8" );
 }
 
+void test_majority_expression()
+{
+  percy::majority_chain chain;
+  chain.reset( 3u, 1u, 1u );
+  chain.set_step( 0, 1, 2, 3, 0 ); /* <a b c> */
+  chain.set_output( 0, 8 );
+  assert( chain.to_expression() == "<abc>" );
+
+  chain.reset( 3u, 1u, 1u );
+  chain.set_step( 0, 1, 2, 3, 1 ); /* <~a b c> */
+  chain.set_output( 0, 8 );
+  assert( chain.to_expression() == "<~abc>" );
+
+  chain.reset( 3u, 1u, 1u );
+  chain.set_step( 0, 1, 2, 3, 2 ); /* <a ~b c> */
+  chain.set_output( 0, 8 );
+  assert( chain.to_expression() == "<a~bc>" );
+
+  chain.reset( 3u, 1u, 1u );
+  chain.set_step( 0, 1, 2, 3, 3 ); /* <a b ~c> */
+  chain.set_output( 0, 8 );
+  assert( chain.to_expression() == "<ab~c>" );
+}
+
 int main()
 {
   test_majority_chain();
+  test_majority_expression();
   return 0;
 }
 

@@ -25,8 +25,8 @@ int main()
         int nr_solutions = 0;
         while (next_solution(spec, mig, solver, encoder) == success) {
             printf("got solution: ");
-            mig.to_expression(std::cout);
-            printf("\n");
+            mig.to_expression( std::cout, true );
+            std::cout.flush();
             nr_solutions++;
         }
         printf("found %d solutions\n", nr_solutions);
@@ -46,8 +46,8 @@ int main()
         int nr_solutions = 0;
         while (next_solution(spec, mig, solver, encoder) == success) {
             printf("got solution: ");
-            mig.to_expression(std::cout);
-            printf("\n");
+            mig.to_expression( std::cout, true );
+            std::cout.flush();
             nr_solutions++;
         }
         printf("found %d solutions\n", nr_solutions);
