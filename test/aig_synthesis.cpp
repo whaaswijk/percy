@@ -200,9 +200,9 @@ void test_aig_from_three_input_xor()
   percy::spec spec;
   spec.set_primitive( percy::AIG );
 
-  kitty::dynamic_truth_table a{2};
-  kitty::dynamic_truth_table b{2};
-  kitty::dynamic_truth_table c{2};
+  kitty::dynamic_truth_table a{3};
+  kitty::dynamic_truth_table b{3};
+  kitty::dynamic_truth_table c{3};
   kitty::create_nth_var( a, 0 );
   kitty::create_nth_var( b, 1 );
   kitty::create_nth_var( c, 2 );
@@ -210,7 +210,7 @@ void test_aig_from_three_input_xor()
   spec[0] = a ^ b ^ c;
   auto result = percy::synthesize( spec, chain );
   assert( result == percy::success );
-  assert( chain.get_nr_steps() == 3 );
+  assert( chain.get_nr_steps() == 6 );
   assert( chain.simulate()[0] == spec[0] );
   assert( chain.is_aig() );
 }
@@ -239,5 +239,6 @@ int main(void)
   test_aig_from_variable();
   test_aig_from_two_input_function();
   test_aig_from_three_input_xor();
+  test_aig_from_three_input_function();
   return 0;
 }
