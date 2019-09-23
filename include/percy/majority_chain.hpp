@@ -228,8 +228,6 @@ public:
 
       for ( auto output : outputs )
       {
-        std::cout << ( output >> 1 ) << std::endl;
-        
         auto const step_index = output >> 1;
         if ( step_index > nr_in )
         {
@@ -246,139 +244,185 @@ public:
         }
       }
     }
-    
-#if 0
-    if (spec.add_noreapply_clauses) {
-      // Ensure there is no re-application of operands.
-      for (auto i = 0u; i < steps.size() - 1; i++) {
-        const auto & fanins1 = steps[i];
-        for (auto ip = i + 1; ip < steps.size(); ip++) {
-          const auto& fanins2 = steps[ip];
 
-          auto is_subsumed = true;
+    if ( spec.add_noreapply_clauses )
+    {
+      /* Ensure that there is no re-application of operands */
+      for ( auto i = 0u; i < steps.size(); ++i )
+      {
+        auto const& step1 = steps.at( i );
+
+        for ( auto j = i + 1u; j < steps.size(); ++j )
+        {
+          auto const& step2 = steps.at( j );
+
           auto has_fanin_i = false;
-          for (auto j : fanins2) {
-            if (static_cast<unsigned>(j) == i + nr_in) {
+          auto is_subsumed = true;
+
+          for ( auto const& k : step2 )
+          {
+            if ( static_cast<uint32_t>( k ) == i + nr_in + 1 )
+            {
               has_fanin_i = true;
+              // std::cout << "step " << j << " has step " << i << " as a fanin" << std::endl;
               continue;
             }
+
             auto is_included = false;
-            for (auto jp : fanins1) {
-              if (j == jp) {
+            for ( auto l : step1 )
+            {
+              if ( k == l )
+              {
                 is_included = true;
+                // std::cout << "fanin " << l << " of step " << i << " also appears in step " << j << std::endl; 
+                break;
               }
             }
-            if (!is_included) {
+
+            if ( !is_included )
+            {
               is_subsumed = false;
             }
           }
-          if (is_subsumed && has_fanin_i) {
-            assert(false);
+
+          if ( is_subsumed && has_fanin_i )
+          {
+            assert( false );
             return false;
           }
         }
       }
     }
 
-    if (spec.add_colex_clauses) {
-      // Ensure that steps are in STRICT co-lexicographical order.
-      for (int i = 0; i < spec.nr_steps - 1; i++) {
-        const auto& v1 = steps[i];
-        const auto& v2 = steps[i + 1];
+    if ( spec.add_colex_clauses )
+    {
+      /* Ensure that steps are in STRICT co-lexicographical order. */
+      for ( int32_t i = 0; i < spec.nr_steps - 1; ++i )
+      {
+        auto const& v1 = steps[i];
+        auto const& v2 = steps[i + 1];
 
-        if (colex_compare(v1, v2) != -1) {
-          assert(false);
+        if ( colex_compare( v1, v2 ) != -1 )
+        {
+          assert( false );
           return false;
         }
       }
     }
 
-    if (spec.add_lex_clauses) {
-      // Ensure that steps are in lexicographical order.
-      for (int i = 0; i < spec.nr_steps - 1; i++) {
-        const auto& v1 = steps[i];
-        const auto& v2 = steps[i + 1];
+    if ( spec.add_lex_clauses )
+    {
+      /* Ensure that the steps are in lexicographical order. */
+      for ( int32_t i = 0; i < spec.nr_steps - 1; ++i )
+      {
+        auto const& v1 = steps[i];
+        auto const& v2 = steps[i + 1];
 
-        if (lex_compare(v1, v2) == 1) {
-          assert(false);
+        if ( lex_compare( v1, v2 ) == 1 )
+        {
+          assert( false );
           return false;
         }
       }
     }
 
-    if (spec.add_lex_func_clauses) {
-      // Ensure that step operators are in lexicographical order.
-      for (int i = 0; i < spec.nr_steps - 1; i++) {
-        const auto& v1 = steps[i];
-        const auto& v2 = steps[i + 1];
+    if ( spec.add_lex_func_clauses )
+    {
+      /* Ensure that the step operator sare in lexicographical order. */
+      for ( int32_t i = 0; i < spec.nr_steps - 1; ++i )
+      {
+        auto const& v1 = steps[i];
+        auto const& v2 = steps[i + 1];
 
-        if (colex_compare(v1, v2) == 0) {
-          // The operator of step i must be lexicographically
-          // less than that of i + 1.
-          const auto& op1 = operators[i];
-          const auto& op2 = operators[i + 1];
-          if (op2 > op1) {
-            assert(false);
+        if ( colex_compare( v1, v2 ) == 0 )
+        {
+          /* The operator of step i must be lexicographically less than that of i + 1. */
+          auto const& op1 = operators[i];
+          auto const& op2 = operators[i + 1];
+          if ( op2 > op1 )
+          {
+            assert( false );
             return false;
           }
         }
       }
     }
 
-    if (spec.add_symvar_clauses) {
-      // Ensure that symmetric variables are ordered.
-      for (int q = 1; q < spec.get_nr_in() + 1; q++) {
-        for (int p = 1; p < q; p++) {
+    if ( spec.add_symvar_clauses )
+    {
+      /* Ensure that the symmetric variables are ordered. */
+      for ( int32_t q = 1; q < spec.get_nr_in(); ++q )
+      {
+        for ( int32_t p = 1; p < q; ++p )
+        {
           auto symm = true;
-          for (int i = 0; i < spec.get_nr_out(); i++) {
-            auto outfunc = spec[i];
-            if (!(swap(outfunc, p, q) == outfunc)) {
+
+          for ( int32_t i = 0u; i < spec.get_nr_out(); ++i )
+          {
+            auto out_function = spec[i];
+            if ( !( swap( out_function, p, q ) == out_function ) )
+            {
               symm = false;
               break;
             }
           }
-          if (!symm) {
+
+          if ( !symm )
+          {
             continue;
           }
-          for (int i = 1; i < spec.nr_steps; i++) {
-            const auto& v1 = steps[i];
+
+          for ( int32_t i = 1; i < spec.nr_steps; ++i )
+          {
+            auto const& v1 = steps[i];
+
             auto has_fanin_p = false;
             auto has_fanin_q = false;
 
-            for (const auto fid : v1) {
-              if (fid == p) {
+            for ( auto const fid : v1 )
+            {
+              if ( fid == p )
+              {
                 has_fanin_p = true;
-              } else if (fid == q) {
+              }
+              else if ( fid == q )
+              {
                 has_fanin_q = true;
               }
             }
 
-            if (!has_fanin_q || has_fanin_p) {
+            if ( has_fanin_p || !has_fanin_q )
+            {
               continue;
             }
+
             auto p_in_prev_step = false;
-            for (int ip = 0; ip < i; ip++) {
-              const auto& v2 = steps[ip];
+            for ( int j = 0; j < i; ++j )
+            {
+              auto const& v2 = steps[j];
               has_fanin_p = false;
 
-              for (const auto fid : v2) {
-                if (fid == p) {
+              for ( auto const fid : v2 )
+              {
+                if ( fid == p )
+                {
                   has_fanin_p = true;
                 }
               }
-              if (has_fanin_p) {
+              if ( has_fanin_p )
+              {
                 p_in_prev_step = true;
               }
             }
-            if (!p_in_prev_step) {
-              assert(false);
+            if (!p_in_prev_step)
+            {
+              assert( false );
               return false;
             }
           }
         }
       }
     }
-#endif
 
     return true;
   }
