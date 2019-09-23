@@ -1538,7 +1538,7 @@ namespace percy
                         }
                     }
                 }
-                chain.set_step(i, op_inputs[0], op_inputs[1], op_inputs[2], op);
+                chain.set_step(i, op_inputs[0]+1, op_inputs[1]+1, op_inputs[2]+1, op);
             }
 
             // TODO: support multiple outputs
@@ -1600,7 +1600,7 @@ namespace percy
                         }
                     }
                 }
-                mig.set_step(i, op_inputs[0], op_inputs[1], op_inputs[2], op);
+                mig.set_step(i, op_inputs[0]+1, op_inputs[1]+1, op_inputs[2]+1, op);
             }
 
             // TODO: support multiple outputs
@@ -1634,7 +1634,7 @@ namespace percy
                         }
                     }
                 }
-                chain.set_step(i, op_inputs[0], op_inputs[1], op_inputs[2], op);
+                chain.set_step(i, op_inputs[0]+1, op_inputs[1]+1, op_inputs[2]+1, op);
             }
 
             // TODO: support multiple outputs
@@ -1810,7 +1810,6 @@ namespace percy
                 }
             }
             assert(ctr == spec.nr_steps);
-
             return solver->add_clause(pLits, pLits + ctr);
         }
         
