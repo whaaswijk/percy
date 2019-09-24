@@ -10,7 +10,7 @@ as circuit resynthesis and design exploration.
 
 [Read the documentation here.](http://percy.readthedocs.io/en/latest/?badge=latest)
 
-+## Example
+## Example
 
 The following code snippet synthesizes a circuit implementation of a full adder.
 
