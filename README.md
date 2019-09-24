@@ -22,7 +22,7 @@ s.set_nr_outputs( 2 );
 
 chain c;
 
-kitty::dynamic_turth_table x{3}, y{3}, z{3};
+kitty::dynamic_truth_table x{3}, y{3}, z{3};
 kitty::create_nth_var( x, 0 );
 kitty::create_nth_var( y, 1 );
 kitty::create_nth_var( z, 2 );
