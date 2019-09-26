@@ -10,6 +10,32 @@ as circuit resynthesis and design exploration.
 
 [Read the documentation here.](http://percy.readthedocs.io/en/latest/?badge=latest)
 
+## Example
+
+The following code snippet synthesizes a circuit implementation of a full adder.
+
+```c++
+#include <percy/percy.hpp>
+
+spec s;
+s.set_nr_outputs( 2 );
+
+chain c;
+
+kitty::dynamic_truth_table x{3}, y{3}, z{3};
+kitty::create_nth_var( x, 0 );
+kitty::create_nth_var( y, 1 );
+kitty::create_nth_var( z, 2 );
+
+auto const sum = x ^ y ^ z;
+auto const carry = kitty::ternary_majority( x, y, z );
+
+spec[0] = sum;
+spec[1] = carry;
+
+auto const result == synthesize( s, c );
+assert( result == success );
+```
 
 ## EPFL logic sythesis libraries
 
