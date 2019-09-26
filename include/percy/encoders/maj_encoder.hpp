@@ -1370,9 +1370,9 @@ namespace percy
                 create_alonce_clauses(spec);
             }
 
-            if (spec.add_colex_clauses) {
+            /*if (spec.add_colex_clauses) {
                 create_colex_clauses(spec);
-            }
+            }*/
             
             if (spec.add_noreapply_clauses) {
                 create_noreapply_clauses(spec);
