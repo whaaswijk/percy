@@ -14,12 +14,13 @@ int main()
         // Synthesize 4-input function with mig 
         mig mig;
         spec spec;
+        spec.verbosity = 1; 
         bsat_wrapper solver;
         mig_encoder encoder(solver);
         kitty::dynamic_truth_table tt(4);
         kitty::create_from_hex_string(tt, "19e6");
         spec[0] = tt;
-
+         
         auto res = mig_synthesize(spec, mig, solver, encoder);
         const auto sim_tts = mig.simulate();
 
@@ -32,6 +33,7 @@ int main()
         // // Synthesize 4-input function with mig enumerate solutions
         mig mig;
         spec spec;
+        spec.verbosity = 1; 
         bsat_wrapper solver;
         mig_encoder encoder(solver);
         kitty::dynamic_truth_table tt(4);

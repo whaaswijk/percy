@@ -1215,10 +1215,14 @@ namespace percy
             }
         }
 
-        bool encode(const spec& spec)
-        {
-            assert(spec.nr_in >= 3);
+        bool encode(spec& spec)
+        { 
 
+            assert(spec.nr_in >= 3);
+            
+            spec.add_noreapply_clauses = false;
+            spec.add_colex_clauses = false;
+            
             create_variables(spec);
             create_main_clauses(spec);
 
@@ -1232,11 +1236,11 @@ namespace percy
 
             /* if (spec.add_colex_clauses) {
                 create_colex_clauses(spec);
-            }
+            }*/
             
             if (spec.add_lex_func_clauses) {
                 create_lex_func_clauses(spec);
-            }*/
+            }
 
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
                 return false;
@@ -1305,9 +1309,9 @@ namespace percy
                 fence_create_alonce_clauses(spec);
             }
             
-            if (spec.add_colex_clauses) {
+            /*if (spec.add_colex_clauses) {
                 fence_create_colex_clauses(spec);
-            }
+            }*/
 
             if (spec.add_lex_func_clauses) {
                 fence_create_lex_func_clauses(spec);

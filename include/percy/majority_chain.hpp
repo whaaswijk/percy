@@ -264,7 +264,7 @@ public:
             if ( static_cast<uint32_t>( k ) == i + nr_in + 1 )
             {
               has_fanin_i = true;
-              // std::cout << "step " << j << " has step " << i << " as a fanin" << std::endl;
+              //std::cout << "step " << j << " has step " << i << " as a fanin" << std::endl;
               continue;
             }
 
@@ -274,7 +274,7 @@ public:
               if ( k == l )
               {
                 is_included = true;
-                // std::cout << "fanin " << l << " of step " << i << " also appears in step " << j << std::endl; 
+                //std::cout << "fanin " << l << " of step " << i << " also appears in step " << j << std::endl; 
                 break;
               }
             }
