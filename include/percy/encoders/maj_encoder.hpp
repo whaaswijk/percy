@@ -1355,9 +1355,10 @@ namespace percy
             }
         }
 
-        bool encode(const spec& spec)
+        bool encode(spec& spec)
         {
             assert(spec.nr_in >= 3);
+            spec.add_colex_clauses = false;
 
             create_variables(spec);
             create_main_clauses(spec);
@@ -1370,9 +1371,9 @@ namespace percy
                 create_alonce_clauses(spec);
             }
 
-            if (spec.add_colex_clauses) {
+            /*if (spec.add_colex_clauses) {
                 create_colex_clauses(spec);
-            }
+            }*/
             
             if (spec.add_noreapply_clauses) {
                 create_noreapply_clauses(spec);

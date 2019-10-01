@@ -25,7 +25,6 @@
     Soeken's earlier exact synthesis algorithm, which has been integrated in
     the ABC synthesis package. That implementation is itself based on earlier
     work by Éen[1] and Knuth[2].
-
     [1] Niklas Éen, "Practical SAT – a tutorial on applied satisfiability
     solving," 2007, slides of invited talk at FMCAD.
     [2] Donald Ervin Knuth, "The Art of Computer Programming, Volume 4,
@@ -1196,6 +1195,64 @@ namespace percy
             }
         }
     }
+
+    inline synth_result
+    mig_synthesize(
+        spec& spec, 
+        mig& mig, 
+        solver_wrapper& solver, 
+        mig_encoder& encoder)
+    {
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            solver.restart();
+            if (!encoder.encode(spec)) {
+              if ( spec.nr_steps < MAX_STEPS )
+              {
+                spec.nr_steps++;
+                continue;
+              }
+              else
+              {
+                return failure;
+              }
+            }
+
+            const auto status = solver.solve(spec.conflict_limit);
+
+            if (status == success) {
+                //encoder.print_solver_state(spec);
+                encoder.extract_mig(spec, mig);
+                return success;
+            } else if (status == failure) {
+              if ( spec.nr_steps < MAX_STEPS )
+              {
+                spec.nr_steps++;
+                continue;
+              }
+              else
+              {
+                return failure;
+              }
+            } else {
+                return timeout;
+            }
+        }
+    }
+
 
     inline int get_init_imint(const spec& spec)
     {
