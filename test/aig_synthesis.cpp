@@ -275,7 +275,7 @@ void test_aig_xor_with_existing_functions()
 
 int main(void)
 {
-  test_aig_xor_with_existing_functions()
+  test_aig_xor_with_existing_functions();
   test_aig_from_constant();
   test_aig_from_variable();
   test_aig_from_two_input_function();
