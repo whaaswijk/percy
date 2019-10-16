@@ -370,6 +370,11 @@ namespace percy
                 }
             }
 
+            void add_primitive( kitty::dynamic_truth_table const& tt )
+            {
+              compiled_primitives.push_back( tt );
+            }
+
             bool is_primitive_set() const
             {
                 return compiled_primitives.size() > 0;
