@@ -820,3 +820,4 @@ namespace percy
 
 }
 
+#include "printer.hpp"
