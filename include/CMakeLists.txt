@@ -14,7 +14,7 @@ else()
     target_compile_definitions(percy INTERFACE DISABLE_SATOKO)
 endif()
 
-target_link_libraries(percy INTERFACE kitty libabcsat)
+target_link_libraries(percy INTERFACE kitty fmt libabcsat)
 
 if (${DISABLE_NAUTY})
     target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
