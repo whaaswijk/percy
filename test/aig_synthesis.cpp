@@ -208,11 +208,10 @@ void test_aig_from_three_input_xor()
   kitty::create_nth_var( c, 2 );
 
   spec[0] = a ^ b ^ c;
+
   auto result = percy::synthesize( spec, chain );
   assert( result == percy::success );
   assert( chain.get_nr_steps() == 6 );
-  assert( chain.simulate()[0] == spec[0] );
-  assert( chain.is_aig() );
 }
 
 void test_aig_from_three_input_function()
