@@ -438,7 +438,6 @@ namespace percy
                     }
                 }
 
-                std::cout << "5" << std::endl;
                 if ( spec.add_alonce_clauses )
                 {
                   /* Ensure that each step is used at least once. */

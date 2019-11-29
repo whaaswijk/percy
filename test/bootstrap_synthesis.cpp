@@ -51,7 +51,6 @@ void test_simple2()
 
   kitty::dynamic_truth_table f( 6 );
   kitty::create_from_hex_string( f, "0202022200000022" );
-  std::cout << kitty::to_hex( f ) << std::endl;
 
   kitty::dynamic_truth_table a( 6 );
   kitty::dynamic_truth_table b( 6 );
