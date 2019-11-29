@@ -39,6 +39,7 @@ void test_simple()
   /* now we only need one more step because we start with the two
      functions ( ~x & y ) and ( x & ~y ) */
   assert( chain.get_nr_steps() == 1u );
+  assert( chain.satisfies_spec( spec ) );
 }
 
 void test_simple2()
@@ -65,6 +66,7 @@ void test_simple2()
   assert( result == percy::success );
 
   assert( chain.simulate()[0] == spec[0] );
+  assert( chain.satisfies_spec( spec ) );
 
 #if 1
   kitty::dynamic_truth_table x1( 6 );

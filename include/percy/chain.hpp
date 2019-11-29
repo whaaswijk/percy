@@ -438,31 +438,41 @@ namespace percy
                     }
                 }
 
-                if (spec.add_alonce_clauses) {
-                    // Ensure that each step is used at least once.
-                    std::vector<int> nr_uses(steps.size());
+                std::cout << "5" << std::endl;
+                if ( spec.add_alonce_clauses )
+                {
+                  /* Ensure that each step is used at least once. */
+                  std::vector<int32_t> nr_uses( steps.size() );
 
-                    for (auto i = 1u; i < steps.size(); i++) {
-                        const auto& step = steps[i];
-                        for (const auto fid : step) {
-                            if (fid >= nr_in) {
-                                    nr_uses[fid-nr_in]++;
-                                }
-                        }
+                  for ( auto i = 0u; i < steps.size(); ++i )
+                  {
+                    auto const& step = steps[i];
+                    for ( const auto& fid : step )
+                    {
+                      if ( fid >= nr_in + compiled_functions.size() )
+                      {
+                        nr_uses[fid - nr_in - compiled_functions.size()]++;
+                      }
                     }
-                    for (auto output : outputs) {
-                        const auto step_idx = output >> 1;
-                        if (step_idx > nr_in) {
-                            nr_uses[step_idx-nr_in-1]++;
-                        }
-                    }
+                  }
 
-                    for (auto nr : nr_uses) {
-                        if (nr == 0) {
-                            assert(false);
-                            return false;
-                        }
+                  for ( auto const& output : outputs )
+                  {
+                    auto const step_idx = output >> 1;
+                    if ( step_idx > nr_in + compiled_functions.size() )
+                    {
+                      nr_uses[step_idx - nr_in - compiled_functions.size() - 1]++;
                     }
+                  }
+
+                  for ( auto const& nr : nr_uses )
+                  {
+                    if ( nr == 0 )
+                    {
+                      assert( false );
+                      return false;
+                    }
+                  }
                 }
 
                 if (spec.add_noreapply_clauses) {
