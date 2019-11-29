@@ -528,44 +528,43 @@ namespace percy
             void 
             create_alonce_clauses(const spec& spec)
             {
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    auto ctr = 0;
+              for ( int i = 0; i < spec.nr_steps; ++i )
+              {
+                auto ctr = 0;
 
-                    // Either one of the outputs points to this step.
-                    for (int h = 0; h < spec.nr_nontriv; h++) {
-                        pabc::Vec_IntSetEntry(vLits, ctr++, 
-                                pabc::Abc_Var2Lit(get_out_var(spec, h, i), 0));
-                    }
-
-                    auto svar_offset = 0;
-                    for (int j = 0; j < i + 1; j++) {
-                        svar_offset += nr_svar_map[j];
-                    }
-
-                    // Or one of the succeeding steps points to this step.
-                    for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                        const auto nr_svars_for_ip = nr_svar_map[ip];
-                        for (int j = 0; j < nr_svars_for_ip; j++) {
-                            const auto sel_var = get_sel_var(svar_offset + j);
-                            const auto& fanins = svar_map[svar_offset + j];
-                            for (auto fanin : fanins) {
-                                if (fanin == spec.get_nr_in() + i) {
-                                    pabc::Vec_IntSetEntry(
-                                            vLits, 
-                                            ctr++,
-                                            pabc::Abc_Var2Lit(
-                                                get_sel_var(sel_var), 0)
-                                    );
-                                }
-                            }
-                        }
-                        svar_offset += nr_svars_for_ip;
-                    }
-                    auto status = solver->add_clause(
-                            pabc::Vec_IntArray(vLits),
-                            pabc::Vec_IntArray(vLits) + ctr);
-                    assert(status);
+                // Either one of the outputs points to this step.
+                for ( int h = 0; h < spec.nr_nontriv; ++h )
+                {
+                  pabc::Vec_IntSetEntry( vLits, ctr++, pabc::Abc_Var2Lit( get_out_var( spec, h, i ) , 0 ) );
                 }
+
+                auto svar_offset = 0;
+                for (int j = 0; j < i + 1; j++) {
+                  svar_offset += nr_svar_map[j];
+                }
+
+                // Or one of the succeeding steps points to this step.
+                for ( int ip = i + 1; ip < spec.nr_steps; ++ip )
+                {
+                  auto const nr_svars_for_ip = nr_svar_map[ip];
+                  for ( int j = 0; j < nr_svars_for_ip; ++j )
+                  {
+                    auto const sel_var = get_sel_var(svar_offset + j);
+                    auto const& fanins = svar_map[svar_offset + j];
+                    for ( auto const fanin : fanins )
+                    {
+                      if ( fanin == spec.get_nr_in() + spec.get_nr_compiled_functions() + i ) {
+                        pabc::Vec_IntSetEntry( vLits,
+                                               ctr++,
+                                               pabc::Abc_Var2Lit( get_sel_var(sel_var), 0 ) );
+                      }
+                    }
+                  }
+                  svar_offset += nr_svars_for_ip;
+                }
+                auto status = solver->add_clause( pabc::Vec_IntArray(vLits), pabc::Vec_IntArray(vLits) + ctr);
+                assert(status);
+              }
             }
 
             /*******************************************************************
