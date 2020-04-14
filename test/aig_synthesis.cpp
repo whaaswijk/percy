@@ -232,8 +232,49 @@ void test_aig_from_three_input_function()
   }
 }
 
+void test_aig_xor_with_existing_functions()
+{
+  percy::chain chain;
+  percy::spec spec;
+  spec.verbosity = 0;
+  spec.set_primitive( percy::AIG );
+
+  kitty::dynamic_truth_table x{3};
+  kitty::dynamic_truth_table y{3};
+  kitty::dynamic_truth_table z{3};
+  kitty::create_nth_var( x, 0 );
+  kitty::create_nth_var( y, 1 );
+
+  /* add some additional normalized functions */
+  spec.add_function( ~x & y );
+  spec.add_function( x & ~y );
+  // spec.add_function( x & y );
+  // spec.add_function( ~( ~x & ~y ) );
+
+  /* xor */
+  spec[0] = x ^ y;
+
+  auto const result = percy::synthesize( spec, chain );
+  assert( result == percy::success );
+
+  auto const sim = chain.simulate();
+  // std::cout << "spec says:  ";
+  // kitty::print_binary( spec[0] );
+  // std::cout << std::endl;
+  //
+  // std::cout << "chain says: ";
+  // kitty::print_binary( sim[0] );
+  // std::cout << std::endl;
+  assert( chain.simulate()[0] == spec[0] );
+
+  /* now we only need one more step because we start with the two
+     functions ( ~x & y ) and ( x & ~y ) */
+  assert( chain.get_nr_steps() == 1u );
+}
+
 int main(void)
 {
+  test_aig_xor_with_existing_functions();
   test_aig_from_constant();
   test_aig_from_variable();
   test_aig_from_two_input_function();
