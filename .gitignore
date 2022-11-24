@@ -1,6 +1,7 @@
 *.swp
 build/
 .vscode/
+**/.DS_Store
 ;
 *~
 .vs/
